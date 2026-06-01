@@ -86,7 +86,8 @@ const {
 <script is:inline>
   document.addEventListener("DOMContentLoaded", () => {
     const form = document.getElementById("public-contact-form");
-    if (!form) return;
+    if (!form || form.dataset.listenerBound) return;
+    form.dataset.listenerBound = "true";
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();

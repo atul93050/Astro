@@ -1,6 +1,6 @@
 ---
 title: "Home Home"
-seoTitle: "Hello User"
+seoTitle: "This is Home Page"
 seoDescription: "Tangence is a performance marketing agency."
 hero:
   badge: "20 years · still here"

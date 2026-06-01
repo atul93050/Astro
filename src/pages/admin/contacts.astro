@@ -450,6 +450,10 @@ const submissions = files.map(file => {
   let activeMsg = null;
 
   function initInbox() {
+    const table = document.getElementById("inbox-tbody");
+    if (!table || table.dataset.listenerBound) return;
+    table.dataset.listenerBound = "true";
+
     setupSearch();
     setupDrawerHandlers();
   }

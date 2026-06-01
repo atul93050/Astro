@@ -22,6 +22,15 @@ function serializeFrontmatter(data: any): string {
   yaml += `title: ${cleanString(data.title)}\n`;
   yaml += `seoTitle: ${cleanString(data.seoTitle)}\n`;
   yaml += `seoDescription: ${cleanString(data.seoDescription)}\n`;
+  yaml += `seoFocusKeyword: ${cleanString(data.seoFocusKeyword)}\n`;
+  yaml += `seoCanonical: ${cleanString(data.seoCanonical)}\n`;
+  yaml += `seoRobots: ${cleanString(data.seoRobots)}\n`;
+  yaml += `seoOgTitle: ${cleanString(data.seoOgTitle)}\n`;
+  yaml += `seoOgDescription: ${cleanString(data.seoOgDescription)}\n`;
+  yaml += `seoOgImage: ${cleanString(data.seoOgImage)}\n`;
+  yaml += `seoTwitterCard: ${cleanString(data.seoTwitterCard)}\n`;
+  yaml += `seoSchemaType: ${cleanString(data.seoSchemaType)}\n`;
+  yaml += `seoSchemaMarkup: ${cleanString(data.seoSchemaMarkup)}\n`;
 
   // Hero
   yaml += "hero:\n";
@@ -109,6 +118,16 @@ export const POST: APIRoute = async ({ request }) => {
     const title = formData.get("title")?.toString().trim() || "";
     const seoTitle = formData.get("seoTitle")?.toString().trim() || "";
     const seoDescription = formData.get("seoDescription")?.toString().trim() || "";
+
+    const seoFocusKeyword = formData.get("seoFocusKeyword")?.toString().trim() || "";
+    const seoCanonical = formData.get("seoCanonical")?.toString().trim() || "";
+    const seoRobots = formData.get("seoRobots")?.toString().trim() || "";
+    const seoOgTitle = formData.get("seoOgTitle")?.toString().trim() || "";
+    const seoOgDescription = formData.get("seoOgDescription")?.toString().trim() || "";
+    const seoOgImage = formData.get("seoOgImage")?.toString().trim() || "";
+    const seoTwitterCard = formData.get("seoTwitterCard")?.toString().trim() || "";
+    const seoSchemaType = formData.get("seoSchemaType")?.toString().trim() || "";
+    const seoSchemaMarkup = formData.get("seoSchemaMarkup")?.toString().trim() || "";
 
     const heroBadge = formData.get("heroBadge")?.toString().trim() || "";
     const heroTitle = formData.get("heroTitle")?.toString().trim() || "";
@@ -216,6 +235,15 @@ export const POST: APIRoute = async ({ request }) => {
       title,
       seoTitle,
       seoDescription,
+      seoFocusKeyword,
+      seoCanonical,
+      seoRobots,
+      seoOgTitle,
+      seoOgDescription,
+      seoOgImage,
+      seoTwitterCard,
+      seoSchemaType,
+      seoSchemaMarkup,
       hero: {
         badge: heroBadge,
         title: heroTitle,

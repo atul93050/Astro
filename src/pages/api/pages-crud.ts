@@ -175,7 +175,15 @@ export const GET: APIRoute = async ({ url, cookies }) => {
           headers: { "Content-Type": "application/json" },
         });
       }
-      const filePath = path.join(pagesDir, `${slug}.md`);
+      let filePath = "";
+      if (slug === "home") {
+        filePath = path.resolve("src/content/home/home.md");
+      } else if (slug === "about") {
+        filePath = path.resolve("src/content/about/about.md");
+      } else {
+        filePath = path.join(pagesDir, `${slug}.md`);
+      }
+      
       if (!fs.existsSync(filePath)) {
         return new Response(JSON.stringify({ success: false, error: "Page not found" }), {
           status: 404,

@@ -49,6 +49,15 @@ function parseHomeYAML(yaml: string) {
     title: "",
     seoTitle: "",
     seoDescription: "",
+    seoFocusKeyword: "",
+    seoCanonical: "",
+    seoRobots: "",
+    seoOgTitle: "",
+    seoOgDescription: "",
+    seoOgImage: "",
+    seoTwitterCard: "",
+    seoSchemaType: "",
+    seoSchemaMarkup: "",
     hero: { badge: "", title: "", description: "", bullets: [], formTitle: "", formDescription: "", formTrust: "" },
     stats: { eyebrow: "", title: "", description: "", items: [] },
     pricing: { eyebrow: "", title: "", description: "", footer: "", items: [] },
@@ -181,7 +190,7 @@ function parseHomeYAML(yaml: string) {
 
       // If root fields or section headers
       if (!currentSection) {
-        if (key === "title" || key === "seoTitle" || key === "seoDescription") {
+        if (key === "title" || key === "seoTitle" || key === "seoDescription" || key === "seoFocusKeyword" || key === "seoCanonical" || key === "seoRobots" || key === "seoOgTitle" || key === "seoOgDescription" || key === "seoOgImage" || key === "seoTwitterCard" || key === "seoSchemaType" || key === "seoSchemaMarkup") {
           result[key] = val;
         }
       } else {
@@ -568,8 +577,91 @@ const cmsData = parseHomeYAML(yamlString);
               <span class="error-msg" id="err-seoDescription"></span>
             </div>
 
+            <div class="form-group">
+              <label for="seoFocusKeyword">Focus Keyword</label>
+              <input type="text" id="seoFocusKeyword" name="seoFocusKeyword" value={cmsData.seoFocusKeyword || ""} placeholder="e.g. performance marketing" />
+            </div>
+
+            <!-- Collapsible Advanced SEO Controls -->
+            <details class="advanced-details" style="margin-top: 1.5rem; cursor: pointer;">
+              <summary style="font-weight: 600; color: var(--primary); outline: none;">Advanced SEO Configurations</summary>
+              
+              <div class="form-group" style="margin-top:1rem;">
+                <label for="seoCanonical">Canonical URL</label>
+                <input type="url" id="seoCanonical" name="seoCanonical" value={cmsData.seoCanonical || ""} placeholder="https://www.tangence.in/" />
+              </div>
+
+              <div class="form-group">
+                <label for="seoRobots">Robots Meta</label>
+                <input type="text" id="seoRobots" name="seoRobots" value={cmsData.seoRobots || "index, follow"} placeholder="index, follow" />
+              </div>
+
+              <div class="form-group">
+                <label for="seoOgTitle">OG Title</label>
+                <input type="text" id="seoOgTitle" name="seoOgTitle" value={cmsData.seoOgTitle || ""} />
+              </div>
+
+              <div class="form-group">
+                <label for="seoOgDescription">OG Description</label>
+                <textarea id="seoOgDescription" name="seoOgDescription" rows="2">{cmsData.seoOgDescription || ""}</textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="seoOgImage">OG Image URL</label>
+                <div class="input-picker-wrap" style="display:flex; gap:0.4rem;">
+                  <input type="text" id="seoOgImage" name="seoOgImage" value={cmsData.seoOgImage || ""} style="flex:1;" />
+                  <button type="button" class="btn btn-outline btn-sm media-picker-trigger" data-target="seoOgImage">Pick</button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="seoTwitterCard">Twitter Card</label>
+                <select id="seoTwitterCard" name="seoTwitterCard">
+                  <option value="summary" selected={cmsData.seoTwitterCard === "summary"}>Summary</option>
+                  <option value="summary_large_image" selected={cmsData.seoTwitterCard === "summary_large_image" || !cmsData.seoTwitterCard}>Summary Large Image</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="seoSchemaType">JSON-LD Schema Type</label>
+                <select id="seoSchemaType" name="seoSchemaType">
+                  <option value="none" selected={cmsData.seoSchemaType === "none" || !cmsData.seoSchemaType}>None (Auto / Omit)</option>
+                  <option value="organization" selected={cmsData.seoSchemaType === "organization"}>Organization</option>
+                  <option value="faq" selected={cmsData.seoSchemaType === "faq"}>FAQ Page Schema</option>
+                  <option value="article" selected={cmsData.seoSchemaType === "article"}>Article Details</option>
+                  <option value="custom" selected={cmsData.seoSchemaType === "custom"}>Custom Input</option>
+                </select>
+              </div>
+
+              <div class="form-group" id="custom-schema-group" style="display:none;">
+                <label for="seoSchemaMarkup">JSON-LD Schema Markup</label>
+                <textarea id="seoSchemaMarkup" name="seoSchemaMarkup" rows="4" placeholder="JSON format structured markup payload">{cmsData.seoSchemaMarkup || ""}</textarea>
+              </div>
+            </details>
+
+            <!-- Real-time SEO checklist warnings widget -->
+            <div class="seo-score-meter-wrap" style="margin-top: 1.5rem; display: flex; align-items: center; gap: 1.25rem; background: rgba(156, 163, 175, 0.03); padding: 0.85rem; border-radius: 8px; border: 1px solid var(--border-color) || rgba(255,255,255,0.08);">
+              <div class="seo-gauge" style="width: 65px; height: 65px; flex-shrink: 0;">
+                <svg viewBox="0 0 36 36" class="circular-chart" style="display: block; max-width: 100%; max-height: 100%;">
+                  <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" style="fill: none; stroke: rgba(156, 163, 175, 0.1); stroke-width: 2.8;"></path>
+                  <path class="circle" id="seo-score-ring" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" style="fill: none; stroke-width: 2.8; stroke-linecap: round; transition: stroke-dasharray 0.35s ease;"></path>
+                  <text x="18" y="20.35" class="percentage" id="seo-score-text" style="fill: white; font-weight: 700; font-size: 9px; text-anchor: middle;">0%</text>
+                </svg>
+              </div>
+              <div class="seo-score-label" style="display: flex; flex-direction: column;">
+                <span id="seo-health-text" style="font-size: 0.92rem; font-weight: 700;">Not Rated</span>
+              </div>
+            </div>
+
+            <div class="seo-checklist" style="margin-top: 1.25rem; border-top: 1px solid var(--border-color) || rgba(255,255,255,0.08); padding-top: 1rem;">
+              <h5 style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em; margin-bottom: 0.5rem;">SEO Checklist</h5>
+              <ul id="seo-checks-list" style="list-style: none; display: flex; flex-direction: column; gap: 0.4rem; padding-left: 0;">
+                <!-- JS loaded dynamically -->
+              </ul>
+            </div>
+
             <!-- Google search preview -->
-            <div class="seo-preview-card">
+            <div class="seo-preview-card" style="margin-top:1.5rem;">
               <span class="preview-url">www.tangence.in</span>
               <h4 id="google-preview-title" class="preview-title">{cmsData.seoTitle || "Page Title"}</h4>
               <p id="google-preview-desc" class="preview-desc">{cmsData.seoDescription || "Please provide a meta description to see how this page displays in Google Search Results."}</p>
@@ -1135,7 +1227,184 @@ const cmsData = parseHomeYAML(yamlString);
         grid-template-columns: 1fr;
       }
     }
+
+    /* Confirmation / Media Selector Modal Custom Glassmorphism */
+    .confirm-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(8, 12, 20, 0.75);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .confirm-modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .confirm-modal {
+      background: var(--bg-surface-solid);
+      border: 1px solid var(--bg-surface-border);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 500px;
+      padding: 1.75rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      transform: scale(0.9);
+      transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .confirm-modal-overlay.active .confirm-modal {
+      transform: scale(1);
+    }
+    .confirm-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+    }
+    .confirm-modal-header h4 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .close-modal-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .close-modal-btn:hover {
+      color: var(--text-main);
+    }
+    .confirm-modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+    .toast-notification {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: var(--bg-surface-solid);
+      border-left: 4px solid var(--primary);
+      border-top: 1px solid var(--bg-surface-border);
+      border-bottom: 1px solid var(--bg-surface-border);
+      border-right: 1px solid var(--bg-surface-border);
+      padding: 1rem 1.5rem;
+      border-radius: var(--radius-md);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+      transform: translateY(100px);
+      opacity: 0;
+      z-index: 1001;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .toast-notification.active {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    .toast-content {
+      display: flex;
+      align-items: center;
+    }
+    .toast-message {
+      color: var(--text-main);
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+    .media-modal-actions {
+      margin-bottom: 1rem;
+      background: rgba(156, 163, 175, 0.03);
+      padding: 0.75rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-color);
+    }
+    .media-picker-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 0.75rem;
+      max-height: 280px;
+      overflow-y: auto;
+      padding: 0.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      background: var(--bg-base);
+    }
+    .media-picker-item {
+      aspect-ratio: 1;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 2px solid transparent;
+      cursor: pointer;
+      position: relative;
+      background: rgba(156, 163, 175, 0.03);
+      transition: var(--transition);
+    }
+    .media-picker-item:hover {
+      transform: scale(1.03);
+      border-color: var(--primary);
+    }
+    .media-picker-item.selected {
+      border-color: var(--accent);
+    }
+    .media-picker-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .media-empty {
+      grid-column: span 12;
+      text-align: center;
+      padding: 2.5rem;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+    }
   </style>
+
+  <!-- Reusable Media Library Selector Modal Dialog -->
+  <div class="confirm-modal-overlay" id="media-picker-overlay">
+    <div class="confirm-modal media-modal">
+      <div class="confirm-modal-header">
+        <h4>Select Asset from Media Catalog</h4>
+        <button type="button" class="close-modal-btn" id="close-media-modal">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="media-modal-actions">
+        <form id="media-upload-form" onsubmit="return false;" style="display:flex; gap:0.5rem; width:100%;">
+          <input type="file" id="media-upload-file" accept="image/*" style="display:none;" />
+          <button type="button" class="btn btn-outline btn-sm" id="trigger-file-select" style="flex:1;">
+            Choose Upload File
+          </button>
+          <button type="button" class="btn btn-primary btn-sm" id="upload-media-btn" disabled>
+            Upload
+          </button>
+        </form>
+      </div>
+      <div class="media-picker-grid" id="media-picker-grid">
+        <!-- Injected dynamic catalog grid -->
+        <p class="media-empty">No catalog images. Upload a new asset.</p>
+      </div>
+      <div class="confirm-modal-footer">
+        <button type="button" class="btn btn-outline" id="close-media-picker-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Banner -->
+  <div class="toast-notification" id="toast-notify">
+    <div class="toast-content">
+      <span class="toast-message" id="toast-message">Page saved successfully!</span>
+    </div>
+  </div>
 
   <!-- Client-Side Controller & Interactivity -->
   <script is:inline>
@@ -1160,23 +1429,186 @@ const cmsData = parseHomeYAML(yamlString);
         });
       });
 
-      // 2. SEO Snippet Mirror Preview
+      // 2. Real-time SEO Scoring & Character Counter logic
       const seoTitleInput = document.getElementById("seoTitle");
       const seoDescInput = document.getElementById("seoDescription");
+      const seoKeywordInput = document.getElementById("seoFocusKeyword");
+      const seoCanonicalInput = document.getElementById("seoCanonical");
+      const seoOgImageInput = document.getElementById("seoOgImage");
+      const seoSchemaTypeSelect = document.getElementById("seoSchemaType");
+      const seoSchemaMarkupInput = document.getElementById("seoSchemaMarkup");
+      const customSchemaGroup = document.getElementById("custom-schema-group");
+      
       const previewTitle = document.getElementById("google-preview-title");
       const previewDesc = document.getElementById("google-preview-desc");
 
-      if (seoTitleInput && previewTitle) {
-        seoTitleInput.addEventListener("input", (e) => {
-          previewTitle.textContent = e.target.value || "Page Title";
-        });
+      function updateSeoIndicators() {
+        const titleVal = seoTitleInput ? seoTitleInput.value.trim() : "";
+        const descVal = seoDescInput ? seoDescInput.value.trim() : "";
+        const keywordVal = seoKeywordInput ? seoKeywordInput.value.trim().toLowerCase() : "";
+        const canonicalVal = seoCanonicalInput ? seoCanonicalInput.value.trim() : "";
+        const ogImageVal = seoOgImageInput ? seoOgImageInput.value.trim() : "";
+        const schemaTypeVal = seoSchemaTypeSelect ? seoSchemaTypeSelect.value : "none";
+        const schemaMarkupVal = seoSchemaMarkupInput ? seoSchemaMarkupInput.value.trim() : "";
+
+        // Mirror previews
+        if (previewTitle) previewTitle.textContent = titleVal || "Page Title";
+        if (previewDesc) previewDesc.textContent = descVal || "Please provide a meta description...";
+
+        let score = 0;
+        const checks = [];
+
+        // Title Check (25 pts)
+        if (titleVal.length > 0) {
+          if (titleVal.length >= 30 && titleVal.length <= 60) {
+            score += 25;
+            checks.push({ name: "Meta Title length is perfect (30-60 chars)", passed: true });
+          } else {
+            score += 10;
+            checks.push({ name: "Meta Title length should be between 30 and 60 chars (currently " + titleVal.length + " chars)", passed: false });
+          }
+        } else {
+          checks.push({ name: "Meta Title is missing", passed: false });
+        }
+
+        // Description Check (25 pts)
+        if (descVal.length > 0) {
+          if (descVal.length >= 120 && descVal.length <= 160) {
+            score += 25;
+            checks.push({ name: "Meta Description length is perfect (120-160 chars)", passed: true });
+          } else {
+            score += 10;
+            checks.push({ name: "Meta Description length should be between 120 and 160 chars (currently " + descVal.length + " chars)", passed: false });
+          }
+        } else {
+          checks.push({ name: "Meta Description is missing", passed: false });
+        }
+
+        // Keyword Check (20 pts)
+        if (keywordVal.length > 0) {
+          score += 10;
+          checks.push({ name: "Focus Keyword provided", passed: true });
+          
+          const keywordInTitle = titleVal.toLowerCase().includes(keywordVal);
+          const keywordInDesc = descVal.toLowerCase().includes(keywordVal);
+
+          if (keywordInTitle) {
+            score += 5;
+            checks.push({ name: "Focus keyword found in Meta Title", passed: true });
+          } else {
+            checks.push({ name: "Focus keyword not found in Meta Title", passed: false });
+          }
+
+          if (keywordInDesc) {
+            score += 5;
+            checks.push({ name: "Focus keyword found in Meta Description", passed: true });
+          } else {
+            checks.push({ name: "Focus keyword not found in Meta Description", passed: false });
+          }
+        } else {
+          checks.push({ name: "Focus Keyword is missing", passed: false });
+        }
+
+        // Canonical URL Check (10 pts)
+        if (canonicalVal.length > 0) {
+          score += 10;
+          checks.push({ name: "Canonical URL provided", passed: true });
+        } else {
+          checks.push({ name: "Canonical URL is missing (recommended)", passed: false });
+        }
+
+        // OG Image URL Check (10 pts)
+        if (ogImageVal.length > 0) {
+          score += 10;
+          checks.push({ name: "Open Graph (OG) Image URL provided", passed: true });
+        } else {
+          checks.push({ name: "Open Graph (OG) Image is missing", passed: false });
+        }
+
+        // JSON-LD Schema Check (10 pts)
+        if (schemaTypeVal !== "none") {
+          if (schemaTypeVal === "custom") {
+            if (schemaMarkupVal.length > 0) {
+              try {
+                JSON.parse(schemaMarkupVal);
+                score += 10;
+                checks.push({ name: "Custom JSON-LD Schema markup is valid JSON", passed: true });
+              } catch(e) {
+                checks.push({ name: "Custom JSON-LD Schema markup is NOT valid JSON", passed: false });
+              }
+            } else {
+              checks.push({ name: "Custom JSON-LD Schema markup is empty", passed: false });
+            }
+          } else {
+            score += 10;
+            checks.push({ name: "JSON-LD Schema Type set to " + schemaTypeVal, passed: true });
+          }
+        } else {
+          checks.push({ name: "JSON-LD Schema structured data is missing", passed: false });
+        }
+
+        // Update Score Circle and Ring
+        const scoreRing = document.getElementById("seo-score-ring");
+        const scoreText = document.getElementById("seo-score-text");
+        const healthText = document.getElementById("seo-health-text");
+
+        if (scoreRing) {
+          scoreRing.setAttribute("stroke-dasharray", `${score}, 100`);
+          
+          let strokeColor = "var(--color-error) || #EF4444";
+          let health = "Poor SEO";
+          if (score >= 80) {
+            strokeColor = "var(--color-success) || #10B981";
+            health = "Excellent SEO";
+          } else if (score >= 50) {
+            strokeColor = "var(--color-warning) || #F59E0B";
+            health = "Needs Tweaks";
+          }
+          
+          scoreRing.style.stroke = strokeColor;
+          if (healthText) {
+            healthText.innerText = health;
+            healthText.style.color = strokeColor;
+          }
+        }
+
+        if (scoreText) scoreText.innerText = `${score}%`;
+
+        // Render Checklist
+        const checksList = document.getElementById("seo-checks-list");
+        if (checksList) {
+          checksList.innerHTML = checks.map(c => `
+            <li style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--text-muted) || #9CA3AF;">
+              <span class="seo-check-icon" style="color: ${c.passed ? 'var(--color-success) || #10B981' : 'var(--color-error) || #EF4444'}; font-weight: bold;">
+                ${c.passed ? '✓' : '✗'}
+              </span>
+              <span>${c.name}</span>
+            </li>
+          `).join('');
+        }
       }
 
-      if (seoDescInput && previewDesc) {
-        seoDescInput.addEventListener("input", (e) => {
-          previewDesc.textContent = e.target.value || "Please provide a meta description...";
+      // Bind Listeners
+      if (seoTitleInput) seoTitleInput.addEventListener("input", updateSeoIndicators);
+      if (seoDescInput) seoDescInput.addEventListener("input", updateSeoIndicators);
+      if (seoKeywordInput) seoKeywordInput.addEventListener("input", updateSeoIndicators);
+      if (seoCanonicalInput) seoCanonicalInput.addEventListener("input", updateSeoIndicators);
+      if (seoOgImageInput) seoOgImageInput.addEventListener("input", updateSeoIndicators);
+      if (seoSchemaMarkupInput) seoSchemaMarkupInput.addEventListener("input", updateSeoIndicators);
+      if (seoSchemaTypeSelect) {
+        seoSchemaTypeSelect.addEventListener("change", () => {
+          if (customSchemaGroup) {
+            customSchemaGroup.style.display = seoSchemaTypeSelect.value !== "none" ? "block" : "none";
+          }
+          updateSeoIndicators();
         });
+        if (customSchemaGroup) {
+          customSchemaGroup.style.display = seoSchemaTypeSelect.value !== "none" ? "block" : "none";
+        }
       }
+
+      // Initial run
+      updateSeoIndicators();
 
       // 3. Dynamic Simple Bullets list (Hero Section)
       const bulletsList = document.getElementById("bullets-list");
@@ -1495,6 +1927,150 @@ const cmsData = parseHomeYAML(yamlString);
             saveButton.disabled = false;
             saveButton.innerHTML = origBtnContent;
           }, 1000);
+        }
+      // 8. Schema Type Selector Toggle
+      const schemaTypeSelect = document.getElementById("seoSchemaType");
+      const customSchemaGroup = document.getElementById("custom-schema-group");
+      if (schemaTypeSelect && customSchemaGroup) {
+        schemaTypeSelect.addEventListener("change", () => {
+          customSchemaGroup.style.display = schemaTypeSelect.value !== "none" ? "block" : "none";
+        });
+        // Initial trigger on load
+        customSchemaGroup.style.display = schemaTypeSelect.value !== "none" ? "block" : "none";
+      }
+
+      // 9. Media Selector Modal Controller
+      let activeMediaPickerTarget = "";
+      const toast = document.getElementById("toast-notify");
+      const toastMsg = document.getElementById("toast-message");
+
+      function showToast(message) {
+        if (toast && toastMsg) {
+          toastMsg.innerText = message;
+          toast.classList.add("active");
+          setTimeout(() => {
+            toast.classList.remove("active");
+          }, 3000);
+        }
+      }
+
+      function openMediaModal(targetId) {
+        activeMediaPickerTarget = targetId;
+        const modal = document.getElementById("media-picker-overlay");
+        if (modal) modal.classList.add("active");
+        loadMediaCatalogGrid();
+      }
+
+      function hideMediaModal() {
+        const modal = document.getElementById("media-picker-overlay");
+        if (modal) modal.classList.remove("active");
+        activeMediaPickerTarget = "";
+      }
+
+      async function loadMediaCatalogGrid() {
+        const grid = document.getElementById("media-picker-grid");
+        if (!grid) return;
+
+        try {
+          const res = await fetch("/api/media-crud");
+          const data = await res.json();
+
+          if (data.success && data.media.length > 0) {
+            grid.innerHTML = data.media.map(item => `
+              <div class="media-picker-item" onclick="selectMediaAsset('${item.url}')" title="${item.alt || item.title}">
+                <img src="${item.url}" alt="${item.alt || ''}" />
+              </div>
+            `).join('');
+          } else {
+            grid.innerHTML = `<p class="media-empty">No catalog images. Upload a new asset.</p>`;
+          }
+        } catch (e) {
+          grid.innerHTML = `<p class="media-empty" style="color:var(--color-error);">Error loading media catalog files.</p>`;
+        }
+      }
+
+      window.selectMediaAsset = function(url) {
+        if (activeMediaPickerTarget) {
+          const targetInput = document.getElementById(activeMediaPickerTarget);
+          if (targetInput) {
+            targetInput.value = url;
+            const changeEvent = new Event('input', { bubbles: true });
+            targetInput.dispatchEvent(changeEvent);
+          }
+          hideMediaModal();
+        }
+      };
+
+      async function uploadMediaFile() {
+        const fileInput = document.getElementById("media-upload-file");
+        const uploadBtn = document.getElementById("upload-media-btn");
+        const fileSelectBtn = document.getElementById("trigger-file-select");
+
+        if (!fileInput || fileInput.files.length === 0) return;
+
+        const file = fileInput.files[0];
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("alt", file.name.split(".")[0]);
+
+        uploadBtn.disabled = true;
+        uploadBtn.innerText = "Uploading...";
+
+        try {
+          const res = await fetch("/api/media-crud", {
+            method: "POST",
+            body: formData
+          });
+          const result = await res.json();
+
+          if (result.success) {
+            showToast("Asset uploaded successfully!");
+            fileInput.value = "";
+            fileSelectBtn.innerText = "Choose Upload File";
+            uploadBtn.innerText = "Upload";
+            selectMediaAsset(result.media.url);
+          } else {
+            showToast("Error: " + (result.error || "Upload failed"));
+            uploadBtn.disabled = false;
+            uploadBtn.innerText = "Upload";
+          }
+        } catch (e) {
+          showToast("Network Error: Could not upload file asset");
+          uploadBtn.disabled = false;
+          uploadBtn.innerText = "Upload";
+        }
+      }
+
+      const closePickerX = document.getElementById("close-media-modal");
+      const closePickerBtn = document.getElementById("close-media-picker-btn");
+      if (closePickerX) closePickerX.addEventListener("click", hideMediaModal);
+      if (closePickerBtn) closePickerBtn.addEventListener("click", hideMediaModal);
+
+      const fileSelectBtn = document.getElementById("trigger-file-select");
+      const fileInput = document.getElementById("media-upload-file");
+      const uploadBtn = document.getElementById("upload-media-btn");
+
+      if (fileSelectBtn && fileInput) {
+        fileSelectBtn.addEventListener("click", () => fileInput.click());
+        fileInput.addEventListener("change", () => {
+          if (fileInput.files.length > 0) {
+            fileSelectBtn.innerText = fileInput.files[0].name;
+            if (uploadBtn) uploadBtn.disabled = false;
+          } else {
+            fileSelectBtn.innerText = "Choose Upload File";
+            if (uploadBtn) uploadBtn.disabled = true;
+          }
+        });
+      }
+
+      if (uploadBtn) {
+        uploadBtn.addEventListener("click", uploadMediaFile);
+      }
+
+      document.addEventListener("click", (e) => {
+        if (e.target && e.target.classList.contains("media-picker-trigger")) {
+          const targetId = e.target.getAttribute("data-target");
+          openMediaModal(targetId);
         }
       });
     }

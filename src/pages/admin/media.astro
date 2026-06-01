@@ -32,11 +32,51 @@ export const prerender = false;
     
     <!-- Main Media Grid display -->
     <div class="media-grid-container">
-      <div class="media-filters-row">
-        <h3>Media Library Assets</h3>
-        <span class="assets-count-badge" id="assets-count">0 items</span>
+      <div class="media-filters-row" style="flex-wrap:wrap; gap:1rem;">
+        <div>
+          <h3>Media Library Assets</h3>
+          <span class="assets-count-badge" id="assets-count">0 items</span>
+        </div>
+        
+        <!-- Interactive Search & Filtering Controls Toolbar -->
+        <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+          <input type="text" id="search-input" placeholder="Search files..." style="padding: 0.35rem 0.65rem; border-radius: 4px; border: 1px solid var(--border-color) || rgba(255,255,255,0.08); font-size: 0.8rem; max-width: 140px; background: var(--input-bg) || #0f172a; color: var(--text-main);" />
+          
+          <select id="type-filter" style="padding: 0.35rem 0.65rem; border-radius: 4px; border: 1px solid var(--border-color) || rgba(255,255,255,0.08); font-size: 0.8rem; background: var(--input-bg) || #0f172a; color: var(--text-main);">
+            <option value="all">All Types</option>
+            <option value="image">Images</option>
+            <option value="svg">SVGs</option>
+            <option value="pdf">PDFs</option>
+            <option value="document">Documents</option>
+            <option value="video">Videos</option>
+          </select>
+          
+          <select id="folder-filter" style="padding: 0.35rem 0.65rem; border-radius: 4px; border: 1px solid var(--border-color) || rgba(255,255,255,0.08); font-size: 0.8rem; background: var(--input-bg) || #0f172a; color: var(--text-main);">
+            <option value="all">All Folders</option>
+            <option value="">Root (/)</option>
+          </select>
+
+          <!-- New Folder creation -->
+          <div style="display:flex; gap:0.2rem; align-items:center;">
+            <input type="text" id="new-folder-name" placeholder="New folder..." style="padding: 0.35rem 0.65rem; border-radius: 4px; border: 1px solid var(--border-color) || rgba(255,255,255,0.08); font-size: 0.8rem; max-width: 100px; background: var(--input-bg) || #0f172a; color: var(--text-main);" />
+            <button type="button" class="btn btn-outline btn-sm" id="create-folder-btn" style="padding:0.35rem 0.5rem; font-size:0.8rem; height:29px;">+</button>
+          </div>
+        </div>
       </div>
       
+      <!-- Bulk Actions Control Bar -->
+      <div id="bulk-actions-bar" style="display:none; justify-content:space-between; align-items:center; background:rgba(99, 102, 241, 0.08); border: 1px solid var(--primary) || rgba(99,102,241,0.5); padding:0.5rem 0.85rem; border-radius:6px; margin-bottom:1rem; gap:1rem;">
+        <span style="font-size:0.82rem; font-weight:600;" id="bulk-selected-count">0 items selected</span>
+        <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
+          <select id="bulk-move-folder" style="padding:0.3rem 0.45rem; font-size:0.78rem; border-radius:4px; border:1px solid var(--border-color) || rgba(255,255,255,0.08); background:var(--input-bg) || #0f172a; color:var(--text-main);">
+            <option value="">Move to Folder...</option>
+            <option value="">Root (/)</option>
+          </select>
+          <button type="button" class="btn btn-outline btn-sm" id="bulk-move-btn" style="padding:0.3rem 0.55rem; font-size:0.78rem;">Move</button>
+          <button type="button" class="btn btn-danger btn-sm" id="bulk-delete-btn" style="padding:0.3rem 0.55rem; font-size:0.78rem; background:#EF4444; border:none; color:white; font-weight:bold;">Delete</button>
+        </div>
+      </div>
+
       <div class="media-grid" id="main-media-grid">
         <!-- JS will populate media catalog cards -->
         <div class="media-grid-empty" id="grid-empty-msg">
@@ -97,10 +137,25 @@ export const prerender = false;
           </div>
 
           <div class="form-group">
+            <label for="asset-folder">Virtual Folder Location</label>
+            <select id="asset-folder" style="width:100%; border:1px solid var(--border-color); padding:0.5rem; border-radius:4px; background:var(--input-bg); color:var(--text-main);">
+              <option value="">Root (/)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
             <label>Physical Asset URL</label>
             <div class="input-picker-wrap">
               <input type="text" id="asset-url-readonly" readonly style="font-family:monospace; font-size:0.78rem; opacity:0.85;" />
               <button type="button" class="btn btn-outline btn-sm" id="copy-url-btn">Copy</button>
+            </div>
+          </div>
+
+          <!-- Dynamic Real-time Media Usage Scan List -->
+          <div style="border-top:1px solid var(--border-color) || rgba(255,255,255,0.08); padding-top:1rem; margin-top:1rem;">
+            <h5 style="font-size:0.8rem; font-weight:700; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.5rem;">Page Usage Reference</h5>
+            <div id="media-usage-list" style="display:flex; flex-direction:column; gap:0.4rem; max-height: 150px; overflow-y: auto;">
+              <span style="font-size:0.78rem; color:var(--text-dim);">No active page references found on disk.</span>
             </div>
           </div>
 
@@ -198,6 +253,7 @@ export const prerender = false;
     padding: 1.5rem;
     box-shadow: 0 4px 15px var(--color-shadow);
     backdrop-filter: blur(10px);
+    min-width: 0;
   }
   .media-filters-row {
     display: flex;
@@ -394,53 +450,93 @@ export const prerender = false;
 <script is:inline>
   let catalogMedia = [];
   let selectedAsset = null;
+  let activeFolder = "all";
+  let activeType = "all";
+  let searchQuery = "";
+  let bulkCheckedUrls = new Set();
 
   function initMediaLibrary() {
+    const grid = document.getElementById("main-media-grid");
+    if (!grid || grid.dataset.listenerBound) return;
+    grid.dataset.listenerBound = "true";
+
     loadMediaCatalog();
     setupDropzone();
     setupDrawerHandlers();
+    setupFilters();
+  }
+
+  // Set up search and filter inputs
+  function setupFilters() {
+    const searchInput = document.getElementById("search-input");
+    const typeFilter = document.getElementById("type-filter");
+    const folderFilter = document.getElementById("folder-filter");
+
+    if (searchInput) {
+      searchInput.addEventListener("input", (e) => {
+        searchQuery = e.target.value.trim();
+        filterAndRenderMedia();
+      });
+    }
+
+    if (typeFilter) {
+      typeFilter.addEventListener("change", (e) => {
+        activeType = e.target.value;
+        filterAndRenderMedia();
+      });
+    }
+
+    if (folderFilter) {
+      folderFilter.addEventListener("change", (e) => {
+        activeFolder = e.target.value;
+        filterAndRenderMedia();
+      });
+    }
+
+    // Folder Creation click handler
+    const createFolderBtn = document.getElementById("create-folder-btn");
+    const newFolderInput = document.getElementById("new-folder-name");
+    if (createFolderBtn && newFolderInput) {
+      createFolderBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const name = newFolderInput.value.trim().replace(/^\/+|\/+$/g, "");
+        if (!name) return;
+        
+        const folderPath = "/" + name;
+        
+        // Add to selectors
+        const filters = [
+          document.getElementById("folder-filter"),
+          document.getElementById("bulk-move-folder"),
+          document.getElementById("asset-folder")
+        ];
+
+        filters.forEach(sel => {
+          if (sel && !sel.querySelector(`option[value="${folderPath}"]`)) {
+            const opt = document.createElement("option");
+            opt.value = folderPath;
+            opt.innerText = folderPath;
+            sel.appendChild(opt);
+          }
+        });
+
+        newFolderInput.value = "";
+        showToast(`Virtual folder "${folderPath}" created! Select items and move them.`);
+      });
+    }
   }
 
   // Load Media from Endpoint API
   async function loadMediaCatalog() {
-    const grid = document.getElementById("main-media-grid");
-    const counter = document.getElementById("assets-count");
-    const emptyMsg = document.getElementById("grid-empty-msg");
-
-    if (!grid) return;
-
     try {
       const res = await fetch("/api/media-crud");
       const data = await res.json();
 
       if (data.success) {
         catalogMedia = data.media || [];
+        rebuildFolderSelectors();
+        filterAndRenderMedia();
         
-        if (counter) counter.innerText = `${catalogMedia.length} items`;
-
-        // Clear only image cards (keep empty msg template just in case)
-        document.querySelectorAll(".media-card").forEach(el => el.remove());
-
-        if (catalogMedia.length === 0) {
-          if (emptyMsg) emptyMsg.style.display = "block";
-          return;
-        }
-
-        if (emptyMsg) emptyMsg.style.display = "none";
-
-        catalogMedia.forEach(item => {
-          const card = document.createElement("div");
-          card.className = "media-card";
-          card.setAttribute("data-url", item.url);
-          card.innerHTML = `<img src="${item.url}" alt="${item.alt || ''}" />`;
-          
-          card.addEventListener("click", () => {
-            selectAssetItem(item);
-          });
-
-          grid.appendChild(card);
-        });
-
         // Restore selection if matching
         if (selectedAsset) {
           const matched = catalogMedia.find(m => m.url === selectedAsset.url);
@@ -453,6 +549,154 @@ export const prerender = false;
       }
     } catch (e) {
       console.error("Failed to load catalog:", e);
+    }
+  }
+
+  function rebuildFolderSelectors() {
+    const folders = new Set();
+    catalogMedia.forEach(item => {
+      if (item.folder) folders.add(item.folder);
+    });
+
+    const folderFilter = document.getElementById("folder-filter");
+    const bulkMoveFolder = document.getElementById("bulk-move-folder");
+    const assetFolder = document.getElementById("asset-folder");
+
+    const currentFilterVal = folderFilter ? folderFilter.value : "all";
+
+    if (folderFilter) {
+      folderFilter.innerHTML = `
+        <option value="all">All Folders</option>
+        <option value="">Root (/)</option>
+        ${Array.from(folders).sort().map(f => `<option value="${f}">${f}</option>`).join('')}
+      `;
+      folderFilter.value = currentFilterVal;
+    }
+
+    if (bulkMoveFolder) {
+      bulkMoveFolder.innerHTML = `
+        <option value="">Move to Folder...</option>
+        <option value="">Root (/)</option>
+        ${Array.from(folders).sort().map(f => `<option value="${f}">${f}</option>`).join('')}
+      `;
+    }
+
+    if (assetFolder) {
+      const currentAssetFolderVal = selectedAsset ? (selectedAsset.folder || "") : "";
+      assetFolder.innerHTML = `
+        <option value="">Root (/)</option>
+        ${Array.from(folders).sort().map(f => `<option value="${f}">${f}</option>`).join('')}
+      `;
+      assetFolder.value = currentAssetFolderVal;
+    }
+  }
+
+  function filterAndRenderMedia() {
+    const grid = document.getElementById("main-media-grid");
+    const emptyMsg = document.getElementById("grid-empty-msg");
+    const counter = document.getElementById("assets-count");
+    if (!grid) return;
+
+    // Remove all old media cards
+    document.querySelectorAll(".media-card").forEach(el => el.remove());
+
+    const filtered = catalogMedia.filter(item => {
+      // 1. Folder
+      if (activeFolder !== "all") {
+        const itemFolder = item.folder || "";
+        if (itemFolder !== activeFolder) return false;
+      }
+      // 2. Type
+      if (activeType !== "all") {
+        if (item.type !== activeType) return false;
+      }
+      // 3. Search query
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const titleMatch = (item.title || "").toLowerCase().includes(query);
+        const altMatch = (item.alt || "").toLowerCase().includes(query);
+        const urlMatch = (item.url || "").toLowerCase().includes(query);
+        if (!titleMatch && !altMatch && !urlMatch) return false;
+      }
+      return true;
+    });
+
+    if (counter) counter.innerText = `${filtered.length} items`;
+
+    if (filtered.length === 0) {
+      if (emptyMsg) emptyMsg.style.display = "block";
+      updateBulkActionBar();
+      return;
+    }
+    if (emptyMsg) emptyMsg.style.display = "none";
+
+    filtered.forEach(item => {
+      const card = document.createElement("div");
+      card.className = "media-card";
+      card.setAttribute("data-url", item.url);
+      
+      let mediaPreviewHtml = "";
+      if (item.type === "image" || item.type === "svg") {
+        mediaPreviewHtml = `<img src="${item.url}" alt="${item.alt || ''}" style="width:100%; height:100%; object-fit:cover;" />`;
+      } else {
+        let icon = "📄";
+        if (item.type === "video") icon = "🎥";
+        if (item.type === "pdf") icon = "📕";
+        mediaPreviewHtml = `
+          <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#1e293b; color:#9ca3af; padding:0.5rem; text-align:center;">
+            <span style="font-size:2rem; margin-bottom:0.25rem;">${icon}</span>
+            <span style="font-size:0.68rem; font-weight:700; word-break:break-all; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${item.title}</span>
+          </div>
+        `;
+      }
+
+      card.innerHTML = `
+        ${mediaPreviewHtml}
+        <input type="checkbox" class="media-bulk-checkbox" data-url="${item.url}" style="position:absolute; top:8px; left:8px; z-index:5; width:18px; height:18px; cursor:pointer;" ${bulkCheckedUrls.has(item.url) ? 'checked' : ''} />
+      `;
+
+      card.addEventListener("click", (e) => {
+        if (e.target.classList.contains("media-bulk-checkbox")) {
+          return; // handled by checkbox handler
+        }
+        selectAssetItem(item);
+      });
+
+      const checkbox = card.querySelector(".media-bulk-checkbox");
+      if (checkbox) {
+        checkbox.addEventListener("click", (e) => {
+          e.stopPropagation();
+        });
+        checkbox.addEventListener("change", (e) => {
+          if (e.target.checked) {
+            bulkCheckedUrls.add(item.url);
+          } else {
+            bulkCheckedUrls.delete(item.url);
+          }
+          updateBulkActionBar();
+        });
+      }
+
+      if (selectedAsset && selectedAsset.url === item.url) {
+        card.classList.add("active-selected");
+      }
+
+      grid.appendChild(card);
+    });
+
+    updateBulkActionBar();
+  }
+
+  function updateBulkActionBar() {
+    const bar = document.getElementById("bulk-actions-bar");
+    const label = document.getElementById("bulk-selected-count");
+    if (!bar) return;
+
+    if (bulkCheckedUrls.size > 0) {
+      bar.style.display = "flex";
+      if (label) label.innerText = `${bulkCheckedUrls.size} items selected`;
+    } else {
+      bar.style.display = "none";
     }
   }
 
@@ -475,7 +719,15 @@ export const prerender = false;
 
     if (fallback) fallback.style.display = "none";
     if (content) content.style.display = "block";
-    if (preview) preview.src = item.url;
+    
+    if (preview) {
+      if (item.type === "image" || item.type === "svg") {
+        preview.src = item.url;
+        preview.style.display = "block";
+      } else {
+        preview.style.display = "none"; // Hide preview image for docs/videos
+      }
+    }
 
     // Fill metadata labels
     const filename = item.url.split("/").pop();
@@ -488,6 +740,27 @@ export const prerender = false;
     document.getElementById("asset-alt").value = item.alt || "";
     document.getElementById("asset-caption").value = item.caption || "";
     document.getElementById("asset-url-readonly").value = window.location.origin + item.url;
+    
+    const assetFolderSelect = document.getElementById("asset-folder");
+    if (assetFolderSelect) {
+      assetFolderSelect.value = item.folder || "";
+    }
+
+    // Render Usage Scan List
+    const usageList = document.getElementById("media-usage-list");
+    if (usageList) {
+      const usage = item.usage || [];
+      if (usage.length > 0) {
+        usageList.innerHTML = usage.map(u => `
+          <div style="background: rgba(156, 163, 175, 0.04); padding: 0.4rem; border-radius: 4px; border: 1px solid var(--border-color) || rgba(255,255,255,0.06); display: flex; flex-direction: column; gap: 0.15rem;">
+            <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-main);">${u.title}</span>
+            <span style="font-size: 0.68rem; color: var(--text-dim); font-family: monospace;">${u.file} (${u.count} refs)</span>
+          </div>
+        `).join('');
+      } else {
+        usageList.innerHTML = `<span style="font-size:0.78rem; color:var(--text-dim);">No active page references found on disk.</span>`;
+      }
+    }
   }
 
   function closeDrawer() {
@@ -515,6 +788,7 @@ export const prerender = false;
         const title = document.getElementById("asset-title").value.trim();
         const alt = document.getElementById("asset-alt").value.trim();
         const caption = document.getElementById("asset-caption").value.trim();
+        const folder = document.getElementById("asset-folder").value;
 
         if (!title) {
           showToast("Title is required!");
@@ -532,14 +806,14 @@ export const prerender = false;
               url: selectedAsset.url,
               title,
               alt,
-              caption
+              caption,
+              folder
             })
           });
           const result = await res.json();
 
           if (result.success) {
             showToast("Metadata saved successfully!");
-            // Refresh catalog in background
             loadMediaCatalog();
           } else {
             showToast("Error updating metadata");
@@ -601,6 +875,71 @@ export const prerender = false;
         }, 1500);
       });
     }
+
+    // Bulk Actions Handlers
+    const bulkMoveBtn = document.getElementById("bulk-move-btn");
+    const bulkMoveFolderSelect = document.getElementById("bulk-move-folder");
+    if (bulkMoveBtn && bulkMoveFolderSelect) {
+      bulkMoveBtn.addEventListener("click", async () => {
+        const folderVal = bulkMoveFolderSelect.value;
+        if (bulkCheckedUrls.size === 0) return;
+        
+        bulkMoveBtn.disabled = true;
+        try {
+          const res = await fetch("/api/media-crud", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              urls: Array.from(bulkCheckedUrls),
+              folder: folderVal
+            })
+          });
+          const result = await res.json();
+          if (result.success) {
+            showToast(`Successfully moved ${bulkCheckedUrls.size} items to "${folderVal || 'Root'}"`);
+            bulkCheckedUrls.clear();
+            loadMediaCatalog();
+          } else {
+            showToast("Error moving items.");
+          }
+        } catch (e) {
+          showToast("Network error moving items.");
+        } finally {
+          bulkMoveBtn.disabled = false;
+        }
+      });
+    }
+
+    const bulkDeleteBtn = document.getElementById("bulk-delete-btn");
+    if (bulkDeleteBtn) {
+      bulkDeleteBtn.addEventListener("click", async () => {
+        if (bulkCheckedUrls.size === 0) return;
+        if (confirm(`Are you sure you want to permanently delete these ${bulkCheckedUrls.size} selected items?`)) {
+          bulkDeleteBtn.disabled = true;
+          try {
+            const res = await fetch("/api/media-crud", {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                urls: Array.from(bulkCheckedUrls)
+              })
+            });
+            const result = await res.json();
+            if (result.success) {
+              showToast(`Successfully deleted ${bulkCheckedUrls.size} items.`);
+              bulkCheckedUrls.clear();
+              loadMediaCatalog();
+            } else {
+              showToast("Error deleting items.");
+            }
+          } catch (e) {
+            showToast("Network error deleting items.");
+          } finally {
+            bulkDeleteBtn.disabled = false;
+          }
+        }
+      });
+    }
   }
 
   // Setup drag & drop upload triggers
@@ -622,7 +961,6 @@ export const prerender = false;
       fileInput.click();
     });
 
-    // drag state changes
     ["dragenter", "dragover"].forEach(eventName => {
       dropzone.addEventListener(eventName, (e) => {
         e.preventDefault();
@@ -639,14 +977,12 @@ export const prerender = false;
       }, false);
     });
 
-    // Handle dropped files
     dropzone.addEventListener("drop", (e) => {
       const dt = e.dataTransfer;
       const files = dt.files;
       handleUploadedFiles(files);
     });
 
-    // Handle browse click files
     fileInput.addEventListener("change", () => {
       handleUploadedFiles(fileInput.files);
     });
@@ -663,6 +999,7 @@ export const prerender = false;
       const formData = new FormData();
       formData.append("file", file);
       formData.append("alt", file.name.split(".")[0]);
+      formData.append("folder", activeFolder === "all" ? "" : activeFolder);
 
       try {
         const res = await fetch("/api/media-crud", {
@@ -681,7 +1018,6 @@ export const prerender = false;
       }
     }
 
-    // Refresh Catalog display
     loadMediaCatalog();
   }
 
@@ -709,7 +1045,6 @@ export const prerender = false;
     }
   }
 
-  // Bind init functions
   document.addEventListener("DOMContentLoaded", initMediaLibrary);
   document.addEventListener("astro:page-load", initMediaLibrary);
   if (document.readyState === "interactive" || document.readyState === "complete") {

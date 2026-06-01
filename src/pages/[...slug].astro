@@ -69,10 +69,11 @@ try {
   // Graceful fallback
 }
 
-// 5. 301 Redirect Manager check
-const matchingRedirect = globalSettings.redirects?.find(r => r.from === `/${cleanSlug}`);
+// 5. Redirect Manager check
+const matchingRedirect = globalSettings.redirects?.find(r => r.from === `/${cleanSlug}` && r.active !== false);
 if (matchingRedirect) {
-  return Astro.redirect(matchingRedirect.to, 301);
+  const status = matchingRedirect.type === "302" ? 302 : 301;
+  return Astro.redirect(matchingRedirect.to, status);
 }
 
 // 6. JSON-LD Schema Generator
@@ -124,17 +125,18 @@ if (page.seo.schemaMarkup) {
 <MainLayout
   title={page.seo.metaTitle || page.title}
   description={page.seo.metaDescription}
+  canonicalUrl={page.seo.canonicalUrl}
+  robots={page.seo.robots}
+  ogTitle={page.seo.ogTitle}
+  ogDescription={page.seo.ogDescription}
+  ogImage={page.seo.ogImage}
+  twitterCard={page.seo.twitterCard}
+  schemaMarkup={schemaJson}
+  headerScripts={page.headerScripts}
+  footerScripts={page.footerScripts}
+  customCss={page.customCss}
+  customJs={page.customJs}
 >
-  <!-- SEO Custom JSON-LD Schema Script Injection -->
-  {schemaJson && (
-    <script type="application/ld+json" is:inline set:html={schemaJson}></script>
-  )}
-
-  <!-- Custom Code Injection (Head Scripts) -->
-  {globalSettings.headerScripts && (
-    <Fragment set:html={globalSettings.headerScripts} />
-  )}
-
   <Header />
 
   <!-- Render dynamically generated blocks stack -->
@@ -198,11 +200,6 @@ if (page.seo.schemaMarkup) {
   </main>
 
   <Footer />
-
-  <!-- Custom Code Injection (Footer Scripts) -->
-  {globalSettings.footerScripts && (
-    <Fragment set:html={globalSettings.footerScripts} />
-  )}
 </MainLayout>
 
 <style>

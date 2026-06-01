@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 import fs from "node:fs";
 import path from "node:path";
 import { stringify } from "yaml";
+import nodemailer from "nodemailer";
 
 export const prerender = false;
 
@@ -16,11 +17,25 @@ function ensureContactsDir() {
 export const POST: APIRoute = async ({ request }) => {
   ensureContactsDir();
   try {
-    const formData = await request.formData();
-    const name = formData.get("name")?.toString().trim() || "";
-    const email = formData.get("email")?.toString().trim() || "";
-    const subject = formData.get("subject")?.toString().trim() || "";
-    const message = formData.get("message")?.toString().trim() || "";
+    let name = "";
+    let email = "";
+    let subject = "";
+    let message = "";
+
+    const contentType = request.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const body = await request.json();
+      name = body.name?.trim() || "";
+      email = body.email?.trim() || "";
+      subject = body.subject?.trim() || "";
+      message = body.message?.trim() || "";
+    } else {
+      const formData = await request.formData();
+      name = formData.get("name")?.toString().trim() || "";
+      email = formData.get("email")?.toString().trim() || "";
+      subject = formData.get("subject")?.toString().trim() || "";
+      message = formData.get("message")?.toString().trim() || "";
+    }
 
     // Server-side validation
     const errors: Record<string, string> = {};
@@ -61,10 +76,6 @@ export const POST: APIRoute = async ({ request }) => {
     let fallbackLogged = false;
     
     try {
-      // Try to import nodemailer dynamically if available
-      const nodemailerLibName = "nodemailer";
-      const nodemailer = await import(nodemailerLibName);
-      
       // Look for environment variables, with explicit user production defaults
       const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
       const smtpPort = parseInt(process.env.SMTP_PORT || "465");
@@ -77,7 +88,10 @@ export const POST: APIRoute = async ({ request }) => {
           host: smtpHost,
           port: smtpPort,
           secure: smtpPort === 465,
-          auth: { user: smtpUser, pass: smtpPass }
+          auth: { user: smtpUser, pass: smtpPass },
+          tls: {
+            rejectUnauthorized: false
+          }
         });
 
         // Send alert to admin (Atul Verma)
@@ -115,6 +129,7 @@ export const POST: APIRoute = async ({ request }) => {
         emailSent = true;
       }
     } catch (nodemailerError) {
+      console.error("SMTP Mail Send Error:", nodemailerError);
       // Nodemailer not installed or SMTP auth omitted. Proceed to fallback logging
     }
 

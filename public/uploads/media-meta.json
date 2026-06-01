@@ -6,7 +6,8 @@
     "caption": "",
     "uploadedAt": "2026-06-01T07:50:40.325Z",
     "size": 41065,
-    "type": "image"
+    "type": "image",
+    "folder": ""
   },
   {
     "url": "/uploads/mission.png",
@@ -15,16 +16,18 @@
     "caption": "",
     "uploadedAt": "2026-06-01T07:50:40.325Z",
     "size": 41065,
-    "type": "image"
+    "type": "image",
+    "folder": ""
   },
   {
     "url": "/uploads/team-atul.png",
     "title": "team-atul.png",
-    "alt": "team atul",
+    "alt": "Chalir",
     "caption": "",
     "uploadedAt": "2026-06-01T07:50:40.325Z",
     "size": 41065,
-    "type": "image"
+    "type": "image",
+    "folder": ""
   },
   {
     "url": "/uploads/team-placeholder.png",
@@ -33,7 +36,8 @@
     "caption": "",
     "uploadedAt": "2026-06-01T07:50:40.325Z",
     "size": 41065,
-    "type": "image"
+    "type": "image",
+    "folder": ""
   },
   {
     "url": "/uploads/team-sarah.png",
@@ -42,7 +46,8 @@
     "caption": "",
     "uploadedAt": "2026-06-01T07:50:40.325Z",
     "size": 41065,
-    "type": "image"
+    "type": "image",
+    "folder": ""
   },
   {
     "url": "/uploads/upload-1780304629240-sypyx2.svg",
@@ -51,7 +56,8 @@
     "caption": "",
     "uploadedAt": "2026-06-01T09:03:49.242Z",
     "size": 6821,
-    "type": "image"
+    "type": "svg",
+    "folder": ""
   },
   {
     "url": "/uploads/vision.png",
@@ -60,6 +66,7 @@
     "caption": "",
     "uploadedAt": "2026-06-01T07:50:40.325Z",
     "size": 41065,
-    "type": "image"
+    "type": "image",
+    "folder": ""
   }
 ]

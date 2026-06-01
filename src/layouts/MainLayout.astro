@@ -2,134 +2,139 @@
 interface Props {
   title: string;
   description?: string;
+  canonicalUrl?: string;
+  robots?: string;
+  ogTitle?: string;
+  ogDescription?: string;
+  ogImage?: string;
+  twitterCard?: string;
+  schemaMarkup?: string;
+  // Page Specific Scripts
+  headerScripts?: string;
+  footerScripts?: string;
+  customCss?: string;
+  customJs?: string;
 }
 
 const {
   title,
-  description = ''
+  description = '',
+  canonicalUrl = '',
+  robots = 'index, follow',
+  ogTitle = '',
+  ogDescription = '',
+  ogImage = '',
+  twitterCard = 'summary_large_image',
+  schemaMarkup = '',
+  headerScripts: pageHeaderScripts = '',
+  footerScripts: pageFooterScripts = '',
+  customCss = '',
+  customJs = ''
 } = Astro.props;
 
 import { ClientRouter } from "astro:transitions";
+import fs from "node:fs";
+import path from "node:path";
+
+// Load global settings
+let globalSettings = {
+  headerScripts: "",
+  bodyStartScripts: "",
+  bodyEndScripts: "",
+  footerScripts: "",
+};
+try {
+  const settingsPath = path.resolve("src/data/global-settings.json");
+  if (fs.existsSync(settingsPath)) {
+    globalSettings = { ...globalSettings, ...JSON.parse(fs.readFileSync(settingsPath, "utf-8")) };
+  }
+} catch (e) {
+  // Graceful fallback
+}
 ---
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
   <meta charset="UTF-8" />
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <title>{title}</title>
+  <meta name="description" content={description} />
+  <meta name="robots" content={robots} />
 
-  <meta
-    name="description"
-    content={description}
-  />
+  {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
 
-  <meta
-    name="robots"
-    content="noindex, nofollow"
-  />
+  <!-- Open Graph Tags -->
+  <meta property="og:title" content={ogTitle || title} />
+  <meta property="og:description" content={ogDescription || description} />
+  {ogImage && <meta property="og:image" content={ogImage.startsWith('http') ? ogImage : `https://www.tangence.in${ogImage}`} />}
+  <meta property="og:url" content={Astro.url.href} />
+  <meta property="og:type" content="website" />
 
-  <link
-    rel="stylesheet"
-    href="https://www.tangence.in/font/stylesheet.css"
-  />
+  <!-- Twitter Cards -->
+  <meta name="twitter:card" content={twitterCard} />
+  <meta name="twitter:title" content={ogTitle || title} />
+  <meta name="twitter:description" content={ogDescription || description} />
+  {ogImage && <meta name="twitter:image" content={ogImage.startsWith('http') ? ogImage : `https://www.tangence.in${ogImage}`} />}
 
-  <link
-    rel="stylesheet"
-    href="/performance-marketing/assets/css/font-awesome.min.css"
-  />
+  <link rel="stylesheet" href="https://www.tangence.in/font/stylesheet.css" />
+  <link rel="stylesheet" href="/performance-marketing/assets/css/font-awesome.min.css" />
+  <link rel="stylesheet" href="/css/new-lp-page.css" />
 
-  <link
-    rel="stylesheet"
-    href="/css/new-lp-page.css"
-  />
+  <!-- Custom Schema Markup Injection -->
+  {schemaMarkup && (
+    <script type="application/ld+json" is:inline set:html={schemaMarkup}></script>
+  )}
 
-  <!-- GTM -->
-  <script is:inline>
-    (function(w,d,s,l,i){`{`}
-      w[l]=w[l]||[];
-      w[l].push({'gtm.start':
-      new Date().getTime(),event:'gtm.js'});
-      var f=d.getElementsByTagName(s)[0],
-      j=d.createElement(s),
-      dl=l!='dataLayer'?'&l='+l:'';
+  <!-- Global Head Script Injection -->
+  {globalSettings.headerScripts && (
+    <Fragment set:html={globalSettings.headerScripts} />
+  )}
 
-      j.async=true;
-      j.src=
-      'https://www.googletagmanager.com/gtm.js?id='+i+dl;
+  <!-- Page Specific Head Script Injection -->
+  {pageHeaderScripts && (
+    <Fragment set:html={pageHeaderScripts} />
+  )}
 
-      f.parentNode.insertBefore(j,f);
+  <!-- Page Specific Custom CSS Injection -->
+  {customCss && (
+    <style is:inline set:html={customCss}></style>
+  )}
 
-    {`}`})(window,document,'script','dataLayer','GTM-5JB8RQ4');
-  </script>
-
-  <!-- Meta Pixel -->
-  <script is:inline>
-    !function(f,b,e,v,n,t,s)
-    {`{`}
-      if(f.fbq)return;
-      n=f.fbq=function(){`{`}
-        n.callMethod
-        ? n.callMethod.apply(n,arguments)
-        : n.queue.push(arguments);
-      {`}`};
-
-      if(!f._fbq)f._fbq=n;
-
-      n.push=n;
-      n.loaded=!0;
-      n.version='2.0';
-      n.queue=[];
-
-      t=b.createElement(e);
-      t.async=!0;
-      t.src=v;
-
-      s=b.getElementsByTagName(e)[0];
-      s.parentNode.insertBefore(t,s);
-
-    {`}`}(window, document,'script',
-    'https://connect.facebook.net/en_US/fbevents.js');
-
-    fbq('init', '841811033787711');
-    fbq('track', 'PageView');
-  </script>
-<ClientRouter />
+  <ClientRouter />
 </head>
 
 <body>
 
-  <!-- GTM Noscript -->
-
-  <noscript>
-    <iframe
-      src="https://www.googletagmanager.com/ns.html?id=GTM-5JB8RQ4"
-      height="0"
-      width="0"
-      style="display:none;visibility:hidden"
-    ></iframe>
-  </noscript>
-
-  <!-- Meta Pixel Noscript -->
-
-  <noscript>
-    <img
-      height="1"
-      width="1"
-      style="display:none"
-      src="https://www.facebook.com/tr?id=841811033787711&ev=PageView&noscript=1"
-      alt=""
-    />
-  </noscript>
+  <!-- Global Body Start Script Injection -->
+  {globalSettings.bodyStartScripts && (
+    <Fragment set:html={globalSettings.bodyStartScripts} />
+  )}
 
   <slot />
 
   <script is:inline src="/js/new-lp-page.js"></script>
+
+  <!-- Global Body End Script Injection -->
+  {globalSettings.bodyEndScripts && (
+    <Fragment set:html={globalSettings.bodyEndScripts} />
+  )}
+
+  <!-- Global Footer Script Injection -->
+  {globalSettings.footerScripts && (
+    <Fragment set:html={globalSettings.footerScripts} />
+  )}
+
+  <!-- Page Specific Footer Script Injection -->
+  {pageFooterScripts && (
+    <Fragment set:html={pageFooterScripts} />
+  )}
+
+  <!-- Page Specific Custom JavaScript Injection -->
+  {customJs && (
+    <script is:inline set:html={customJs}></script>
+  )}
 
 </body>
 

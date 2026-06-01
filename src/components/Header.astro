@@ -1,25 +1,145 @@
 ---
+import fs from "node:fs";
+import path from "node:path";
+
 const currentPath = Astro.url.pathname;
+
+// Load global settings for menu links & logo
+let headerSettings = {
+  logo: {
+    headerLogoUrl: "/images/tangence-black.png",
+  },
+  navigation: [
+    { text: "Home", link: "/" },
+    { text: "About Us", link: "/about-us" },
+    { text: "Contact", link: "/contact" }
+  ]
+};
+
+try {
+  const settingsPath = path.resolve("src/data/global-settings.json");
+  if (fs.existsSync(settingsPath)) {
+    const data = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
+    if (data.logo) headerSettings.logo = data.logo;
+    if (data.navigation) headerSettings.navigation = data.navigation;
+  }
+} catch (e) {
+  // Safe fallback
+}
 ---
 
 <nav class="top">
   <div class="container nav-row">
     <div class="logo">
-      <img src="/images/tangence-black.png" alt="Tangence" />
+      <a href="/">
+        <img src={headerSettings.logo.headerLogoUrl || "/images/tangence-black.png"} alt="Tangence" />
+      </a>
     </div>
 
     <div class="nav-links">
-      <a href="/">Home</a>
-      <a
-        href="/about-us"
-        class:list={{
-          active: currentPath === "/about-us",
-        }}
-      >
-        About Us
-      </a>
-      <a href="/contact">Contact</a>
+      {headerSettings.navigation.map((item: any) => {
+        const hasChildren = item.children && item.children.length > 0;
+        const isActive = currentPath === item.link;
+        
+        if (hasChildren) {
+          return (
+            <div class="nav-dropdown-group">
+              <a href="#" class="dropdown-trigger" onclick="return false;">
+                {item.text} <span class="caret">▼</span>
+              </a>
+              <div class="dropdown-menu-list">
+                {item.children.map((sub: any) => (
+                  <a href={sub.link} class:list={{ active: currentPath === sub.link }}>
+                    {sub.text}
+                  </a>
+                ))}
+              </div>
+            </div>
+          );
+        } else {
+          return (
+            <a href={item.link} class:list={{ active: isActive }}>
+              {item.text}
+            </a>
+          );
+        }
+      })}
       <a href="#book-audit" class="btn-call"> Book a free audit </a>
     </div>
   </div>
 </nav>
+
+<style>
+  /* Header Dropdown Menu Premium Styling */
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+  }
+  .nav-dropdown-group {
+    position: relative;
+    display: inline-block;
+  }
+  .dropdown-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    transition: var(--transition);
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .dropdown-trigger:hover {
+    color: var(--primary);
+  }
+  .caret {
+    font-size: 0.65rem;
+    opacity: 0.7;
+    transition: transform 0.2s ease;
+    display: inline-block;
+  }
+  .nav-dropdown-group:hover .caret {
+    transform: rotate(180deg);
+  }
+  .dropdown-menu-list {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    opacity: 0;
+    pointer-events: none;
+    background: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-md);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    padding: 0.5rem 0;
+    min-width: 170px;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    backdrop-filter: blur(8px);
+  }
+  .nav-dropdown-group:hover .dropdown-menu-list {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+  }
+  .dropdown-menu-list a {
+    padding: 0.6rem 1.25rem;
+    color: #9CA3AF !important;
+    font-size: 0.85rem !important;
+    text-decoration: none;
+    font-weight: 500;
+    transition: var(--transition);
+    text-align: left;
+    display: block;
+    border-left: 2px solid transparent;
+  }
+  .dropdown-menu-list a:hover, .dropdown-menu-list a.active {
+    color: white !important;
+    background: rgba(99, 102, 241, 0.08);
+    border-left-color: var(--primary);
+  }
+</style>

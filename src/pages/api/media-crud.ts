@@ -35,6 +35,15 @@ function saveCatalog(catalog: any[]) {
   fs.writeFileSync(META_FILE, JSON.stringify(catalog, null, 2), "utf-8");
 }
 
+function detectMediaType(filename: string): string {
+  const ext = path.extname(filename).toLowerCase();
+  if (ext === ".svg") return "svg";
+  if (ext === ".pdf") return "pdf";
+  if (ext.match(/\.(jpg|jpeg|png|gif|webp)/)) return "image";
+  if (ext.match(/\.(mp4|webm|ogg|avi|mov|mkv)/)) return "video";
+  return "document";
+}
+
 // Sync catalog with physical files (Self-Healing)
 function syncCatalog() {
   ensureMediaCatalog();
@@ -56,8 +65,10 @@ function syncCatalog() {
       const filePath = path.join(UPLOAD_DIR, filename);
       const stats = fs.statSync(filePath);
       
-      // Update sizes and keep item
+      // Update fields
       item.size = stats.size;
+      item.type = detectMediaType(filename);
+      item.folder = item.folder || ""; // default folder is root
       updatedCatalog.push(item);
       processedDiskFiles.add(filename);
     }
@@ -68,22 +79,74 @@ function syncCatalog() {
     if (!processedDiskFiles.has(filename)) {
       const filePath = path.join(UPLOAD_DIR, filename);
       const stats = fs.statSync(filePath);
-      const ext = path.extname(filename).toLowerCase();
       
       updatedCatalog.push({
         url: `/uploads/${filename}`,
         title: filename,
         alt: filename.split("-").join(" ").split(".")[0],
         caption: "",
+        folder: "",
         uploadedAt: stats.mtime.toISOString(),
         size: stats.size,
-        type: ext.match(/\.(jpg|jpeg|png|gif|webp|svg)/) ? "image" : "file",
+        type: detectMediaType(filename),
       });
     }
   }
 
   saveCatalog(updatedCatalog);
   return updatedCatalog;
+}
+
+// Scan all markdown files in src/content for occurrences of uploaded media URL
+function getMediaUsage(): Record<string, Array<{ title: string; file: string; count: number }>> {
+  const usageMap: Record<string, Array<{ title: string; file: string; count: number }>> = {};
+  const contentDir = path.resolve("src/content");
+  if (!fs.existsSync(contentDir)) return usageMap;
+
+  function scanDir(dir: string) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        scanDir(fullPath);
+      } else if (entry.isFile() && entry.name.endsWith(".md")) {
+        try {
+          const fileContent = fs.readFileSync(fullPath, "utf-8");
+          // Read title from frontmatter
+          let title = entry.name;
+          const yamlMatch = fileContent.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+          if (yamlMatch) {
+            const titleMatch = yamlMatch[1].match(/^title\s*:\s*(.*)$/m);
+            if (titleMatch) {
+              title = titleMatch[1].replace(/['"]/g, "").trim();
+            }
+          }
+
+          // Search for occurrences of uploads URL
+          const matches = fileContent.match(/\/uploads\/[a-zA-Z0-9_\-\.]+/g);
+          if (matches) {
+            for (const match of matches) {
+              if (!usageMap[match]) {
+                usageMap[match] = [];
+              }
+              const existing = usageMap[match].find(u => u.file === fullPath);
+              if (existing) {
+                existing.count++;
+              } else {
+                const displayPath = path.relative(path.resolve("."), fullPath).replace(/\\/g, "/");
+                usageMap[match].push({ title, file: displayPath, count: 1 });
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Error reading file during usage scan:", fullPath, e);
+        }
+      }
+    }
+  }
+
+  scanDir(contentDir);
+  return usageMap;
 }
 
 export const GET: APIRoute = async ({ cookies }) => {
@@ -96,7 +159,15 @@ export const GET: APIRoute = async ({ cookies }) => {
   }
   try {
     const catalog = syncCatalog();
-    return new Response(JSON.stringify({ success: true, media: catalog }), {
+    const usage = getMediaUsage();
+    
+    // Attach usage count to each item
+    const mediaWithUsage = catalog.map(item => ({
+      ...item,
+      usage: usage[item.url] || []
+    }));
+
+    return new Response(JSON.stringify({ success: true, media: mediaWithUsage }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
@@ -124,6 +195,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const alt = formData.get("alt")?.toString().trim() || "";
     const title = formData.get("title")?.toString().trim() || "";
     const caption = formData.get("caption")?.toString().trim() || "";
+    const folder = formData.get("folder")?.toString().trim() || "";
 
     if (!file || !(file instanceof File) || file.size === 0) {
       return new Response(JSON.stringify({ success: false, error: "No valid file uploaded" }), {
@@ -153,9 +225,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       title: title || file.name,
       alt: alt || title || file.name.split(".")[0],
       caption,
+      folder,
       uploadedAt: new Date().toISOString(),
       size: stats.size,
-      type: ext.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|svg)/) ? "image" : "file",
+      type: detectMediaType(uniqueName),
     };
     
     catalog.push(newMedia);
@@ -185,7 +258,25 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
   ensureMediaCatalog();
   try {
     const data = await request.json();
-    const { url, title, alt, caption } = data;
+    const { url, urls, title, alt, caption, folder } = data;
+
+    const catalog = getCatalog();
+
+    // Check if bulk folder move is requested
+    if (urls && Array.isArray(urls) && folder !== undefined) {
+      const movedUrls: string[] = [];
+      for (const item of catalog) {
+        if (urls.includes(item.url)) {
+          item.folder = String(folder).trim();
+          movedUrls.push(item.url);
+        }
+      }
+      saveCatalog(catalog);
+      return new Response(JSON.stringify({ success: true, message: `Bulk moved ${movedUrls.length} items to folder "${folder}"` }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     if (!url) {
       return new Response(JSON.stringify({ success: false, error: "Media URL is required" }), {
@@ -194,7 +285,6 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    const catalog = getCatalog();
     const index = catalog.findIndex(item => item.url === url);
 
     if (index === -1) {
@@ -207,6 +297,7 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
     catalog[index].title = title || catalog[index].title;
     catalog[index].alt = alt !== undefined ? alt : catalog[index].alt;
     catalog[index].caption = caption !== undefined ? caption : catalog[index].caption;
+    catalog[index].folder = folder !== undefined ? String(folder).trim() : catalog[index].folder;
 
     saveCatalog(catalog);
 
@@ -233,7 +324,34 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
 
   ensureMediaCatalog();
   try {
-    const { url } = await request.json();
+    const data = await request.json();
+    const { url, urls } = data;
+
+    const catalog = getCatalog();
+
+    // Check if bulk deletion is requested
+    if (urls && Array.isArray(urls)) {
+      let deletedCount = 0;
+      const newCatalog = catalog.filter(item => {
+        if (urls.includes(item.url)) {
+          const filename = path.basename(item.url);
+          const filePath = path.join(UPLOAD_DIR, filename);
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+          deletedCount++;
+          return false;
+        }
+        return true;
+      });
+
+      saveCatalog(newCatalog);
+      return new Response(JSON.stringify({ success: true, message: `Successfully deleted ${deletedCount} media files.` }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     if (!url) {
       return new Response(JSON.stringify({ success: false, error: "Media URL is required" }), {
         status: 400,
@@ -241,7 +359,6 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    const catalog = getCatalog();
     const index = catalog.findIndex(item => item.url === url);
 
     // Delete physical file if exists
@@ -267,3 +384,4 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
     });
   }
 };
+

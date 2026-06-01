@@ -9,13 +9,32 @@ export const prerender = false;
 const SETTINGS_FILE = path.resolve("src/data/global-settings.json");
 let settings = {
   headerScripts: "",
+  bodyStartScripts: "",
+  bodyEndScripts: "",
   footerScripts: "",
+  logo: {
+    headerLogoUrl: "/images/tangence-black.png",
+    footerLogoUrl: "/images/scroll-logo.svg"
+  },
+  socialLinks: {
+    facebook: "",
+    linkedin: "",
+    twitter: "",
+    instagram: ""
+  },
+  contactInfo: {
+    phone: "+91-995-812-9810",
+    email: "info@tangence.com",
+    description: "Performance marketing built to outlast algorithm changes, recessions, and growth-hack fads. Since 2006.",
+    offices: [] as Array<{ title: string; icon: string; address: string }>,
+    cities: [] as string[]
+  },
   navigation: [
     { text: "Home", link: "/" },
     { text: "About Us", link: "/about-us" },
     { text: "Contact", link: "/contact" }
   ],
-  redirects: [] as Array<{ from: string; to: string }>
+  redirects: [] as Array<{ from: string; to: string; type?: string; active?: boolean }>
 };
 
 if (fs.existsSync(SETTINGS_FILE)) {
@@ -32,7 +51,7 @@ if (fs.existsSync(SETTINGS_FILE)) {
   
   <div class="settings-header">
     <div class="header-text">
-      <p class="subtitle">Inject custom header/footer scripts, configure dynamic menus, and manage 301 URL redirects.</p>
+      <p class="subtitle">Inject tracking scripts, manage logos and social links, configure nested navigation, and map 301/302 redirects loop-free.</p>
     </div>
   </div>
 
@@ -43,32 +62,117 @@ if (fs.existsSync(SETTINGS_FILE)) {
       <!-- Left Column: Scripts and Redirects -->
       <div class="settings-col-left">
         
-        <!-- Header / Footer script Injections -->
+        <!-- Header / Footer / Body script Injections -->
         <div class="form-card">
           <div class="card-header">
-            <h3>Custom Script Injection (GA4, GTM, CSS)</h3>
+            <h3>Global Script & Pixel Injection</h3>
           </div>
-          <div class="card-body">
+          <div class="card-body" style="display:flex; flex-direction:column; gap:1.25rem;">
             <div class="form-group">
               <label for="header-scripts">Header Scripts (Injects before <code>&lt;/head&gt;</code>)</label>
-              <textarea id="header-scripts" rows="6" placeholder="<!-- Place Google Analytics, Hotjar, or custom styling tags here -->">{settings.headerScripts}</textarea>
+              <textarea id="header-scripts" rows="4" placeholder="<!-- Place custom meta tags, GTM head script, Google Analytics here -->">{settings.headerScripts}</textarea>
+            </div>
+
+            <div class="form-group">
+              <label for="body-start-scripts">Body Start Scripts (Injects right after <code>&lt;body&gt;</code>)</label>
+              <textarea id="body-start-scripts" rows="3" placeholder="<!-- Place GTM Noscript iframe or Facebook Pixel Noscript image here -->">{settings.bodyStartScripts || ""}</textarea>
+            </div>
+
+            <div class="form-group">
+              <label for="body-end-scripts">Body End Scripts (Injects right before <code>&lt;/body&gt;</code>)</label>
+              <textarea id="body-end-scripts" rows="3" placeholder="<!-- Place generic tracking body triggers or fallback analytics here -->">{settings.bodyEndScripts || ""}</textarea>
             </div>
             
-            <div class="form-group" style="margin-top: 1.25rem;">
-              <label for="footer-scripts">Footer Scripts (Injects before <code>&lt;/body&gt;</code>)</label>
-              <textarea id="footer-scripts" rows="6" placeholder="<!-- Place custom chatbots, widgets, or analytics tracking script tags here -->">{settings.footerScripts}</textarea>
+            <div class="form-group">
+              <label for="footer-scripts">Footer Scripts (Injects at the very end of page)</label>
+              <textarea id="footer-scripts" rows="4" placeholder="<!-- Place custom chatbots, widgets, or heatmaps here -->">{settings.footerScripts}</textarea>
             </div>
           </div>
         </div>
 
-        <!-- 301 Redirects Manager -->
+        <!-- Brand Asset Settings -->
+        <div class="form-card" style="margin-top: 1.5rem;">
+          <div class="card-header">
+            <h3>Brand Assets & Social Links</h3>
+          </div>
+          <div class="card-body">
+            <p class="section-desc">Manage logo assets, telephone contacts, social pages, and corporate Noida/Mumbai addresses.</p>
+            
+            <h4 style="margin-top: 1.25rem; font-size: 0.9rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.4rem; color: var(--primary);">Brand Logos</h4>
+            <div class="form-group" style="margin-top: 0.5rem;">
+              <label for="header-logo-url">Header Logo URL</label>
+              <div class="input-picker-wrap">
+                <input type="text" id="header-logo-url" value={settings.logo?.headerLogoUrl || "/images/tangence-black.png"} />
+                <button type="button" class="btn btn-outline btn-sm media-picker-trigger" data-target="header-logo-url">Pick</button>
+              </div>
+            </div>
+            <div class="form-group" style="margin-top: 0.75rem;">
+              <label for="footer-logo-url">Footer Logo URL</label>
+              <div class="input-picker-wrap">
+                <input type="text" id="footer-logo-url" value={settings.logo?.footerLogoUrl || "/images/scroll-logo.svg"} />
+                <button type="button" class="btn btn-outline btn-sm media-picker-trigger" data-target="footer-logo-url">Pick</button>
+              </div>
+            </div>
+
+            <h4 style="margin-top: 1.5rem; font-size: 0.9rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.4rem; color: var(--primary);">Contact Info & Social Links</h4>
+            <div class="form-group" style="margin-top: 0.5rem;">
+              <label for="contact-phone">Contact Phone Number</label>
+              <input type="text" id="contact-phone" value={settings.contactInfo?.phone || "+91-995-812-9810"} placeholder="e.g. +91-995-812-9810" />
+            </div>
+            <div class="form-group" style="margin-top: 0.75rem;">
+              <label for="contact-email">Support Email</label>
+              <input type="text" id="contact-email" value={settings.contactInfo?.email || "info@tangence.com"} placeholder="e.g. info@tangence.com" />
+            </div>
+            <div class="form-group" style="margin-top: 0.75rem;">
+              <label for="footer-desc">Footer Description</label>
+              <textarea id="footer-desc" rows="3" placeholder="Performance marketing since 2006...">{settings.contactInfo?.description || ""}</textarea>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-top:0.75rem;">
+              <div class="form-group">
+                <label for="social-facebook">Facebook Link</label>
+                <input type="text" id="social-facebook" value={settings.socialLinks?.facebook || ""} placeholder="https://..." />
+              </div>
+              <div class="form-group">
+                <label for="social-linkedin">LinkedIn Link</label>
+                <input type="text" id="social-linkedin" value={settings.socialLinks?.linkedin || ""} placeholder="https://..." />
+              </div>
+              <div class="form-group">
+                <label for="social-twitter">Twitter / X Link</label>
+                <input type="text" id="social-twitter" value={settings.socialLinks?.twitter || ""} placeholder="https://..." />
+              </div>
+              <div class="form-group">
+                <label for="social-instagram">Instagram Link</label>
+                <input type="text" id="social-instagram" value={settings.socialLinks?.instagram || ""} placeholder="https://..." />
+              </div>
+            </div>
+
+            <h4 style="margin-top: 1.5rem; font-size: 0.9rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.4rem; color: var(--primary); display:flex; justify-content:space-between; align-items:center;">
+              <span>Office Addresses</span>
+              <button type="button" class="btn btn-outline btn-sm" id="add-office-btn" style="padding: 0.2rem 0.5rem; font-size: 0.72rem;">+ Add Office</button>
+            </h4>
+            <div class="repeater-items-wrap" id="offices-container" style="margin-top:0.75rem; gap:0.5rem;">
+              <!-- Loaded dynamically -->
+            </div>
+            
+            <h4 style="margin-top: 1.5rem; font-size: 0.9rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.4rem; color: var(--primary); display:flex; justify-content:space-between; align-items:center;">
+              <span>Target Cities Coverage</span>
+              <button type="button" class="btn btn-outline btn-sm" id="add-city-btn" style="padding: 0.2rem 0.5rem; font-size: 0.72rem;">+ Add City</button>
+            </h4>
+            <div class="repeater-items-wrap" id="cities-container" style="margin-top:0.75rem; gap:0.4rem;">
+              <!-- Loaded dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 301/302 Redirects Manager -->
         <div class="form-card" style="margin-top: 1.5rem;">
           <div class="card-header block-header-flex">
-            <h3>301 SEO URL Redirects Mapping</h3>
+            <h3>SEO Redirects Manager</h3>
             <button type="button" class="btn btn-outline btn-sm" id="add-redirect-btn">+ Add Mapping</button>
           </div>
           <div class="card-body">
-            <p class="section-desc">Create direct routes paths maps from old resources to new pages. Intercepted by router on match.</p>
+            <p class="section-desc">Create 301 (Permanent) or 302 (Temporary) redirect maps with cyclical loop prevention and duplicate path warnings.</p>
             
             <div class="repeater-items-wrap" id="redirects-container" style="margin-top:1rem;">
               <!-- JS dynamic mapping -->
@@ -88,18 +192,18 @@ if (fs.existsSync(SETTINGS_FILE)) {
         <!-- Site Navigation Menu Configurator -->
         <div class="form-card">
           <div class="card-header block-header-flex">
-            <h3>Header Navigation Links</h3>
-            <button type="button" class="btn btn-outline btn-sm" id="add-nav-btn">+ Add Link</button>
+            <h3>Header Navigation Menu (Supports Dropdowns)</h3>
+            <button type="button" class="btn btn-outline btn-sm" id="add-nav-btn">+ Add Main Item</button>
           </div>
           <div class="card-body">
-            <p class="section-desc">Add, rename, or structure navigation links. Reordered by drag or arrows.</p>
+            <p class="section-desc">Create navigation items and submenus. Reorder with arrow keys cleanly.</p>
             
-            <div class="repeater-items-wrap" id="navigation-container" style="margin-top:1rem;">
+            <div class="repeater-items-wrap" id="navigation-container" style="margin-top:1rem; gap: 1rem;">
               <!-- JS dynamic links -->
             </div>
 
             <div class="repeater-empty" id="nav-empty-msg" style="display:none;">
-              <p>Navigation list is empty. Click Add Link above to populate menu.</p>
+              <p>Navigation list is empty. Click Add Main Item above to populate menu.</p>
             </div>
           </div>
         </div>
@@ -118,6 +222,35 @@ if (fs.existsSync(SETTINGS_FILE)) {
 
   </form>
 
+  <!-- Reusable Media Library Selector Modal Dialog -->
+  <div class="confirm-modal-overlay" id="media-picker-overlay">
+    <div class="confirm-modal media-modal" style="max-width: 650px;">
+      <div class="confirm-modal-header">
+        <h4>Select Asset from Media Catalog</h4>
+        <button type="button" class="close-modal-btn" id="close-media-modal">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="media-modal-actions">
+        <form id="media-upload-form" onsubmit="return false;" style="display:flex; gap:0.5rem; width:100%;">
+          <input type="file" id="media-upload-file" accept="image/*" style="display:none;" />
+          <button type="button" class="btn btn-outline btn-sm" id="trigger-file-select" style="flex:1;">
+            Choose Upload File
+          </button>
+          <button type="button" class="btn btn-primary btn-sm" id="upload-media-btn" disabled>
+            Upload
+          </button>
+        </form>
+      </div>
+      <div class="media-picker-grid" id="media-picker-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(110px,1fr)); gap:0.75rem; max-height:280px; overflow-y:auto; padding:0.5rem; border:1px solid var(--border-color); border-radius:var(--radius-sm); background:var(--bg-base);">
+        <p class="media-empty">No catalog images. Upload a new asset.</p>
+      </div>
+      <div class="confirm-modal-footer">
+        <button type="button" class="btn btn-outline" id="close-media-picker-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Notification Banner -->
   <div class="toast-notification" id="toast-notify">
     <div class="toast-content">
@@ -127,7 +260,7 @@ if (fs.existsSync(SETTINGS_FILE)) {
 
 </AdminLayout>
 
-<style>
+<style is:global>
   .subtitle {
     color: var(--text-muted);
     font-size: 0.95rem;
@@ -313,15 +446,113 @@ if (fs.existsSync(SETTINGS_FILE)) {
     font-weight: 500;
     color: var(--text-main);
   }
+
+  /* Confirmation / Media Selector Modal Custom Glassmorphism */
+  .confirm-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(8, 12, 20, 0.75);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  .confirm-modal-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .confirm-modal {
+    background: var(--bg-surface-solid);
+    border: 1px solid var(--bg-surface-border);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 500px;
+    padding: 1.75rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    transform: scale(0.9);
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .confirm-modal-overlay.active .confirm-modal {
+    transform: scale(1);
+  }
+  .confirm-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+  }
+  .confirm-modal-header h4 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+  .close-modal-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .close-modal-btn:hover {
+    color: var(--text-main);
+  }
+  .confirm-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+  }
+  .media-modal-actions {
+    margin-bottom: 1rem;
+    background: rgba(156, 163, 175, 0.03);
+    padding: 0.75rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+  }
+  .media-picker-item {
+    aspect-ratio: 1;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 2px solid transparent;
+    cursor: pointer;
+    position: relative;
+    background: rgba(156, 163, 175, 0.03);
+    transition: var(--transition);
+  }
+  .media-picker-item:hover {
+    transform: scale(1.03);
+    border-color: var(--primary);
+  }
+  .media-picker-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 </style>
 
 <script is:inline define:vars={{ settings }}>
   let navigation = settings.navigation || [];
   let redirects = settings.redirects || [];
+  let offices = settings.contactInfo?.offices || [];
+  let cities = settings.contactInfo?.cities || [];
+  let activeMediaPickerTarget = "";
 
   function initSettings() {
+    const form = document.getElementById("global-settings-form");
+    if (!form || form.dataset.listenerBound) return;
+    form.dataset.listenerBound = "true";
+
     renderNavigation();
     renderRedirects();
+    renderOffices();
+    renderCities();
     setupControls();
   }
 
@@ -336,7 +567,7 @@ if (fs.existsSync(SETTINGS_FILE)) {
     const addNavBtn = document.getElementById("add-nav-btn");
     if (addNavBtn) {
       addNavBtn.addEventListener("click", () => {
-        navigation.push({ text: "", link: "" });
+        navigation.push({ text: "", link: "", children: [] });
         renderNavigation();
       });
     }
@@ -345,8 +576,26 @@ if (fs.existsSync(SETTINGS_FILE)) {
     const addRedirectBtn = document.getElementById("add-redirect-btn");
     if (addRedirectBtn) {
       addRedirectBtn.addEventListener("click", () => {
-        redirects.push({ from: "", to: "" });
+        redirects.push({ from: "", to: "", type: "301", active: true });
         renderRedirects();
+      });
+    }
+
+    // Add Office click
+    const addOfficeBtn = document.getElementById("add-office-btn");
+    if (addOfficeBtn) {
+      addOfficeBtn.addEventListener("click", () => {
+        offices.push({ title: "", icon: "/images/icons/Path-529.png", address: "" });
+        renderOffices();
+      });
+    }
+
+    // Add City click
+    const addCityBtn = document.getElementById("add-city-btn");
+    if (addCityBtn) {
+      addCityBtn.addEventListener("click", () => {
+        cities.push("");
+        renderCities();
       });
     }
 
@@ -355,26 +604,77 @@ if (fs.existsSync(SETTINGS_FILE)) {
     if (saveBtn) {
       saveBtn.addEventListener("click", saveSettingsSubmit);
     }
+
+    // Media modal triggers setup
+    document.addEventListener("click", (e) => {
+      if (e.target && e.target.classList.contains("media-picker-trigger")) {
+        const targetId = e.target.getAttribute("data-target");
+        openMediaModal(targetId);
+      }
+    });
+
+    const closePickerX = document.getElementById("close-media-modal");
+    const closePickerBtn = document.getElementById("close-media-picker-btn");
+    if (closePickerX) closePickerX.addEventListener("click", hideMediaModal);
+    if (closePickerBtn) closePickerBtn.addEventListener("click", hideMediaModal);
+
+    const fileSelectBtn = document.getElementById("trigger-file-select");
+    const fileInput = document.getElementById("media-upload-file");
+    const uploadBtn = document.getElementById("upload-media-btn");
+
+    if (fileSelectBtn && fileInput) {
+      fileSelectBtn.addEventListener("click", () => fileInput.click());
+      fileInput.addEventListener("change", () => {
+        if (fileInput.files.length > 0) {
+          fileSelectBtn.innerText = fileInput.files[0].name;
+          if (uploadBtn) uploadBtn.disabled = false;
+        } else {
+          fileSelectBtn.innerText = "Choose Upload File";
+          if (uploadBtn) uploadBtn.disabled = true;
+        }
+      });
+    }
+
+    if (uploadBtn) {
+      uploadBtn.addEventListener("click", uploadMediaFile);
+    }
   }
 
   // --- NAVIGATION LINK FUNCTIONS ---
-  function syncNavField(index, field, value) {
+  window.syncNavField = function(index, field, value) {
     navigation[index][field] = value;
-  }
+  };
 
-  function moveNavItem(index, direction) {
+  window.moveNavItem = function(index, direction) {
     const targetIdx = index + direction;
     if (targetIdx < 0 || targetIdx >= navigation.length) return;
     const temp = navigation[index];
     navigation[index] = navigation[targetIdx];
     navigation[targetIdx] = temp;
     renderNavigation();
-  }
+  };
 
-  function deleteNavItem(index) {
+  window.deleteNavItem = function(index) {
     navigation.splice(index, 1);
     renderNavigation();
-  }
+  };
+
+  window.addSublink = function(parentIndex) {
+    if (!navigation[parentIndex].children) {
+      navigation[parentIndex].children = [];
+    }
+    navigation[parentIndex].children.push({ text: "", link: "" });
+    renderNavigation();
+  };
+
+  window.syncSublinkField = function(parentIndex, childIndex, field, value) {
+    navigation[parentIndex].children[childIndex][field] = value;
+  };
+
+  window.deleteSublink = function(parentIndex, childIndex) {
+    navigation[parentIndex].children.splice(childIndex, 1);
+    renderNavigation();
+  };
 
   function renderNavigation() {
     const container = document.getElementById("navigation-container");
@@ -391,31 +691,60 @@ if (fs.existsSync(SETTINGS_FILE)) {
 
     navigation.forEach((item, idx) => {
       const row = document.createElement("div");
-      row.className = "repeater-item-row";
+      row.className = "navigation-item-card";
+      row.style = "background:var(--bg-surface-solid); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:0.85rem; display:flex; flex-direction:column; gap:0.65rem; transition:var(--transition);";
+      
+      let sublinksHTML = "";
+      const children = item.children || [];
+      if (children.length > 0) {
+        sublinksHTML += `<div class="sublinks-container" style="margin-left: 1.5rem; display:flex; flex-direction:column; gap:0.5rem; border-left: 2px dashed var(--border-color); padding-left: 0.75rem; margin-top: 0.4rem;">`;
+        children.forEach((child, cIdx) => {
+          sublinksHTML += `
+            <div class="repeater-item-row sublink-row" style="padding: 0.4rem 0.6rem; background: rgba(156,163,175,0.02); display:flex; gap:0.5rem; align-items:center;">
+              <span style="color:var(--text-dim); font-size:0.75rem;">↳</span>
+              <div class="form-group" style="flex:1;">
+                <input type="text" value="${child.text || ''}" oninput="syncSublinkField(${idx}, ${cIdx}, 'text', this.value)" placeholder="Sub-link Label" style="padding: 0.4rem 0.6rem; font-size: 0.82rem;" />
+              </div>
+              <div class="form-group" style="flex:1.2;">
+                <input type="text" value="${child.link || ''}" oninput="syncSublinkField(${idx}, ${cIdx}, 'link', this.value)" placeholder="Sub Path" style="padding: 0.4rem 0.6rem; font-size: 0.82rem;" />
+              </div>
+              <button type="button" class="btn-icon-sm" onclick="deleteSublink(${idx}, ${cIdx})" style="width:24px; height:24px;">${ICONS.delete}</button>
+            </div>
+          `;
+        });
+        sublinksHTML += `</div>`;
+      }
+
       row.innerHTML = `
-        <div class="form-group" style="flex:1;">
-          <input type="text" value="${item.text || ''}" oninput="syncNavField(${idx}, 'text', this.value)" placeholder="Menu Label (e.g. Services)" />
+        <div class="repeater-item-row" style="border:none; padding:0; background:transparent; display:flex; gap:0.5rem; align-items:center; width:100%;">
+          <div class="form-group" style="flex:1;">
+            <input type="text" value="${item.text || ''}" oninput="syncNavField(${idx}, 'text', this.value)" placeholder="Menu Label" />
+          </div>
+          <div class="form-group" style="flex:1.2;">
+            <input type="text" value="${item.link || ''}" oninput="syncNavField(${idx}, 'link', this.value)" placeholder="Destination Path" />
+          </div>
+          <button type="button" class="btn-icon-sm" onclick="moveNavItem(${idx}, -1)">${ICONS.arrowUp}</button>
+          <button type="button" class="btn-icon-sm" onclick="moveNavItem(${idx}, 1)">${ICONS.arrowDown}</button>
+          <button type="button" class="btn-icon-sm btn-delete-row" onclick="deleteNavItem(${idx})">${ICONS.delete}</button>
         </div>
-        <div class="form-group" style="flex:1.2;">
-          <input type="text" value="${item.link || ''}" oninput="syncNavField(${idx}, 'link', this.value)" placeholder="Destination Path (e.g. /services)" />
+        <div style="display:flex; justify-content:flex-end;">
+          <button type="button" class="btn btn-outline btn-sm" onclick="addSublink(${idx})" style="padding: 0.2rem 0.5rem; font-size: 0.72rem;">+ Add Sub-link</button>
         </div>
-        <button type="button" class="btn-icon-sm" onclick="moveNavItem(${idx}, -1)">${ICONS.arrowUp}</button>
-        <button type="button" class="btn-icon-sm" onclick="moveNavItem(${idx}, 1)">${ICONS.arrowDown}</button>
-        <button type="button" class="btn-icon-sm btn-delete-row" onclick="deleteNavItem(${idx})">${ICONS.delete}</button>
+        ${sublinksHTML}
       `;
       container.appendChild(row);
     });
   }
 
   // --- REDIRECTS FUNCTIONS ---
-  function syncRedirectField(index, field, value) {
+  window.syncRedirectField = function(index, field, value) {
     redirects[index][field] = value;
-  }
+  };
 
-  function deleteRedirectItem(index) {
+  window.deleteRedirectItem = function(index) {
     redirects.splice(index, 1);
     renderRedirects();
-  }
+  };
 
   function renderRedirects() {
     const container = document.getElementById("redirects-container");
@@ -433,13 +762,23 @@ if (fs.existsSync(SETTINGS_FILE)) {
     redirects.forEach((item, idx) => {
       const row = document.createElement("div");
       row.className = "repeater-item-row";
+      row.style = "display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;";
       row.innerHTML = `
-        <div class="form-group" style="flex:1;">
+        <div class="form-group" style="flex:1; min-width: 140px;">
           <input type="text" value="${item.from || ''}" oninput="syncRedirectField(${idx}, 'from', this.value)" placeholder="Old Path (e.g. /about)" />
         </div>
         <span style="color:var(--text-dim); font-weight:700;">→</span>
-        <div class="form-group" style="flex:1.2;">
+        <div class="form-group" style="flex:1.2; min-width: 140px;">
           <input type="text" value="${item.to || ''}" oninput="syncRedirectField(${idx}, 'to', this.value)" placeholder="New Path (e.g. /about-us)" />
+        </div>
+        <div style="display:flex; gap:0.5rem; align-items:center; flex-shrink:0;">
+          <select onchange="syncRedirectField(${idx}, 'type', this.value)" style="padding:0.4rem 0.6rem; font-size:0.82rem; min-width:80px; background:var(--input-bg); border:1px solid var(--input-border); color:var(--text-main); border-radius:4px; outline:none;">
+            <option value="301" ${item.type === '301' || !item.type ? 'selected' : ''}>301 (Perm)</option>
+            <option value="302" ${item.type === '302' ? 'selected' : ''}>302 (Temp)</option>
+          </select>
+          <label style="display:inline-flex; align-items:center; gap:0.25rem; font-size:0.75rem; color:var(--text-muted); cursor:pointer;">
+            <input type="checkbox" ${item.active !== false ? 'checked' : ''} onchange="syncRedirectField(${idx}, 'active', this.checked)" /> Active
+          </label>
         </div>
         <button type="button" class="btn-icon-sm btn-delete-row" onclick="deleteRedirectItem(${idx})">${ICONS.delete}</button>
       `;
@@ -447,16 +786,223 @@ if (fs.existsSync(SETTINGS_FILE)) {
     });
   }
 
+  // --- OFFICES REPEATER ---
+  window.syncOfficeField = function(index, field, value) {
+    offices[index][field] = value;
+  };
+  window.deleteOffice = function(index) {
+    offices.splice(index, 1);
+    renderOffices();
+  };
+  function renderOffices() {
+    const container = document.getElementById("offices-container");
+    if (!container) return;
+    container.innerHTML = "";
+    offices.forEach((item, idx) => {
+      const row = document.createElement("div");
+      row.className = "repeater-item-row";
+      row.style = "display:flex; flex-direction:column; gap:0.5rem; padding:0.65rem; background:var(--bg-surface-solid); border:1px solid var(--border-color); border-radius:4px;";
+      row.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+          <span style="font-weight:700; font-size:0.75rem; color:var(--text-dim);">Office #${idx + 1}</span>
+          <button type="button" class="btn-icon-sm" onclick="deleteOffice(${idx})" style="width:24px; height:24px;">${ICONS.delete}</button>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1.2fr; gap:0.5rem; width:100%;">
+          <input type="text" value="${item.title || ''}" oninput="syncOfficeField(${idx}, 'title', this.value)" placeholder="Office Title (e.g. Noida)" style="font-size:0.8rem; padding:0.4rem;" />
+          <input type="text" value="${item.icon || ''}" oninput="syncOfficeField(${idx}, 'icon', this.value)" placeholder="Icon URL Path" style="font-size:0.8rem; padding:0.4rem;" />
+        </div>
+        <input type="text" value="${item.address || ''}" oninput="syncOfficeField(${idx}, 'address', this.value)" placeholder="Physical Address" style="font-size:0.8rem; padding:0.4rem; width:100%;" />
+      `;
+      container.appendChild(row);
+    });
+  }
+
+  // --- CITIES REPEATER ---
+  window.syncCityValue = function(index, value) {
+    cities[index] = value;
+  };
+  window.deleteCity = function(index) {
+    cities.splice(index, 1);
+    renderCities();
+  };
+  function renderCities() {
+    const container = document.getElementById("cities-container");
+    if (!container) return;
+    container.innerHTML = "";
+    cities.forEach((item, idx) => {
+      const row = document.createElement("div");
+      row.className = "repeater-item-row";
+      row.style = "display:flex; gap:0.5rem; padding:0.4rem; align-items:center; background:var(--bg-surface-solid); border:1px solid var(--border-color); border-radius:4px;";
+      row.innerHTML = `
+        <input type="text" value="${item || ''}" oninput="syncCityValue(${idx}, this.value)" placeholder="City Name (e.g. Noida)" style="font-size:0.8rem; padding:0.4rem; flex:1;" />
+        <button type="button" class="btn-icon-sm" onclick="deleteCity(${idx})" style="width:24px; height:24px;">${ICONS.delete}</button>
+      `;
+      container.appendChild(row);
+    });
+  }
+
+  // --- LOOP & CONFLICTS DETECTOR ---
+  function hasRedirectLoop(list) {
+    const adj = new Map();
+    for (const r of list) {
+      const from = String(r.from || "").trim();
+      const to = String(r.to || "").trim();
+      if (!from || !to) continue;
+      if (from === to) {
+        return `Cyclical loop: "${from}" redirects to itself.`;
+      }
+      if (adj.has(from)) {
+        return `Conflict: Multiple redirect targets mapped for "${from}".`;
+      }
+      adj.set(from, to);
+    }
+    
+    for (const [start] of adj.entries()) {
+      const visited = new Set();
+      let curr = start;
+      while (curr) {
+        if (visited.has(curr)) {
+          return `Cyclical redirect loop detected: ${start} → ... → ${curr} → ${adj.get(curr)}`;
+        }
+        visited.add(curr);
+        curr = adj.get(curr) || "";
+      }
+    }
+    return null;
+  }
+
+  // --- MEDIA PICKER INTERACTION ---
+  function openMediaModal(targetId) {
+    activeMediaPickerTarget = targetId;
+    const modal = document.getElementById("media-picker-overlay");
+    if (modal) modal.classList.add("active");
+    loadMediaCatalogGrid();
+  }
+
+  function hideMediaModal() {
+    const modal = document.getElementById("media-picker-overlay");
+    if (modal) modal.classList.remove("active");
+    activeMediaPickerTarget = "";
+  }
+
+  async function loadMediaCatalogGrid() {
+    const grid = document.getElementById("media-picker-grid");
+    if (!grid) return;
+
+    try {
+      const res = await fetch("/api/media-crud");
+      const data = await res.json();
+
+      if (data.success && data.media.length > 0) {
+        grid.innerHTML = data.media.map(item => `
+          <div class="media-picker-item" onclick="selectMediaAsset('${item.url}')" title="${item.alt || item.title}">
+            <img src="${item.url}" alt="${item.alt || ''}" />
+          </div>
+        `).join('');
+      } else {
+        grid.innerHTML = `<p class="media-empty">No catalog images. Upload a new asset.</p>`;
+      }
+    } catch (e) {
+      grid.innerHTML = `<p class="media-empty" style="color:var(--color-error);">Error loading media catalog files.</p>`;
+    }
+  }
+
+  window.selectMediaAsset = function(url) {
+    if (activeMediaPickerTarget) {
+      const targetInput = document.getElementById(activeMediaPickerTarget);
+      if (targetInput) {
+        targetInput.value = url;
+        const changeEvent = new Event('input', { bubbles: true });
+        targetInput.dispatchEvent(changeEvent);
+      }
+      hideMediaModal();
+    }
+  };
+
+  async function uploadMediaFile() {
+    const fileInput = document.getElementById("media-upload-file");
+    const uploadBtn = document.getElementById("upload-media-btn");
+    const fileSelectBtn = document.getElementById("trigger-file-select");
+
+    if (!fileInput || fileInput.files.length === 0) return;
+
+    const file = fileInput.files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("alt", file.name.split(".")[0]);
+
+    uploadBtn.disabled = true;
+    uploadBtn.innerText = "Uploading...";
+
+    try {
+      const res = await fetch("/api/media-crud", {
+        method: "POST",
+        body: formData
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        showToast("Asset uploaded successfully!");
+        fileInput.value = "";
+        fileSelectBtn.innerText = "Choose Upload File";
+        uploadBtn.innerText = "Upload";
+        selectMediaAsset(result.media.url);
+      } else {
+        showToast("Error: " + (result.error || "Upload failed"));
+        uploadBtn.disabled = false;
+        uploadBtn.innerText = "Upload";
+      }
+    } catch (e) {
+      showToast("Network Error: Could not upload file asset");
+      uploadBtn.disabled = false;
+      uploadBtn.innerText = "Upload";
+    }
+  }
+
   // --- SAVE settings TO SERVER ---
   async function saveSettingsSubmit() {
     const headerScripts = document.getElementById("header-scripts").value;
     const footerScripts = document.getElementById("footer-scripts").value;
+    const bodyStartScripts = document.getElementById("body-start-scripts").value;
+    const bodyEndScripts = document.getElementById("body-end-scripts").value;
+
+    const logo = {
+      headerLogoUrl: document.getElementById("header-logo-url").value.trim(),
+      footerLogoUrl: document.getElementById("footer-logo-url").value.trim()
+    };
+
+    const socialLinks = {
+      facebook: document.getElementById("social-facebook").value.trim(),
+      linkedin: document.getElementById("social-linkedin").value.trim(),
+      twitter: document.getElementById("social-twitter").value.trim(),
+      instagram: document.getElementById("social-instagram").value.trim()
+    };
+
+    const contactInfo = {
+      phone: document.getElementById("contact-phone").value.trim(),
+      email: document.getElementById("contact-email").value.trim(),
+      description: document.getElementById("footer-desc").value.trim(),
+      offices,
+      cities
+    };
+
+    // Client-side conflict detection and loop validation!
+    const loopError = hasRedirectLoop(redirects);
+    if (loopError) {
+      showToast("⚠️ Redirect Error: " + loopError);
+      return;
+    }
 
     const payload = {
       headerScripts,
       footerScripts,
+      bodyStartScripts,
+      bodyEndScripts,
       navigation,
-      redirects
+      redirects,
+      logo,
+      socialLinks,
+      contactInfo
     };
 
     const saveBtn = document.getElementById("save-settings-btn");
@@ -495,11 +1041,11 @@ if (fs.existsSync(SETTINGS_FILE)) {
       toast.classList.add("active");
       setTimeout(() => {
         toast.classList.remove("active");
-      }, 3000);
+      }, 4000);
     }
   }
 
-  // Hook layout on content loads
+  // Hook layout on load
   document.addEventListener("DOMContentLoaded", initSettings);
   document.addEventListener("astro:page-load", initSettings);
   if (document.readyState === "interactive" || document.readyState === "complete") {
