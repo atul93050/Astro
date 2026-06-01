@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@astrojs/node": "^10.1.2",
-    "astro": "^6.4.2"
+    "astro": "^6.4.2",
+    "yaml": "^2.9.0"
   }
 }

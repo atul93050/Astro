@@ -1,0 +1,61 @@
+---
+interface Props {
+  content: string;
+}
+
+const { content } = Astro.props;
+---
+<section class="block-rich-text">
+  <div class="container">
+    <article class="prose" set:html={content}></article>
+  </div>
+</section>
+
+<style>
+  .block-rich-text {
+    padding: 5rem 0;
+    background-color: #050811;
+    color: #D1D5DB;
+  }
+
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+
+  .prose {
+    line-height: 1.85;
+    font-size: 1.1rem;
+  }
+
+  :global(.prose h1, .prose h2, .prose h3) {
+    color: white;
+    font-family: 'Outfit', sans-serif;
+    margin-top: 2.5rem;
+    margin-bottom: 1rem;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+
+  :global(.prose h1) { font-size: 2.25rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.5rem; }
+  :global(.prose h2) { font-size: 1.75rem; }
+  :global(.prose h3) { font-size: 1.35rem; }
+
+  :global(.prose p) {
+    margin-bottom: 1.5rem;
+  }
+
+  :global(.prose ul, .prose ol) {
+    margin-bottom: 1.5rem;
+    padding-left: 1.75rem;
+  }
+
+  :global(.prose li) {
+    margin-bottom: 0.5rem;
+  }
+
+  :global(.prose strong) {
+    color: white;
+  }
+</style>

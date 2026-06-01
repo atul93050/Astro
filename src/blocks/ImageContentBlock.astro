@@ -1,0 +1,173 @@
+---
+interface Props {
+  eyebrow?: string;
+  title: string;
+  description: string;
+  image?: string;
+  imagePosition?: "left" | "right";
+  buttonText?: string;
+  buttonLink?: string;
+}
+
+const {
+  eyebrow,
+  title,
+  description,
+  image,
+  imagePosition = "right",
+  buttonText,
+  buttonLink
+} = Astro.props;
+---
+<section class="block-image-content">
+  <div class="container">
+    <div class={`split-grid ${imagePosition === "left" ? "image-left" : "image-right"}`}>
+      {image && (
+        <div class="image-area">
+          <div class="glow-sphere"></div>
+          <img src={image} alt={title} class="featured-img" />
+        </div>
+      )}
+      <div class="content-area">
+        {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+        <h2>{title}</h2>
+        <p class="desc">{description}</p>
+        {buttonText && buttonLink && (
+          <a href={buttonLink} class="btn btn-primary">{buttonText}</a>
+        )}
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .block-image-content {
+    padding: 6.5rem 0;
+    background-color: #050811;
+    color: white;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+
+  .split-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5rem;
+    align-items: center;
+  }
+
+  .image-left .image-area {
+    order: 1;
+  }
+  .image-left .content-area {
+    order: 2;
+  }
+  .image-right .image-area {
+    order: 2;
+  }
+  .image-right .content-area {
+    order: 1;
+  }
+
+  @media (max-width: 991px) {
+    .split-grid {
+      grid-template-columns: 1fr;
+      gap: 3.5rem;
+      text-align: center;
+    }
+    .image-area, .content-area {
+      order: unset !important;
+    }
+  }
+
+  .image-area {
+    position: relative;
+  }
+
+  .featured-img {
+    width: 100%;
+    max-width: 500px;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    position: relative;
+    z-index: 2;
+  }
+
+  .glow-sphere {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, rgba(99, 102, 241, 0) 70%);
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .eyebrow {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #10B981;
+    display: block;
+    margin-bottom: 0.75rem;
+  }
+
+  h2 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 2.75rem;
+    font-weight: 800;
+    color: white;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+    margin-bottom: 1.5rem;
+  }
+
+  .desc {
+    font-size: 1.1rem;
+    line-height: 1.65;
+    color: #9CA3AF;
+    margin-bottom: 2.25rem;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.85rem 2.25rem;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.25s ease;
+    text-decoration: none;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+  }
+
+  @media (max-width: 991px) {
+    .featured-img {
+      max-width: 400px;
+    }
+  }
+</style>

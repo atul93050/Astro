@@ -1,0 +1,508 @@
+---
+import AdminLayout from "../../layouts/admin/AdminLayout.astro";
+import fs from "node:fs";
+import path from "node:path";
+
+export const prerender = false;
+
+// 1. Fetch initial configuration settings
+const SETTINGS_FILE = path.resolve("src/data/global-settings.json");
+let settings = {
+  headerScripts: "",
+  footerScripts: "",
+  navigation: [
+    { text: "Home", link: "/" },
+    { text: "About Us", link: "/about-us" },
+    { text: "Contact", link: "/contact" }
+  ],
+  redirects: [] as Array<{ from: string; to: string }>
+};
+
+if (fs.existsSync(SETTINGS_FILE)) {
+  try {
+    const data = fs.readFileSync(SETTINGS_FILE, "utf-8");
+    settings = { ...settings, ...JSON.parse(data) };
+  } catch (e) {
+    console.error("Error reading settings in settings.astro:", e);
+  }
+}
+---
+
+<AdminLayout title="Global Settings">
+  
+  <div class="settings-header">
+    <div class="header-text">
+      <p class="subtitle">Inject custom header/footer scripts, configure dynamic menus, and manage 301 URL redirects.</p>
+    </div>
+  </div>
+
+  <form id="global-settings-form" onsubmit="return false;">
+    
+    <div class="settings-grid">
+      
+      <!-- Left Column: Scripts and Redirects -->
+      <div class="settings-col-left">
+        
+        <!-- Header / Footer script Injections -->
+        <div class="form-card">
+          <div class="card-header">
+            <h3>Custom Script Injection (GA4, GTM, CSS)</h3>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label for="header-scripts">Header Scripts (Injects before <code>&lt;/head&gt;</code>)</label>
+              <textarea id="header-scripts" rows="6" placeholder="<!-- Place Google Analytics, Hotjar, or custom styling tags here -->">{settings.headerScripts}</textarea>
+            </div>
+            
+            <div class="form-group" style="margin-top: 1.25rem;">
+              <label for="footer-scripts">Footer Scripts (Injects before <code>&lt;/body&gt;</code>)</label>
+              <textarea id="footer-scripts" rows="6" placeholder="<!-- Place custom chatbots, widgets, or analytics tracking script tags here -->">{settings.footerScripts}</textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- 301 Redirects Manager -->
+        <div class="form-card" style="margin-top: 1.5rem;">
+          <div class="card-header block-header-flex">
+            <h3>301 SEO URL Redirects Mapping</h3>
+            <button type="button" class="btn btn-outline btn-sm" id="add-redirect-btn">+ Add Mapping</button>
+          </div>
+          <div class="card-body">
+            <p class="section-desc">Create direct routes paths maps from old resources to new pages. Intercepted by router on match.</p>
+            
+            <div class="repeater-items-wrap" id="redirects-container" style="margin-top:1rem;">
+              <!-- JS dynamic mapping -->
+            </div>
+            
+            <div class="repeater-empty" id="redirects-empty-msg" style="display:none;">
+              <p>No redirects currently mapped. Click Add Mapping above to configure.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Navigation Menus -->
+      <div class="settings-col-right">
+        
+        <!-- Site Navigation Menu Configurator -->
+        <div class="form-card">
+          <div class="card-header block-header-flex">
+            <h3>Header Navigation Links</h3>
+            <button type="button" class="btn btn-outline btn-sm" id="add-nav-btn">+ Add Link</button>
+          </div>
+          <div class="card-body">
+            <p class="section-desc">Add, rename, or structure navigation links. Reordered by drag or arrows.</p>
+            
+            <div class="repeater-items-wrap" id="navigation-container" style="margin-top:1rem;">
+              <!-- JS dynamic links -->
+            </div>
+
+            <div class="repeater-empty" id="nav-empty-msg" style="display:none;">
+              <p>Navigation list is empty. Click Add Link above to populate menu.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Bottom Save bar -->
+    <div class="bottom-action-save-bar">
+      <button type="button" class="btn btn-primary" id="save-settings-btn" style="padding:0.75rem 2rem;">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:0.25rem;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+        <span id="save-btn-label">Save Global Configurations</span>
+      </button>
+    </div>
+
+  </form>
+
+  <!-- Notification Banner -->
+  <div class="toast-notification" id="toast-notify">
+    <div class="toast-content">
+      <span class="toast-message" id="toast-message">Settings saved successfully!</span>
+    </div>
+  </div>
+
+</AdminLayout>
+
+<style>
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-top: 0.25rem;
+    margin-bottom: 2rem;
+  }
+  
+  .settings-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 1.5rem;
+    align-items: start;
+    margin-bottom: 6rem; /* space for save bar */
+  }
+  @media (max-width: 1024px) {
+    .settings-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .form-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 15px var(--color-shadow);
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 1.15rem 1.5rem;
+    border-bottom: 1px solid var(--bg-surface-border);
+    background: rgba(156, 163, 175, 0.02);
+  }
+  .card-header h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+  .block-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+  }
+  .card-body {
+    padding: 1.5rem;
+  }
+  .section-desc {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-top: -0.5rem;
+    line-height: 1.4;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+  textarea, input[type="text"] {
+    padding: 0.65rem 0.85rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-main);
+    font-size: 0.9rem;
+    outline: none;
+    transition: var(--transition);
+    width: 100%;
+    box-sizing: border-box;
+  }
+  textarea:focus, input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  }
+  textarea {
+    font-family: monospace;
+    font-size: 0.85rem;
+  }
+
+  /* Repeaters */
+  .repeater-items-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+  .repeater-item-row {
+    background: var(--bg-surface-solid);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: var(--transition);
+  }
+  .repeater-item-row:hover {
+    border-color: var(--primary);
+  }
+  .repeater-empty {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    color: var(--text-dim);
+    font-size: 0.82rem;
+    border: 1px dashed var(--border-color);
+    border-radius: var(--radius-sm);
+    margin-top: 1rem;
+  }
+  .btn-icon-sm {
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    flex-shrink: 0;
+  }
+  .btn-icon-sm:hover {
+    color: var(--text-main);
+    background: rgba(156, 163, 175, 0.08);
+  }
+  .btn-delete-row:hover {
+    color: var(--color-error);
+    background: rgba(239, 68, 68, 0.08);
+    border-color: var(--color-error);
+  }
+
+  /* Bottom Actions Bar styling */
+  .bottom-action-save-bar {
+    position: fixed;
+    bottom: 0;
+    left: 270px;
+    right: 0;
+    background: var(--bg-surface-solid);
+    border-top: 1px solid var(--bg-surface-border);
+    padding: 1rem 2.5rem;
+    display: flex;
+    justify-content: flex-end;
+    box-shadow: 0 -4px 15px rgba(0,0,0,0.15);
+    z-index: 99;
+    backdrop-filter: blur(10px);
+    transition: left 0.3s ease;
+  }
+  @media (max-width: 768px) {
+    .bottom-action-save-bar {
+      left: 0;
+      padding: 1rem 1.5rem;
+    }
+  }
+
+  /* Toast Notification */
+  .toast-notification {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--bg-surface-solid);
+    border-left: 4px solid var(--primary);
+    border-top: 1px solid var(--bg-surface-border);
+    border-bottom: 1px solid var(--bg-surface-border);
+    border-right: 1px solid var(--bg-surface-border);
+    padding: 1rem 1.5rem;
+    border-radius: var(--radius-sm);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+    z-index: 1100;
+    transform: translateY(150%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    backdrop-filter: blur(8px);
+  }
+  .toast-notification.active {
+    transform: translateY(0);
+  }
+  .toast-content {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-main);
+  }
+</style>
+
+<script is:inline define:vars={{ settings }}>
+  let navigation = settings.navigation || [];
+  let redirects = settings.redirects || [];
+
+  function initSettings() {
+    renderNavigation();
+    renderRedirects();
+    setupControls();
+  }
+
+  const ICONS = {
+    arrowUp: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"></polyline></svg>`,
+    arrowDown: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>`,
+    delete: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`
+  };
+
+  function setupControls() {
+    // Add Nav click
+    const addNavBtn = document.getElementById("add-nav-btn");
+    if (addNavBtn) {
+      addNavBtn.addEventListener("click", () => {
+        navigation.push({ text: "", link: "" });
+        renderNavigation();
+      });
+    }
+
+    // Add Redirect click
+    const addRedirectBtn = document.getElementById("add-redirect-btn");
+    if (addRedirectBtn) {
+      addRedirectBtn.addEventListener("click", () => {
+        redirects.push({ from: "", to: "" });
+        renderRedirects();
+      });
+    }
+
+    // Save Settings click
+    const saveBtn = document.getElementById("save-settings-btn");
+    if (saveBtn) {
+      saveBtn.addEventListener("click", saveSettingsSubmit);
+    }
+  }
+
+  // --- NAVIGATION LINK FUNCTIONS ---
+  function syncNavField(index, field, value) {
+    navigation[index][field] = value;
+  }
+
+  function moveNavItem(index, direction) {
+    const targetIdx = index + direction;
+    if (targetIdx < 0 || targetIdx >= navigation.length) return;
+    const temp = navigation[index];
+    navigation[index] = navigation[targetIdx];
+    navigation[targetIdx] = temp;
+    renderNavigation();
+  }
+
+  function deleteNavItem(index) {
+    navigation.splice(index, 1);
+    renderNavigation();
+  }
+
+  function renderNavigation() {
+    const container = document.getElementById("navigation-container");
+    const emptyMsg = document.getElementById("nav-empty-msg");
+    if (!container) return;
+    
+    container.innerHTML = "";
+    
+    if (navigation.length === 0) {
+      if (emptyMsg) emptyMsg.style.display = "block";
+      return;
+    }
+    if (emptyMsg) emptyMsg.style.display = "none";
+
+    navigation.forEach((item, idx) => {
+      const row = document.createElement("div");
+      row.className = "repeater-item-row";
+      row.innerHTML = `
+        <div class="form-group" style="flex:1;">
+          <input type="text" value="${item.text || ''}" oninput="syncNavField(${idx}, 'text', this.value)" placeholder="Menu Label (e.g. Services)" />
+        </div>
+        <div class="form-group" style="flex:1.2;">
+          <input type="text" value="${item.link || ''}" oninput="syncNavField(${idx}, 'link', this.value)" placeholder="Destination Path (e.g. /services)" />
+        </div>
+        <button type="button" class="btn-icon-sm" onclick="moveNavItem(${idx}, -1)">${ICONS.arrowUp}</button>
+        <button type="button" class="btn-icon-sm" onclick="moveNavItem(${idx}, 1)">${ICONS.arrowDown}</button>
+        <button type="button" class="btn-icon-sm btn-delete-row" onclick="deleteNavItem(${idx})">${ICONS.delete}</button>
+      `;
+      container.appendChild(row);
+    });
+  }
+
+  // --- REDIRECTS FUNCTIONS ---
+  function syncRedirectField(index, field, value) {
+    redirects[index][field] = value;
+  }
+
+  function deleteRedirectItem(index) {
+    redirects.splice(index, 1);
+    renderRedirects();
+  }
+
+  function renderRedirects() {
+    const container = document.getElementById("redirects-container");
+    const emptyMsg = document.getElementById("redirects-empty-msg");
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    if (redirects.length === 0) {
+      if (emptyMsg) emptyMsg.style.display = "block";
+      return;
+    }
+    if (emptyMsg) emptyMsg.style.display = "none";
+
+    redirects.forEach((item, idx) => {
+      const row = document.createElement("div");
+      row.className = "repeater-item-row";
+      row.innerHTML = `
+        <div class="form-group" style="flex:1;">
+          <input type="text" value="${item.from || ''}" oninput="syncRedirectField(${idx}, 'from', this.value)" placeholder="Old Path (e.g. /about)" />
+        </div>
+        <span style="color:var(--text-dim); font-weight:700;">→</span>
+        <div class="form-group" style="flex:1.2;">
+          <input type="text" value="${item.to || ''}" oninput="syncRedirectField(${idx}, 'to', this.value)" placeholder="New Path (e.g. /about-us)" />
+        </div>
+        <button type="button" class="btn-icon-sm btn-delete-row" onclick="deleteRedirectItem(${idx})">${ICONS.delete}</button>
+      `;
+      container.appendChild(row);
+    });
+  }
+
+  // --- SAVE settings TO SERVER ---
+  async function saveSettingsSubmit() {
+    const headerScripts = document.getElementById("header-scripts").value;
+    const footerScripts = document.getElementById("footer-scripts").value;
+
+    const payload = {
+      headerScripts,
+      footerScripts,
+      navigation,
+      redirects
+    };
+
+    const saveBtn = document.getElementById("save-settings-btn");
+    const saveLabel = document.getElementById("save-btn-label");
+    saveBtn.disabled = true;
+    saveLabel.innerText = "Saving Configuration...";
+
+    try {
+      const res = await fetch("/api/settings-update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        showToast("Global configurations saved successfully!");
+      } else {
+        showToast("Error: " + (data.error || "Save failed"));
+      }
+    } catch (e) {
+      showToast("Network Error: Could not save global configurations");
+    } finally {
+      saveBtn.disabled = false;
+      saveLabel.innerText = "Save Global Configurations";
+    }
+  }
+
+  // Toast banner utility
+  const toast = document.getElementById("toast-notify");
+  const toastMsg = document.getElementById("toast-message");
+  
+  function showToast(message) {
+    if (toast && toastMsg) {
+      toastMsg.innerText = message;
+      toast.classList.add("active");
+      setTimeout(() => {
+        toast.classList.remove("active");
+      }, 3000);
+    }
+  }
+
+  // Hook layout on content loads
+  document.addEventListener("DOMContentLoaded", initSettings);
+  document.addEventListener("astro:page-load", initSettings);
+  if (document.readyState === "interactive" || document.readyState === "complete") {
+    initSettings();
+  }
+</script>

@@ -1,0 +1,143 @@
+---
+interface Props {
+  eyebrow?: string;
+  title: string;
+  logos: Array<{
+    image: string;
+    alt?: string;
+  }>;
+}
+
+const { eyebrow, title, logos = [] } = Astro.props;
+---
+<section class="block-logo-slider">
+  <div class="container">
+    <div class="section-head">
+      {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+      <h2>{title}</h2>
+    </div>
+
+    {logos.length > 0 && (
+      <div class="slider-wrapper">
+        <div class="slider-track">
+          {/* Output logos twice for smooth infinite loop */}
+          {[...logos, ...logos, ...logos].map((logo) => (
+            <div class="slide">
+              <img src={logo.image} alt={logo.alt || "Partner logo"} class="partner-logo" />
+            </div>
+          ))}
+        </div>
+        <div class="fade-overlay overlay-left"></div>
+        <div class="fade-overlay overlay-right"></div>
+      </div>
+    )}
+  </div>
+</section>
+
+<style>
+  .block-logo-slider {
+    padding: 5rem 0;
+    background-color: #03060E;
+    color: white;
+    overflow: hidden;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+
+  .section-head {
+    text-align: center;
+    margin-bottom: 3.5rem;
+  }
+
+  .eyebrow {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #6366F1;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  h2 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 2.25rem;
+    font-weight: 800;
+    color: white;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+
+  .slider-wrapper {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    padding: 1rem 0;
+  }
+
+  .slider-track {
+    display: flex;
+    gap: 3.5rem;
+    width: max-content;
+    align-items: center;
+    animation: marquee 25s linear infinite;
+  }
+
+  .slider-track:hover {
+    animation-play-state: paused;
+  }
+
+  .slide {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .partner-logo {
+    height: 40px;
+    width: auto;
+    object-fit: contain;
+    opacity: 0.5;
+    transition: opacity 0.3s ease, filter 0.3s ease;
+    filter: grayscale(100%) brightness(200%);
+  }
+
+  .partner-logo:hover {
+    opacity: 0.95;
+    filter: none;
+  }
+
+  .fade-overlay {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 150px;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .overlay-left {
+    left: 0;
+    background: linear-gradient(to right, #03060E 0%, rgba(3, 6, 14, 0) 100%);
+  }
+
+  .overlay-right {
+    right: 0;
+    background: linear-gradient(to left, #03060E 0%, rgba(3, 6, 14, 0) 100%);
+  }
+
+  @keyframes marquee {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(calc(-33.33% - 1.16rem)); /* adjustment for gaps */
+    }
+  }
+</style>

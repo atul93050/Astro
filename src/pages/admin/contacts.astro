@@ -1,0 +1,617 @@
+---
+import AdminLayout from "../../layouts/admin/AdminLayout.astro";
+import fs from "node:fs";
+import path from "node:path";
+import { parse } from "yaml";
+
+export const prerender = false;
+
+// 1. Fetch all submissions from collection
+const contactsDir = path.resolve("src/content/contacts");
+if (!fs.existsSync(contactsDir)) {
+  fs.mkdirSync(contactsDir, { recursive: true });
+}
+
+const files = fs.readdirSync(contactsDir).filter(f => f.endsWith(".md"));
+const submissions = files.map(file => {
+  const filePath = path.join(contactsDir, file);
+  const content = fs.readFileSync(filePath, "utf-8");
+  
+  // Parse frontmatter
+  const parts = content.split(/^---$/m);
+  let data: any = {};
+  let message = "";
+  
+  if (parts.length >= 3) {
+    try {
+      data = parse(parts[1]);
+      message = parts.slice(2).join("---").trim();
+    } catch (e) {
+      console.error(`Error parsing contact YAML in ${file}:`, e);
+    }
+  }
+
+  const name = data.name || "Anonymous";
+  const email = data.email || "";
+  const subject = data.subject || "No Subject";
+  const rawSubmittedAt = data.submittedAt || fs.statSync(filePath).mtime.toISOString();
+  const submittedAt = new Date(rawSubmittedAt).toLocaleString();
+  
+  return {
+    filename: file,
+    name,
+    email,
+    subject,
+    message,
+    submittedAt,
+    timestamp: new Date(rawSubmittedAt).getTime()
+  };
+}).sort((a, b) => b.timestamp - a.timestamp); // Sort by newest submissions first
+---
+
+<AdminLayout title="Contacts Inbox">
+  
+  <div class="inbox-header">
+    <div class="header-text">
+      <p class="subtitle">Review and manage inquiry submissions captured by public contact forms. Stored locally.</p>
+    </div>
+  </div>
+
+  <div class="inbox-grid-layout">
+    
+    <!-- Main Inbox Table list -->
+    <div class="inbox-list-container">
+      <div class="controls-bar">
+        <div class="search-input-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="inbox-search" placeholder="Search by name, email, subject..." />
+        </div>
+        <span class="submissions-counter" id="inbox-counter">{submissions.length} submissions</span>
+      </div>
+
+      <div class="admin-table-wrapper" style="box-shadow: none;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Sender</th>
+              <th>Subject</th>
+              <th>Date & Time</th>
+              <th style="text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="inbox-tbody">
+            {submissions.length === 0 ? (
+              <tr id="empty-inbox-row">
+                <td colspan="4" style="text-align: center; padding: 4rem; color: var(--text-dim);">
+                  <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 1rem; opacity: 0.5;">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                    <polyline points="22,6 12,13 2,6"></polyline>
+                  </svg>
+                  <p style="font-weight: 600; font-size: 1.1rem; margin-bottom: 0.25rem;">Your Inbox is empty</p>
+                  <p style="font-size: 0.85rem;">Inquiry submissions from public contact forms will appear here.</p>
+                </td>
+              </tr>
+            ) : (
+              submissions.map(msg => (
+                <tr class="inbox-row" data-name={msg.name.toLowerCase()} data-email={msg.email.toLowerCase()} data-subject={msg.subject.toLowerCase()} data-filename={msg.filename}>
+                  <td style="font-weight: 600;">
+                    <div class="sender-cell">
+                      <span class="sender-name">{msg.name}</span>
+                      <span class="sender-email">{msg.email}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="subject-wrap">
+                      <span class="subject-text">{msg.subject}</span>
+                      <span class="subject-snippet">{msg.message.length > 55 ? `${msg.message.substring(0, 55)}...` : msg.message}</span>
+                    </div>
+                  </td>
+                  <td style="color: var(--text-muted); font-size: 0.82rem; font-weight: 500;">{msg.submittedAt}</td>
+                  <td style="text-align: right;">
+                    <div class="actions-cell">
+                      <button type="button" class="btn-action view-msg-btn" data-filename={msg.filename} title="Read Message Details">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                      </button>
+                      <button type="button" class="btn-action delete-msg-btn" data-filename={msg.filename} title="Delete submission file">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Right Side Drawer: Message Content viewer panel -->
+    <div class="message-details-drawer" id="inbox-drawer">
+      <div class="drawer-header">
+        <h4>Submission Details</h4>
+        <button type="button" class="btn-icon-sm" id="close-inbox-drawer-btn" style="border:none;">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div class="drawer-body" id="inbox-drawer-content" style="display:none;">
+        <div class="inbox-meta-card">
+          <div class="meta-row">
+            <span class="label">From:</span>
+            <strong id="msg-sender-name">Atul Verma</strong>
+          </div>
+          <div class="meta-row">
+            <span class="label">Email:</span>
+            <a href="" id="msg-sender-email" style="color:var(--primary); text-decoration:underline;">atul@example.com</a>
+          </div>
+          <div class="meta-row">
+            <span class="label">Date:</span>
+            <span id="msg-submitted-at" style="color:var(--text-muted); font-size:0.85rem;">2026-06-01 15:30</span>
+          </div>
+          <div class="meta-row">
+            <span class="label">Subject:</span>
+            <span id="msg-subject" style="font-weight:600; color:var(--text-main);">Paid Ad Audit</span>
+          </div>
+        </div>
+
+        <div class="inbox-message-content">
+          <h5>Message Body</h5>
+          <blockquote id="msg-body">
+            <!-- Injected dynamic message -->
+          </blockquote>
+        </div>
+
+        <div class="drawer-footer-actions">
+          <a href="" id="reply-email-btn" class="btn btn-primary btn-sm" style="text-align:center;">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:0.25rem;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+            Reply via Email
+          </a>
+          <button type="button" class="btn btn-danger btn-sm btn-outline" id="delete-drawer-msg-btn" style="background-color:rgba(239, 68, 68, 0.08); border-color:var(--color-error); color:var(--color-error);">
+            Delete Message Permanently
+          </button>
+        </div>
+      </div>
+
+      <div class="drawer-fallback" id="inbox-drawer-fallback">
+        <p>Select any contact record from the inbox grid list to read its detailed brief submission and compose replies.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Notification Banner -->
+  <div class="toast-notification" id="toast-notify">
+    <div class="toast-content">
+      <span class="toast-message" id="toast-message">Message deleted permanently!</span>
+    </div>
+  </div>
+
+</AdminLayout>
+
+<style>
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-top: 0.25rem;
+    margin-bottom: 2rem;
+  }
+
+  .inbox-grid-layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 1.5rem;
+    align-items: start;
+  }
+  @media (max-width: 1024px) {
+    .inbox-grid-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .inbox-list-container {
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: 0 4px 15px var(--color-shadow);
+    backdrop-filter: blur(10px);
+  }
+
+  /* Table Specific cells */
+  .sender-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .sender-name {
+    font-size: 0.92rem;
+    color: var(--text-main);
+  }
+  .sender-email {
+    font-size: 0.76rem;
+    color: var(--text-dim);
+    font-weight: 500;
+  }
+  .subject-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .subject-text {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--text-main);
+  }
+  .subject-snippet {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  .actions-cell {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+  .btn-action {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .view-msg-btn:hover {
+    background-color: var(--primary-light);
+    color: var(--primary);
+    border-color: var(--primary);
+  }
+  .delete-msg-btn:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--color-error);
+    border-color: var(--color-error);
+  }
+
+  /* Controls */
+  .controls-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .search-input-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 250px;
+    max-width: 400px;
+  }
+  .search-icon {
+    position: absolute;
+    left: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-dim);
+    pointer-events: none;
+  }
+  .search-input-wrap input {
+    width: 100%;
+    padding: 0.55rem 0.85rem 0.55rem 2.25rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-main);
+    font-size: 0.88rem;
+    transition: var(--transition);
+  }
+  .search-input-wrap input:focus {
+    outline: none;
+    border-color: var(--primary);
+  }
+  .submissions-counter {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    padding: 0.25rem 0.65rem;
+    background: rgba(156, 163, 175, 0.08);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+  }
+
+  /* Details Drawer Right Sidebar */
+  .message-details-drawer {
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 15px var(--color-shadow);
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+    position: sticky;
+    top: 1.5rem;
+  }
+  .drawer-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--bg-surface-border);
+    background: rgba(156, 163, 175, 0.02);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .drawer-header h4 {
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+  .drawer-body {
+    padding: 1.25rem;
+  }
+  .drawer-fallback {
+    padding: 4rem 1.5rem;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+
+  .inbox-meta-card {
+    background: var(--bg-surface-solid);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+  }
+  .meta-row {
+    display: flex;
+    font-size: 0.85rem;
+  }
+  .meta-row .label {
+    width: 65px;
+    color: var(--text-dim);
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .meta-row strong, .meta-row span, .meta-row a {
+    word-break: break-all;
+  }
+
+  .inbox-message-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .inbox-message-content h5 {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+  .inbox-message-content blockquote {
+    background: var(--bg-surface-solid);
+    border-left: 3px solid var(--primary);
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    padding: 0.85rem;
+    border-radius: 4px;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: var(--text-muted);
+    white-space: pre-wrap;
+    font-family: inherit;
+    min-height: 120px;
+  }
+
+  .drawer-footer-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+    padding-top: 1rem;
+  }
+
+  /* Toast Notification */
+  .toast-notification {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--bg-surface-solid);
+    border-left: 4px solid var(--primary);
+    border-top: 1px solid var(--bg-surface-border);
+    border-bottom: 1px solid var(--bg-surface-border);
+    border-right: 1px solid var(--bg-surface-border);
+    padding: 1rem 1.5rem;
+    border-radius: var(--radius-sm);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+    z-index: 1100;
+    transform: translateY(150%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    backdrop-filter: blur(8px);
+  }
+  .toast-notification.active {
+    transform: translateY(0);
+  }
+  .toast-content {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-main);
+  }
+</style>
+
+<script is:inline define:vars={{ submissions }}>
+  let activeMsg = null;
+
+  function initInbox() {
+    setupSearch();
+    setupDrawerHandlers();
+  }
+
+  function setupSearch() {
+    const searchInput = document.getElementById("inbox-search");
+    const rows = document.querySelectorAll(".inbox-row");
+    const emptyRow = document.getElementById("empty-inbox-row");
+    const counter = document.getElementById("inbox-counter");
+
+    if (searchInput) {
+      searchInput.addEventListener("input", () => {
+        const q = searchInput.value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+          const name = row.getAttribute("data-name") || "";
+          const email = row.getAttribute("data-email") || "";
+          const subject = row.getAttribute("data-subject") || "";
+          
+          if (name.includes(q) || email.includes(q) || subject.includes(q)) {
+            row.style.display = "";
+            visibleCount++;
+          } else {
+            row.style.display = "none";
+          }
+        });
+
+        if (counter) counter.innerText = `${visibleCount} submissions`;
+        if (emptyRow) emptyRow.style.display = (visibleCount === 0 && rows.length > 0) ? "" : "none";
+      });
+    }
+  }
+
+  // Bind Details Drawer panel clicks
+  function setupDrawerHandlers() {
+    const closeBtn = document.getElementById("close-inbox-drawer-btn");
+    if (closeBtn) closeBtn.addEventListener("click", closeInboxDrawer);
+
+    // Dynamic row clicks
+    document.querySelectorAll(".inbox-row").forEach(row => {
+      row.addEventListener("click", (e) => {
+        // Prevent trigger if clicking delete button inside cell
+        if (e.target.closest(".delete-msg-btn")) return;
+        
+        const filename = row.getAttribute("data-filename");
+        const msg = submissions.find(s => s.filename === filename);
+        if (msg) selectMessage(row, msg);
+      });
+    });
+
+    // Delete row buttons clicks
+    document.querySelectorAll(".delete-msg-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const filename = btn.getAttribute("data-filename");
+        triggerDeleteMessage(filename);
+      });
+    });
+
+    // Delete inside drawer button click
+    const drawerDeleteBtn = document.getElementById("delete-drawer-msg-btn");
+    if (drawerDeleteBtn) {
+      drawerDeleteBtn.addEventListener("click", () => {
+        if (activeMsg) triggerDeleteMessage(activeMsg.filename);
+      });
+    }
+  }
+
+  function selectMessage(rowEl, msg) {
+    activeMsg = msg;
+    
+    // Highlight Row
+    document.querySelectorAll(".inbox-row").forEach(el => el.classList.remove("active-selected"));
+    rowEl.classList.add("active-selected");
+
+    const fallback = document.getElementById("inbox-drawer-fallback");
+    const content = document.getElementById("inbox-drawer-content");
+
+    if (fallback) fallback.style.display = "none";
+    if (content) content.style.display = "block";
+
+    // Fill Meta
+    document.getElementById("msg-sender-name").innerText = msg.name;
+    
+    const emailLink = document.getElementById("msg-sender-email");
+    emailLink.href = `mailto:${msg.email}`;
+    emailLink.innerText = msg.email;
+    
+    document.getElementById("msg-submitted-at").innerText = msg.submittedAt;
+    document.getElementById("msg-subject").innerText = msg.subject;
+    document.getElementById("msg-body").innerText = msg.message;
+
+    // Compose Reply link mailto
+    const replyLink = document.getElementById("reply-email-btn");
+    replyLink.href = `mailto:${msg.email}?subject=RE: ${encodeURIComponent(msg.subject)}`;
+  }
+
+  function closeInboxDrawer() {
+    activeMsg = null;
+    document.querySelectorAll(".inbox-row").forEach(el => el.classList.remove("active-selected"));
+    
+    const fallback = document.getElementById("inbox-drawer-fallback");
+    const content = document.getElementById("inbox-drawer-content");
+
+    if (fallback) fallback.style.display = "block";
+    if (content) content.style.display = "none";
+  }
+
+  // Delete message execution API trigger
+  async function triggerDeleteMessage(filename) {
+    if (!confirm("Are you sure you want to permanently delete this contact submission file? This cannot be undone.")) return;
+
+    showToast("Deleting submission record...");
+
+    try {
+      // We can use the Pages CRUD endpoint directly, or write a dedicated endpoint.
+      // Wait, let's write a dedicated API endpoint or check if we can delete this file using a custom endpoint.
+      // Let's call /api/pages-crud but wait! This is in a different collection (contacts).
+      // Let's make sure we have a DELETE handler that deletes this file!
+      // Wait! We can write a simple endpoint or extend pages-crud? No, let's make a dedicated API route '/api/contacts-crud' or handle it inside a clean route.
+      // Wait, let's write an API route for contacts crud or implement it. Let's see: we should make sure we have a DELETE API route for contacts.
+      // Yes! Let's write the delete contact message API under `/api/contact-delete` or similar. Let's do that!
+      const res = await fetch("/api/contact-delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        showToast("Submission deleted permanently!");
+        closeInboxDrawer();
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        showToast("Error: " + data.error);
+      }
+    } catch (e) {
+      showToast("Network Error: Could not delete message record.");
+    }
+  }
+
+  // Toast banner utility
+  const toast = document.getElementById("toast-notify");
+  const toastMsg = document.getElementById("toast-message");
+  
+  function showToast(message) {
+    if (toast && toastMsg) {
+      toastMsg.innerText = message;
+      toast.classList.add("active");
+      setTimeout(() => {
+        toast.classList.remove("active");
+      }, 3000);
+    }
+  }
+
+  // Bind init functions
+  document.addEventListener("DOMContentLoaded", initInbox);
+  document.addEventListener("astro:page-load", initInbox);
+  if (document.readyState === "interactive" || document.readyState === "complete") {
+    initInbox();
+  }
+</script>

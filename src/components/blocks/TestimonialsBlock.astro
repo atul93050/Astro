@@ -1,0 +1,146 @@
+---
+interface Props {
+  eyebrow?: string;
+  title: string;
+  items: Array<{
+    quote: string;
+    author: string;
+    role: string;
+    avatar?: string;
+  }>;
+}
+
+const { eyebrow, title, items = [] } = Astro.props;
+---
+<section class="block-testimonials">
+  <div class="container">
+    <div class="section-head">
+      {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+      <h2>{title}</h2>
+    </div>
+
+    <div class="testimonials-grid">
+      {items.map((item) => (
+        <div class="testimonial-card">
+          <div class="quote-icon">“</div>
+          <p class="quote-text">{item.quote}</p>
+          <div class="author-details">
+            {item.avatar && <img class="avatar" src={item.avatar} alt={item.author} />}
+            <div>
+              <h4>{item.author}</h4>
+              <span>{item.role}</span>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .block-testimonials {
+    padding: 6rem 0;
+    background-color: #03060E;
+    color: white;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+
+  .section-head {
+    text-align: center;
+    max-width: 700px;
+    margin: 0 auto 4rem auto;
+  }
+
+  .eyebrow {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #F33B7B;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  h2 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: white;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+
+  .testimonials-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 2.5rem;
+  }
+
+  .testimonial-card {
+    position: relative;
+    background: rgba(17, 24, 39, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    padding: 3rem 2.5rem;
+    backdrop-filter: blur(12px);
+    transition: all 0.3s ease;
+  }
+
+  .testimonial-card:hover {
+    border-color: rgba(99, 102, 241, 0.2);
+    transform: translateY(-4px);
+  }
+
+  .quote-icon {
+    font-family: Georgia, serif;
+    font-size: 5rem;
+    color: rgba(99, 102, 241, 0.15);
+    line-height: 1;
+    position: absolute;
+    top: 0.5rem;
+    left: 2rem;
+  }
+
+  .quote-text {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: #D1D5DB;
+    margin-bottom: 2rem;
+    position: relative;
+    z-index: 2;
+  }
+
+  .author-details {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .author-details h4 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: white;
+  }
+
+  .author-details span {
+    font-size: 0.8rem;
+    color: #9CA3AF;
+    display: block;
+    margin-top: 0.15rem;
+  }
+</style>

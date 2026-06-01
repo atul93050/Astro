@@ -1,0 +1,100 @@
+---
+interface Props {
+  eyebrow?: string;
+  title: string;
+  leftColumn: string;
+  rightColumn: string;
+}
+
+const { eyebrow, title, leftColumn, rightColumn } = Astro.props;
+
+// Format simple newlines to paragraphs in columns
+function parseColumnText(txt: string) {
+  if (!txt) return "";
+  return txt.split(/\n\n+/).map(p => `<p style="margin-bottom: 1.25rem; line-height: 1.7; color: #9CA3AF;">${p.replace(/\n/g, "<br/>")}</p>`).join("");
+}
+
+const leftParsed = parseColumnText(leftColumn);
+const rightParsed = parseColumnText(rightColumn);
+---
+<section class="block-two-column">
+  <div class="container">
+    <div class="section-head">
+      {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+      <h2>{title}</h2>
+    </div>
+    <div class="columns-grid">
+      <div class="column column-left" set:html={leftParsed}></div>
+      <div class="column column-right" set:html={rightParsed}></div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .block-two-column {
+    padding: 6rem 0;
+    background-color: #03060E;
+    color: white;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+
+  .section-head {
+    text-align: center;
+    margin-bottom: 4rem;
+  }
+
+  .eyebrow {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #F33B7B;
+    display: block;
+    margin-bottom: 0.75rem;
+  }
+
+  h2 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 2.6rem;
+    font-weight: 800;
+    color: white;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+
+  .columns-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3.5rem;
+  }
+
+  @media (max-width: 768px) {
+    .columns-grid {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+  }
+
+  .column {
+    font-size: 1.05rem;
+  }
+
+  .column-left {
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    padding-right: 2rem;
+  }
+
+  @media (max-width: 768px) {
+    .column-left {
+      border-right: none;
+      padding-right: 0;
+    }
+  }
+</style>

@@ -1,0 +1,25 @@
+---
+interface Props {
+  content: string;
+}
+
+const { content } = Astro.props;
+---
+<section class="block-custom-html">
+  <div class="container">
+    <Fragment set:html={content} />
+  </div>
+</section>
+
+<style>
+  .block-custom-html {
+    padding: 2rem 0;
+    background-color: transparent;
+    position: relative;
+  }
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+</style>

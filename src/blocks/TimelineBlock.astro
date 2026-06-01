@@ -1,0 +1,204 @@
+---
+interface Props {
+  eyebrow?: string;
+  title: string;
+  items: Array<{
+    date: string;
+    title: string;
+    description: string;
+  }>;
+}
+
+const { eyebrow, title, items = [] } = Astro.props;
+---
+<section class="block-timeline">
+  <div class="container">
+    <div class="section-head">
+      {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+      <h2>{title}</h2>
+    </div>
+
+    {items.length > 0 && (
+      <div class="timeline-container">
+        <div class="timeline-line"></div>
+        
+        <div class="timeline-list">
+          {items.map((item, idx) => (
+            <div class={`timeline-item ${idx % 2 === 0 ? "left" : "right"}`}>
+              <div class="timeline-dot"></div>
+              <div class="timeline-card">
+                <span class="timeline-date">{item.date}</span>
+                <h3>{item.title}</h3>
+                <p>{item.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+</section>
+
+<style>
+  .block-timeline {
+    padding: 6.5rem 0;
+    background-color: #03060E;
+    color: white;
+    overflow: hidden;
+  }
+
+  .container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    position: relative;
+  }
+
+  .section-head {
+    text-align: center;
+    max-width: 700px;
+    margin: 0 auto 5rem auto;
+  }
+
+  .eyebrow {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #F33B7B;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  h2 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 2.6rem;
+    font-weight: 800;
+    color: white;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+
+  .timeline-container {
+    position: relative;
+    width: 100%;
+  }
+
+  .timeline-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    background: linear-gradient(to bottom, rgba(99, 102, 241, 0.1) 0%, #6366F1 50%, rgba(99, 102, 241, 0.1) 100%);
+  }
+
+  .timeline-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+  }
+
+  .timeline-item {
+    position: relative;
+    width: 50%;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .timeline-item.right {
+    align-self: flex-end;
+    justify-content: flex-start;
+  }
+
+  .timeline-dot {
+    position: absolute;
+    top: 24px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #03060E;
+    border: 3px solid #6366F1;
+    z-index: 3;
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.6);
+  }
+
+  .timeline-item.left .timeline-dot {
+    right: -8px;
+  }
+
+  .timeline-item.right .timeline-dot {
+    left: -8px;
+  }
+
+  .timeline-card {
+    background: rgba(17, 24, 39, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    padding: 2.25rem;
+    backdrop-filter: blur(12px);
+    width: 85%;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+  }
+
+  .timeline-item.left .timeline-card {
+    margin-right: 2.5rem;
+  }
+
+  .timeline-item.right .timeline-card {
+    margin-left: 2.5rem;
+  }
+
+  .timeline-card:hover {
+    border-color: rgba(99, 102, 241, 0.3);
+    transform: translateY(-2px);
+  }
+
+  .timeline-date {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #10B981;
+    letter-spacing: 0.1em;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  .timeline-card h3 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: white;
+  }
+
+  .timeline-card p {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #9CA3AF;
+  }
+
+  @media (max-width: 768px) {
+    .timeline-line {
+      left: 20px;
+      transform: none;
+    }
+    .timeline-item {
+      width: 100% !important;
+      align-self: flex-start !important;
+      justify-content: flex-start !important;
+    }
+    .timeline-dot {
+      left: 12px !important;
+      right: auto !important;
+    }
+    .timeline-card {
+      width: calc(100% - 3.5rem) !important;
+      margin-left: 3.5rem !important;
+      margin-right: 0 !important;
+    }
+  }
+</style>

@@ -1,0 +1,718 @@
+---
+import AdminLayout from "../../layouts/admin/AdminLayout.astro";
+
+export const prerender = false;
+---
+
+<AdminLayout title="Media Library">
+  
+  <div class="media-header">
+    <div class="header-text">
+      <p class="subtitle">Upload, view, and catalog static assets like images or banners directly to local storage.</p>
+    </div>
+    
+    <!-- Upload Area Action -->
+    <div class="upload-dropzone" id="media-dropzone">
+      <form id="direct-upload-form" onsubmit="return false;">
+        <input type="file" id="direct-upload-file" accept="image/*" style="display:none;" multiple />
+        <div class="dropzone-text">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:0.5rem; opacity:0.7;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          <p>Drag & Drop or <span class="highlight-trigger" id="click-upload-trigger">Browse files</span></p>
+          <span>Maximum size limit: 5MB</span>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="media-library-grid-layout">
+    
+    <!-- Main Media Grid display -->
+    <div class="media-grid-container">
+      <div class="media-filters-row">
+        <h3>Media Library Assets</h3>
+        <span class="assets-count-badge" id="assets-count">0 items</span>
+      </div>
+      
+      <div class="media-grid" id="main-media-grid">
+        <!-- JS will populate media catalog cards -->
+        <div class="media-grid-empty" id="grid-empty-msg">
+          <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:1rem; opacity:0.4;">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+          </svg>
+          <h4>Your Media Library is empty</h4>
+          <p>Click Browse above to upload static images and resources.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Asset Detail Panel Drawer (Sidebars) -->
+    <div class="asset-details-drawer" id="asset-drawer">
+      <div class="drawer-header">
+        <h4>Attachment Details</h4>
+        <button type="button" class="btn-icon-sm" id="close-drawer-btn" style="border:none;">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      
+      <div class="drawer-body" id="drawer-content" style="display:none;">
+        <div class="drawer-preview-wrap">
+          <img src="" id="drawer-preview-img" alt="Preview" />
+        </div>
+        
+        <div class="drawer-meta-info">
+          <div class="meta-label-value">
+            <span class="label">Filename:</span>
+            <span class="value" id="meta-filename">image.png</span>
+          </div>
+          <div class="meta-label-value">
+            <span class="label">File size:</span>
+            <span class="value" id="meta-filesize">24 KB</span>
+          </div>
+          <div class="meta-label-value">
+            <span class="label">Uploaded at:</span>
+            <span class="value" id="meta-uploadedat">2026-06-01</span>
+          </div>
+        </div>
+
+        <form id="asset-meta-form" onsubmit="return false;" style="margin-top:1.25rem; display:flex; flex-direction:column; gap:1rem;">
+          <div class="form-group">
+            <label for="asset-title">Attachment Title</label>
+            <input type="text" id="asset-title" required />
+          </div>
+          
+          <div class="form-group">
+            <label for="asset-alt">Alt Description Text</label>
+            <input type="text" id="asset-alt" placeholder="Description for screenreaders" />
+          </div>
+
+          <div class="form-group">
+            <label for="asset-caption">Caption</label>
+            <textarea id="asset-caption" rows="2"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Physical Asset URL</label>
+            <div class="input-picker-wrap">
+              <input type="text" id="asset-url-readonly" readonly style="font-family:monospace; font-size:0.78rem; opacity:0.85;" />
+              <button type="button" class="btn btn-outline btn-sm" id="copy-url-btn">Copy</button>
+            </div>
+          </div>
+
+          <div class="drawer-footer-actions">
+            <button type="button" class="btn btn-primary btn-sm" id="save-asset-meta-btn">Save Metadata</button>
+            <button type="button" class="btn btn-danger btn-sm btn-outline" id="delete-asset-btn" style="background-color:rgba(239, 68, 68, 0.08); border-color:var(--color-error); color:var(--color-error);">
+              Delete Permanently
+            </button>
+          </div>
+        </form>
+      </div>
+      
+      <div class="drawer-fallback" id="drawer-fallback-msg">
+        <p>Select any image from the media grid to configure its metadata and properties or grab its direct URL.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Notification Banner -->
+  <div class="toast-notification" id="toast-notify">
+    <div class="toast-content">
+      <span class="toast-message" id="toast-message">Asset updated!</span>
+    </div>
+  </div>
+
+</AdminLayout>
+
+<style>
+  .media-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-top: 0.25rem;
+  }
+
+  /* Upload Dropzone Drag/Drop Box */
+  .upload-dropzone {
+    flex: 1;
+    min-width: 320px;
+    max-width: 480px;
+    background: var(--bg-surface);
+    border: 2px dashed var(--input-border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    text-align: center;
+    transition: var(--transition);
+    cursor: pointer;
+    box-shadow: 0 4px 12px var(--color-shadow);
+  }
+  .upload-dropzone:hover, .upload-dropzone.drag-active {
+    border-color: var(--primary);
+    background: var(--primary-light);
+  }
+  .dropzone-text p {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-main);
+  }
+  .highlight-trigger {
+    color: var(--primary);
+    text-decoration: underline;
+  }
+  .dropzone-text span {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin-top: 0.25rem;
+  }
+
+  /* Grid layouts */
+  .media-library-grid-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 1.5rem;
+    align-items: start;
+  }
+  @media (max-width: 960px) {
+    .media-library-grid-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .media-grid-container {
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: 0 4px 15px var(--color-shadow);
+    backdrop-filter: blur(10px);
+  }
+  .media-filters-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.75rem;
+  }
+  .media-filters-row h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+  .assets-count-badge {
+    padding: 0.25rem 0.65rem;
+    background: rgba(156, 163, 175, 0.08);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+
+  .media-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 1rem;
+    min-height: 250px;
+  }
+  .media-grid-empty {
+    grid-column: span 12;
+    text-align: center;
+    padding: 5rem 2rem;
+    color: var(--text-dim);
+  }
+  .media-grid-empty h4 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+  }
+  .media-grid-empty p {
+    font-size: 0.82rem;
+  }
+
+  /* Grid item card */
+  .media-card {
+    aspect-ratio: 1;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 2px solid transparent;
+    cursor: pointer;
+    position: relative;
+    background: var(--bg-surface-solid);
+    box-shadow: 0 2px 8px var(--color-shadow);
+    transition: var(--transition);
+  }
+  .media-card:hover {
+    transform: scale(1.04);
+    border-color: var(--primary);
+  }
+  .media-card.active-selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+  }
+  .media-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* Detail Drawer Sidebars Panel */
+  .asset-details-drawer {
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 15px var(--color-shadow);
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+    position: sticky;
+    top: 1.5rem;
+  }
+  .drawer-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--bg-surface-border);
+    background: rgba(156, 163, 175, 0.02);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .drawer-header h4 {
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+  .drawer-body {
+    padding: 1.25rem;
+  }
+  .drawer-fallback {
+    padding: 3rem 1.5rem;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+
+  /* Preview asset */
+  .drawer-preview-wrap {
+    width: 100%;
+    aspect-ratio: 16/10;
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--bg-base);
+    border: 1px solid var(--border-color);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .drawer-preview-wrap img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+
+  .drawer-meta-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  .meta-label-value {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+  }
+  .meta-label-value .label {
+    color: var(--text-dim);
+    font-weight: 600;
+  }
+  .meta-label-value .value {
+    color: var(--text-muted);
+    font-weight: 500;
+    word-break: break-all;
+    max-width: 70%;
+  }
+
+  .input-picker-wrap {
+    display: flex;
+    gap: 0.4rem;
+  }
+  .input-picker-wrap input {
+    flex: 1;
+  }
+
+  .drawer-footer-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+    padding-top: 1rem;
+  }
+
+  /* Toast Notification */
+  .toast-notification {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--bg-surface-solid);
+    border-left: 4px solid var(--primary);
+    border-top: 1px solid var(--bg-surface-border);
+    border-bottom: 1px solid var(--bg-surface-border);
+    border-right: 1px solid var(--bg-surface-border);
+    padding: 1rem 1.5rem;
+    border-radius: var(--radius-sm);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+    z-index: 1100;
+    transform: translateY(150%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    backdrop-filter: blur(8px);
+  }
+  .toast-notification.active {
+    transform: translateY(0);
+  }
+  .toast-content {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-main);
+  }
+</style>
+
+<script is:inline>
+  let catalogMedia = [];
+  let selectedAsset = null;
+
+  function initMediaLibrary() {
+    loadMediaCatalog();
+    setupDropzone();
+    setupDrawerHandlers();
+  }
+
+  // Load Media from Endpoint API
+  async function loadMediaCatalog() {
+    const grid = document.getElementById("main-media-grid");
+    const counter = document.getElementById("assets-count");
+    const emptyMsg = document.getElementById("grid-empty-msg");
+
+    if (!grid) return;
+
+    try {
+      const res = await fetch("/api/media-crud");
+      const data = await res.json();
+
+      if (data.success) {
+        catalogMedia = data.media || [];
+        
+        if (counter) counter.innerText = `${catalogMedia.length} items`;
+
+        // Clear only image cards (keep empty msg template just in case)
+        document.querySelectorAll(".media-card").forEach(el => el.remove());
+
+        if (catalogMedia.length === 0) {
+          if (emptyMsg) emptyMsg.style.display = "block";
+          return;
+        }
+
+        if (emptyMsg) emptyMsg.style.display = "none";
+
+        catalogMedia.forEach(item => {
+          const card = document.createElement("div");
+          card.className = "media-card";
+          card.setAttribute("data-url", item.url);
+          card.innerHTML = `<img src="${item.url}" alt="${item.alt || ''}" />`;
+          
+          card.addEventListener("click", () => {
+            selectAssetItem(item);
+          });
+
+          grid.appendChild(card);
+        });
+
+        // Restore selection if matching
+        if (selectedAsset) {
+          const matched = catalogMedia.find(m => m.url === selectedAsset.url);
+          if (matched) {
+            selectAssetItem(matched);
+          } else {
+            closeDrawer();
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load catalog:", e);
+    }
+  }
+
+  // Active Asset Selection in sidebar
+  function selectAssetItem(item) {
+    selectedAsset = item;
+    
+    // Highlight Card
+    document.querySelectorAll(".media-card").forEach(el => {
+      el.classList.remove("active-selected");
+      if (el.getAttribute("data-url") === item.url) {
+        el.classList.add("active-selected");
+      }
+    });
+
+    // Populate Sidebar Details Panel
+    const fallback = document.getElementById("drawer-fallback-msg");
+    const content = document.getElementById("drawer-content");
+    const preview = document.getElementById("drawer-preview-img");
+
+    if (fallback) fallback.style.display = "none";
+    if (content) content.style.display = "block";
+    if (preview) preview.src = item.url;
+
+    // Fill metadata labels
+    const filename = item.url.split("/").pop();
+    document.getElementById("meta-filename").innerText = filename;
+    document.getElementById("meta-filesize").innerText = formatBytes(item.size);
+    document.getElementById("meta-uploadedat").innerText = new Date(item.uploadedAt).toLocaleString();
+
+    // Fill Form inputs
+    document.getElementById("asset-title").value = item.title || "";
+    document.getElementById("asset-alt").value = item.alt || "";
+    document.getElementById("asset-caption").value = item.caption || "";
+    document.getElementById("asset-url-readonly").value = window.location.origin + item.url;
+  }
+
+  function closeDrawer() {
+    selectedAsset = null;
+    document.querySelectorAll(".media-card").forEach(el => el.classList.remove("active-selected"));
+    
+    const fallback = document.getElementById("drawer-fallback-msg");
+    const content = document.getElementById("drawer-content");
+
+    if (fallback) fallback.style.display = "block";
+    if (content) content.style.display = "none";
+  }
+
+  // Setup click & save event handlers on Drawer Form
+  function setupDrawerHandlers() {
+    const closeBtn = document.getElementById("close-drawer-btn");
+    if (closeBtn) closeBtn.addEventListener("click", closeDrawer);
+
+    // Metadata Save Click
+    const saveMetaBtn = document.getElementById("save-asset-meta-btn");
+    if (saveMetaBtn) {
+      saveMetaBtn.addEventListener("click", async () => {
+        if (!selectedAsset) return;
+
+        const title = document.getElementById("asset-title").value.trim();
+        const alt = document.getElementById("asset-alt").value.trim();
+        const caption = document.getElementById("asset-caption").value.trim();
+
+        if (!title) {
+          showToast("Title is required!");
+          return;
+        }
+
+        saveMetaBtn.disabled = true;
+        saveMetaBtn.innerText = "Saving...";
+
+        try {
+          const res = await fetch("/api/media-crud", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              url: selectedAsset.url,
+              title,
+              alt,
+              caption
+            })
+          });
+          const result = await res.json();
+
+          if (result.success) {
+            showToast("Metadata saved successfully!");
+            // Refresh catalog in background
+            loadMediaCatalog();
+          } else {
+            showToast("Error updating metadata");
+          }
+        } catch (e) {
+          showToast("Network Error updating metadata");
+        } finally {
+          saveMetaBtn.disabled = false;
+          saveMetaBtn.innerText = "Save Metadata";
+        }
+      });
+    }
+
+    // Asset Delete Click
+    const deleteBtn = document.getElementById("delete-asset-btn");
+    if (deleteBtn) {
+      deleteBtn.addEventListener("click", async () => {
+        if (!selectedAsset) return;
+        if (confirm("Are you sure you want to permanently delete this media asset? This will delete the physical file on disk and cannot be undone.")) {
+          deleteBtn.disabled = true;
+          deleteBtn.innerText = "Deleting...";
+
+          try {
+            const res = await fetch("/api/media-crud", {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ url: selectedAsset.url })
+            });
+            const result = await res.json();
+
+            if (result.success) {
+              showToast("Asset deleted permanently!");
+              closeDrawer();
+              loadMediaCatalog();
+            } else {
+              showToast("Error: Could not delete asset");
+              deleteBtn.disabled = false;
+              deleteBtn.innerText = "Delete Permanently";
+            }
+          } catch (e) {
+            showToast("Network Error deleting asset");
+            deleteBtn.disabled = false;
+            deleteBtn.innerText = "Delete Permanently";
+          }
+        }
+      });
+    }
+
+    // URL Copy
+    const copyBtn = document.getElementById("copy-url-btn");
+    const urlInput = document.getElementById("asset-url-readonly");
+    if (copyBtn && urlInput) {
+      copyBtn.addEventListener("click", () => {
+        urlInput.select();
+        navigator.clipboard.writeText(urlInput.value);
+        copyBtn.innerText = "Copied!";
+        setTimeout(() => {
+          copyBtn.innerText = "Copy";
+        }, 1500);
+      });
+    }
+  }
+
+  // Setup drag & drop upload triggers
+  function setupDropzone() {
+    const dropzone = document.getElementById("media-dropzone");
+    const clickTrigger = document.getElementById("click-upload-trigger");
+    const fileInput = document.getElementById("direct-upload-file");
+
+    if (!dropzone || !fileInput) return;
+
+    if (clickTrigger) {
+      clickTrigger.addEventListener("click", (e) => {
+        e.stopPropagation();
+        fileInput.click();
+      });
+    }
+
+    dropzone.addEventListener("click", () => {
+      fileInput.click();
+    });
+
+    // drag state changes
+    ["dragenter", "dragover"].forEach(eventName => {
+      dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.add("drag-active");
+      }, false);
+    });
+
+    ["dragleave", "drop"].forEach(eventName => {
+      dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.remove("drag-active");
+      }, false);
+    });
+
+    // Handle dropped files
+    dropzone.addEventListener("drop", (e) => {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      handleUploadedFiles(files);
+    });
+
+    // Handle browse click files
+    fileInput.addEventListener("change", () => {
+      handleUploadedFiles(fileInput.files);
+    });
+  }
+
+  // Process uploads to server sequentially
+  async function handleUploadedFiles(files) {
+    if (files.length === 0) return;
+    
+    showToast(`Uploading ${files.length} asset(s)...`);
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("alt", file.name.split(".")[0]);
+
+      try {
+        const res = await fetch("/api/media-crud", {
+          method: "POST",
+          body: formData
+        });
+        const result = await res.json();
+        
+        if (result.success) {
+          showToast(`File "${file.name}" uploaded!`);
+        } else {
+          showToast(`Failed uploading "${file.name}": ` + (result.error || ""));
+        }
+      } catch (e) {
+        showToast(`Network Error uploading "${file.name}"`);
+      }
+    }
+
+    // Refresh Catalog display
+    loadMediaCatalog();
+  }
+
+  // File size format utility
+  function formatBytes(bytes, decimals = 2) {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+  }
+
+  // Toast banner utility
+  const toast = document.getElementById("toast-notify");
+  const toastMsg = document.getElementById("toast-message");
+  
+  function showToast(message) {
+    if (toast && toastMsg) {
+      toastMsg.innerText = message;
+      toast.classList.add("active");
+      setTimeout(() => {
+        toast.classList.remove("active");
+      }, 3000);
+    }
+  }
+
+  // Bind init functions
+  document.addEventListener("DOMContentLoaded", initMediaLibrary);
+  document.addEventListener("astro:page-load", initMediaLibrary);
+  if (document.readyState === "interactive" || document.readyState === "complete") {
+    initMediaLibrary();
+  }
+</script>

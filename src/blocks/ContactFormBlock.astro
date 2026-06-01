@@ -1,0 +1,379 @@
+---
+interface Props {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+  placeholderName?: string;
+  placeholderEmail?: string;
+  submitButtonText?: string;
+}
+
+const {
+  eyebrow,
+  title,
+  description,
+  placeholderName = "e.g. John Doe",
+  placeholderEmail = "e.g. john@company.com",
+  submitButtonText = "Schedule My screener"
+} = Astro.props;
+---
+<section class="block-contact-form">
+  <div class="container">
+    <div class="contact-card">
+      <div class="glow-effect"></div>
+      
+      <div class="contact-grid">
+        <div class="contact-info">
+          {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+          <h2>{title}</h2>
+          {description && <p class="desc">{description}</p>}
+          
+          <div class="contact-bullets">
+            <div class="bullet-item">
+              <span class="bullet-icon">⚡</span>
+              <div>
+                <h4>Fast Response</h4>
+                <p>We respond within 24 business hours.</p>
+              </div>
+            </div>
+            <div class="bullet-item">
+              <span class="bullet-icon">🛡️</span>
+              <div>
+                <h4>Zero Obligation</h4>
+                <p>No contract lock-ins, strict privacy guaranteed.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-area">
+          <form id="public-contact-form" class="interactive-form">
+            <div class="form-group">
+              <label for="form-name">Your Full Name</label>
+              <input type="text" id="form-name" name="name" required placeholder={placeholderName} class="form-input" />
+            </div>
+            <div class="form-group">
+              <label for="form-email">Your Work Email</label>
+              <input type="email" id="form-email" name="email" required placeholder={placeholderEmail} class="form-input" />
+            </div>
+            <div class="form-group">
+              <label for="form-subject">Subject</label>
+              <select id="form-subject" name="subject" class="form-input">
+                <option value="General Inquiry">General Inquiry</option>
+                <option value="Paid Acquisition Audit">Paid Acquisition Audit</option>
+                <option value="Organic Conversion Setup">Organic Conversion Setup</option>
+                <option value="Partnership Proposal">Partnership Proposal</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="form-message">Brief Campaign Message</label>
+              <textarea id="form-message" name="message" required rows="4" placeholder="Tell us briefly about your marketing leaks or current CAC performance..." class="form-input form-textarea"></textarea>
+            </div>
+
+            <button type="submit" class="submit-btn" id="form-submit-btn">
+              <span class="btn-text">{submitButtonText}</span>
+              <span class="spinner" style="display:none;"></span>
+            </button>
+
+            <div id="form-feedback" class="form-feedback" style="display:none;"></div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script is:inline>
+  document.addEventListener("DOMContentLoaded", () => {
+    const form = document.getElementById("public-contact-form");
+    if (!form) return;
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      
+      const submitBtn = document.getElementById("form-submit-btn");
+      const btnText = submitBtn.querySelector(".btn-text");
+      const spinner = submitBtn.querySelector(".spinner");
+      const feedback = document.getElementById("form-feedback");
+      
+      // Reset feedback
+      feedback.style.display = "none";
+      feedback.className = "form-feedback";
+      feedback.textContent = "";
+
+      // Loading state
+      submitBtn.disabled = true;
+      btnText.style.opacity = "0.5";
+      spinner.style.display = "inline-block";
+
+      const formData = new FormData(form);
+      const payload = {
+        name: formData.get("name"),
+        email: formData.get("email"),
+        subject: formData.get("subject"),
+        message: formData.get("message")
+      };
+
+      try {
+        const response = await fetch("/api/contact-submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+          // Success
+          feedback.textContent = result.message || "Thank you! Your inquiry was submitted successfully.";
+          feedback.classList.add("success");
+          feedback.style.display = "block";
+          form.reset();
+        } else {
+          // Validation or other API error
+          feedback.textContent = result.error || "Submission failed. Please check details.";
+          feedback.classList.add("error");
+          feedback.style.display = "block";
+        }
+      } catch (err) {
+        feedback.textContent = "Network error. Please try again later.";
+        feedback.classList.add("error");
+        feedback.style.display = "block";
+      } finally {
+        submitBtn.disabled = false;
+        btnText.style.opacity = "1";
+        spinner.style.display = "none";
+      }
+    });
+  });
+</script>
+
+<style>
+  .block-contact-form {
+    padding: 6.5rem 0;
+    background-color: #050811;
+    color: white;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+
+  .contact-card {
+    position: relative;
+    background: rgba(17, 24, 39, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 28px;
+    overflow: hidden;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  }
+
+  .glow-effect {
+    position: absolute;
+    top: -20%;
+    right: -10%;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, rgba(99, 102, 241, 0) 70%);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .contact-grid {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: 1fr 1.1fr;
+    align-items: center;
+  }
+
+  @media (max-width: 900px) {
+    .contact-grid {
+      grid-template-columns: 1fr;
+    }
+    .contact-info {
+      padding: 3rem 2rem 1.5rem 2rem !important;
+    }
+    .form-area {
+      padding: 1.5rem 2rem 3rem 2rem !important;
+      border-left: none !important;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+  }
+
+  .contact-info {
+    padding: 4.5rem;
+  }
+
+  .eyebrow {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #6366F1;
+    display: block;
+    margin-bottom: 0.75rem;
+  }
+
+  h2 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: white;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    margin-bottom: 1.25rem;
+  }
+
+  .desc {
+    font-size: 1rem;
+    line-height: 1.65;
+    color: #9CA3AF;
+    margin-bottom: 2.5rem;
+  }
+
+  .contact-bullets {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+  }
+
+  .bullet-item {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .bullet-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+  }
+
+  .bullet-item h4 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: white;
+  }
+
+  .bullet-item p {
+    font-size: 0.9rem;
+    color: #9CA3AF;
+  }
+
+  .form-area {
+    padding: 4.5rem;
+    border-left: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(10, 15, 26, 0.2);
+  }
+
+  .interactive-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .form-group label {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #D1D5DB;
+  }
+
+  .form-input {
+    background: rgba(10, 15, 26, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 0.8rem 1rem;
+    color: white;
+    font-size: 0.95rem;
+    transition: all 0.25s ease;
+    font-family: inherit;
+  }
+
+  .form-input::placeholder {
+    color: #6B7280;
+  }
+
+  .form-input:focus {
+    outline: none;
+    border-color: #6366F1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    background: rgba(10, 15, 26, 0.8);
+  }
+
+  .form-textarea {
+    resize: vertical;
+  }
+
+  .submit-btn {
+    background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 0.9rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+  }
+
+  .submit-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+  }
+
+  .submit-btn:disabled {
+    cursor: not-allowed;
+  }
+
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .form-feedback {
+    border-radius: 12px;
+    padding: 0.85rem 1.25rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+
+  .form-feedback.success {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    color: #10B981;
+  }
+
+  .form-feedback.error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #EF4444;
+  }
+</style>

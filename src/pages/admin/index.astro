@@ -1,0 +1,792 @@
+---
+import AdminLayout from "../../layouts/admin/AdminLayout.astro";
+import fs from "node:fs";
+import path from "node:path";
+import { parse } from "yaml";
+
+export const prerender = false;
+
+// Gather all pages
+const pagesDir = path.resolve("src/content/pages");
+if (!fs.existsSync(pagesDir)) {
+  fs.mkdirSync(pagesDir, { recursive: true });
+}
+
+const files = fs.readdirSync(pagesDir).filter(f => f.endsWith(".md"));
+const allPages = files.map(file => {
+  const filePath = path.join(pagesDir, file);
+  const content = fs.readFileSync(filePath, "utf-8");
+  
+  // Parse frontmatter
+  const parts = content.split(/^---$/m);
+  let data: any = {};
+  if (parts.length >= 3) {
+    try {
+      data = parse(parts[1]);
+    } catch (e) {
+      console.error(`Error parsing YAML in ${file}:`, e);
+    }
+  }
+
+  const title = data.title || "Untitled Page";
+  const slug = data.slug || path.basename(file, ".md");
+  const status = data.status || "draft";
+  const seo = data.seo || {};
+  const lastUpdated = data.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : fs.statSync(filePath).mtime.toLocaleString();
+
+  // SEO Health check scoring
+  let seoScore = 0;
+  const seoChecks = [];
+  
+  if (seo.metaTitle) {
+    const len = seo.metaTitle.length;
+    if (len >= 30 && len <= 60) {
+      seoScore += 30;
+      seoChecks.push({ name: "Title length optimal", passed: true });
+    } else {
+      seoChecks.push({ name: "Title length sub-optimal (30-60 chars recommended)", passed: false });
+    }
+  } else {
+    seoChecks.push({ name: "Meta Title is missing", passed: false });
+  }
+
+  if (seo.metaDescription) {
+    const len = seo.metaDescription.length;
+    if (len >= 120 && len <= 160) {
+      seoScore += 30;
+      seoChecks.push({ name: "Description length optimal", passed: true });
+    } else {
+      seoChecks.push({ name: "Description length sub-optimal (120-160 chars recommended)", passed: false });
+    }
+  } else {
+    seoChecks.push({ name: "Meta Description is missing", passed: false });
+  }
+
+  if (seo.focusKeyword && seo.focusKeyword.trim()) {
+    seoScore += 20;
+    seoChecks.push({ name: "Focus Keyword provided", passed: true });
+  } else {
+    seoChecks.push({ name: "Focus Keyword is missing", passed: false });
+  }
+
+  if (seo.schemaType && seo.schemaType !== "none") {
+    seoScore += 20;
+    seoChecks.push({ name: "JSON-LD Schema structured data present", passed: true });
+  } else {
+    seoChecks.push({ name: "JSON-LD Schema is omitted", passed: false });
+  }
+
+  let seoLabel = "Bad";
+  let seoColor = "var(--color-error)";
+  if (seoScore >= 80) {
+    seoLabel = "Excellent";
+    seoColor = "var(--color-success)";
+  } else if (seoScore >= 50) {
+    seoLabel = "Medium";
+    seoColor = "var(--color-warning)";
+  }
+
+  return {
+    title,
+    slug,
+    status,
+    lastUpdated,
+    seoScore,
+    seoLabel,
+    seoColor,
+    seoChecks,
+  };
+});
+---
+
+<AdminLayout title="Pages Listing">
+  
+  <div class="dashboard-header">
+    <div class="header-text">
+      <p class="subtitle">Create and manage your collection-based landing pages without databases.</p>
+    </div>
+    <div class="header-actions">
+      <a href="/admin/editor" class="btn btn-primary">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Create New Page</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Special Core Pages Grid Manager -->
+  <div class="section-title-wrap">
+    <h3>Core Hardcoded Pages</h3>
+  </div>
+  <div class="core-pages-grid">
+    <div class="core-page-card">
+      <div class="core-card-icon home-icon">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+      </div>
+      <div class="core-card-body">
+        <h4>Home Page (Index)</h4>
+        <p>Manage hero copy, performance stats, engagement pricing tiers, and FAQ arrays.</p>
+        <div class="core-card-actions">
+          <a href="/admin/home" class="btn btn-sm btn-outline">Edit Homepage CMS</a>
+          <a href="/" target="_blank" class="btn btn-sm btn-outline">Preview</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="core-page-card">
+      <div class="core-card-icon about-icon">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+      </div>
+      <div class="core-card-body">
+        <h4>About Us Page</h4>
+        <p>Manage corporate profiles, core mission/vision values, team members directories, and assets.</p>
+        <div class="core-card-actions">
+          <a href="/admin/about" class="btn btn-sm btn-outline">Edit About Us CMS</a>
+          <a href="/about-us" target="_blank" class="btn btn-sm btn-outline">Preview</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title-wrap" style="margin-top:2.5rem;">
+    <h3>Dynamic Landing Pages ({allPages.length})</h3>
+  </div>
+
+  <!-- Filter & Search Controls bar -->
+  <div class="controls-bar">
+    <div class="search-input-wrap">
+      <svg class="search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" id="pages-search" placeholder="Search by page name, slug..." />
+    </div>
+
+    <div class="filter-controls">
+      <select id="status-filter">
+        <option value="all">All Statuses</option>
+        <option value="published">Published</option>
+        <option value="draft">Drafts</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Dynamic Pages Table -->
+  <div class="admin-table-wrapper">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Page Name</th>
+          <th>Slug / Link</th>
+          <th>Status</th>
+          <th>SEO Score</th>
+          <th>Last Updated</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="pages-tbody">
+        {allPages.length === 0 ? (
+          <tr id="empty-row">
+            <td colspan="6" style="text-align: center; padding: 3rem; color: var(--text-dim);">
+              <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem; opacity: 0.5;">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="8" y1="12" x2="16" y2="12"></line>
+              </svg>
+              <p style="font-weight: 600; font-size: 1.1rem; margin-bottom: 0.25rem;">No dynamic pages yet</p>
+              <p style="font-size: 0.85rem;">Click "Create New Page" above to add your first Page Builder landing page.</p>
+            </td>
+          </tr>
+        ) : (
+          allPages.map(page => (
+            <tr class="page-row" data-title={page.title.toLowerCase()} data-slug={page.slug.toLowerCase()} data-status={page.status}>
+              <td style="font-weight: 600;">
+                <div class="title-cell">
+                  <a href={`/admin/editor?slug=${page.slug}`} class="page-title-link">{page.title}</a>
+                </div>
+              </td>
+              <td>
+                <a href={page.status === 'published' ? `/${page.slug}` : `/${page.slug}?preview=true`} target="_blank" class="slug-link">
+                  <span>/{page.slug}</span>
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:4px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                </a>
+              </td>
+              <td>
+                <span class={`status-badge ${page.status}`}>{page.status}</span>
+              </td>
+              <td>
+                <div class="seo-badge-wrap" title={page.seoChecks.map(c => `${c.passed ? '✓' : '✗'} ${c.name}`).join('\n')}>
+                  <span class="seo-color-dot" style={`background-color: ${page.seoColor};`}></span>
+                  <span style="font-weight: 600; font-size:0.85rem;">{page.seoScore}%</span>
+                  <span class="seo-health-label">{page.seoLabel}</span>
+                </div>
+              </td>
+              <td style="color: var(--text-muted); font-size: 0.85rem;">{page.lastUpdated}</td>
+              <td style="text-align: right;">
+                <div class="actions-cell">
+                  <a href={`/admin/editor?slug=${page.slug}`} class="btn-action edit-btn" title="Edit Page Content">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"></path></svg>
+                  </a>
+                  <button class="btn-action duplicate-btn" data-slug={page.slug} title="Duplicate Page Structure">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  </button>
+                  <button class="btn-action delete-btn" data-slug={page.slug} data-title={page.title} title="Delete Page permanently">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div class="confirm-modal-overlay" id="delete-modal-overlay">
+    <div class="confirm-modal">
+      <div class="confirm-modal-header">
+        <h4>Delete Page Permanently</h4>
+        <button class="close-modal-btn" id="cancel-delete-x">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="confirm-modal-body">
+        <p>Are you absolutely sure you want to delete <strong id="delete-page-title">"Our Services"</strong>?</p>
+        <p class="warning-text">This will physically delete the Markdown configuration file <code>src/content/pages/<span id="delete-page-slug">our-services</span>.md</code> and all associated revision backup history. This action cannot be undone.</p>
+      </div>
+      <div class="confirm-modal-footer">
+        <button class="btn btn-outline" id="cancel-delete-btn">Cancel</button>
+        <button class="btn btn-danger" id="confirm-delete-btn">
+          <span id="delete-btn-text">Yes, Delete Page</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Banner -->
+  <div class="toast-notification" id="toast-notify">
+    <div class="toast-content">
+      <span class="toast-message" id="toast-message">Action processed successfully!</span>
+    </div>
+  </div>
+
+</AdminLayout>
+
+<style>
+  .dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-top: 0.25rem;
+  }
+  
+  .section-title-wrap {
+    margin-bottom: 1rem;
+    border-left: 3px solid var(--primary);
+    padding-left: 0.75rem;
+  }
+  .section-title-wrap h3 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+
+  /* Core Pages Manager Cards Grid */
+  .core-pages-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .core-page-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    display: flex;
+    gap: 1.25rem;
+    box-shadow: 0 4px 15px var(--color-shadow);
+    backdrop-filter: blur(10px);
+    transition: var(--transition);
+  }
+  .core-page-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--primary);
+  }
+  .core-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .home-icon {
+    background-color: rgba(99, 102, 241, 0.12);
+    color: var(--primary);
+  }
+  .about-icon {
+    background-color: rgba(16, 185, 129, 0.12);
+    color: var(--accent);
+  }
+  .core-card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .core-card-body h4 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 0.35rem;
+  }
+  .core-card-body p {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+    margin-bottom: 1.15rem;
+    flex: 1;
+  }
+  .core-card-actions {
+    display: flex;
+    gap: 0.65rem;
+  }
+  
+  /* Controls bar */
+  .controls-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .search-input-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 280px;
+    max-width: 450px;
+  }
+  .search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-dim);
+    pointer-events: none;
+  }
+  .search-input-wrap input {
+    width: 100%;
+    padding: 0.65rem 1rem 0.65rem 2.5rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-main);
+    font-size: 0.9rem;
+    transition: var(--transition);
+  }
+  .search-input-wrap input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  }
+
+  .filter-controls select {
+    padding: 0.65rem 1rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-main);
+    font-size: 0.9rem;
+    outline: none;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .filter-controls select:focus {
+    border-color: var(--primary);
+  }
+
+  /* Table Specifics */
+  .page-title-link {
+    font-weight: 600;
+    color: var(--text-main);
+    transition: var(--transition);
+  }
+  .page-title-link:hover {
+    color: var(--primary);
+  }
+  .slug-link {
+    display: inline-flex;
+    align-items: center;
+    color: var(--primary);
+    font-family: monospace;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+  .slug-link:hover {
+    text-decoration: underline;
+  }
+
+  /* SEO indicator dot and score badge */
+  .seo-badge-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(156, 163, 175, 0.05);
+    padding: 0.25rem 0.65rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+  }
+  .seo-color-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .seo-health-label {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  /* Action Buttons Grid Cell */
+  .actions-cell {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+  .btn-action {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .edit-btn:hover {
+    background-color: var(--primary-light);
+    color: var(--primary);
+    border-color: var(--primary);
+  }
+  .duplicate-btn:hover {
+    background-color: rgba(16, 185, 129, 0.1);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .delete-btn:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--color-error);
+    border-color: var(--color-error);
+  }
+
+  /* Confirmation Modals Custom Glassmorphism */
+  .confirm-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(8, 12, 20, 0.75);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  .confirm-modal-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .confirm-modal {
+    background: var(--bg-surface-solid);
+    border: 1px solid var(--bg-surface-border);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 500px;
+    padding: 1.75rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    transform: scale(0.9);
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .confirm-modal-overlay.active .confirm-modal {
+    transform: scale(1);
+  }
+  .confirm-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+  }
+  .confirm-modal-header h4 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+  .close-modal-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .close-modal-btn:hover {
+    color: var(--text-main);
+  }
+  .confirm-modal-body p {
+    font-size: 0.92rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 1rem;
+  }
+  .warning-text {
+    background: rgba(239, 68, 68, 0.08);
+    border-left: 3px solid var(--color-error);
+    padding: 0.75rem 1rem;
+    border-radius: 4px;
+    font-size: 0.85rem !important;
+    color: #F87171 !important;
+  }
+  .confirm-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+  }
+
+  /* Toasts */
+  .toast-notification {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--bg-surface-solid);
+    border-left: 4px solid var(--primary);
+    border-top: 1px solid var(--bg-surface-border);
+    border-bottom: 1px solid var(--bg-surface-border);
+    border-right: 1px solid var(--bg-surface-border);
+    padding: 1rem 1.5rem;
+    border-radius: var(--radius-sm);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+    z-index: 1100;
+    transform: translateY(150%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    backdrop-filter: blur(8px);
+  }
+  .toast-notification.active {
+    transform: translateY(0);
+  }
+  .toast-content {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-main);
+  }
+</style>
+
+<script is:inline>
+  function initDashboard() {
+    // 1. Live Search Filter
+    const searchInput = document.getElementById("pages-search");
+    const rows = document.querySelectorAll(".page-row");
+    const emptyRow = document.getElementById("empty-row");
+
+    if (searchInput) {
+      searchInput.addEventListener("input", filterRows);
+    }
+
+    const filterDropdown = document.getElementById("status-filter");
+    if (filterDropdown) {
+      filterDropdown.addEventListener("change", filterRows);
+    }
+
+    function filterRows() {
+      const q = searchInput ? searchInput.value.toLowerCase().trim() : "";
+      const status = filterDropdown ? filterDropdown.value : "all";
+      let visibleCount = 0;
+
+      rows.forEach(row => {
+        const title = row.getAttribute("data-title") || "";
+        const slug = row.getAttribute("data-slug") || "";
+        const rowStatus = row.getAttribute("data-status") || "";
+
+        const matchesQuery = title.includes(q) || slug.includes(q);
+        const matchesStatus = status === "all" || rowStatus === status;
+
+        if (matchesQuery && matchesStatus) {
+          row.style.display = "";
+          visibleCount++;
+        } else {
+          row.style.display = "none";
+        }
+      });
+
+      if (emptyRow) {
+        emptyRow.style.display = (visibleCount === 0 && rows.length > 0) ? "" : "none";
+      }
+    }
+
+    // 2. Delete Page Modal Trigger
+    const deleteModal = document.getElementById("delete-modal-overlay");
+    const cancelDeleteBtn = document.getElementById("cancel-delete-btn");
+    const cancelDeleteX = document.getElementById("cancel-delete-x");
+    const confirmDeleteBtn = document.getElementById("confirm-delete-btn");
+    const deletePageTitleSpan = document.getElementById("delete-page-title");
+    const deletePageSlugSpan = document.getElementById("delete-page-slug");
+    const deleteBtnText = document.getElementById("delete-btn-text");
+
+    let activeDeleteSlug = "";
+
+    document.querySelectorAll(".delete-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const slug = btn.getAttribute("data-slug");
+        const title = btn.getAttribute("data-title");
+        activeDeleteSlug = slug;
+        if (deletePageTitleSpan) deletePageTitleSpan.innerText = `"${title}"`;
+        if (deletePageSlugSpan) deletePageSlugSpan.innerText = slug;
+        if (deleteModal) deleteModal.classList.add("active");
+      });
+    });
+
+    const closeModal = () => {
+      if (deleteModal) deleteModal.classList.remove("active");
+      activeDeleteSlug = "";
+    };
+
+    if (cancelDeleteBtn) cancelDeleteBtn.addEventListener("click", closeModal);
+    if (cancelDeleteX) cancelDeleteX.addEventListener("click", closeModal);
+    if (deleteModal) {
+      deleteModal.addEventListener("click", (e) => {
+        if (e.target === deleteModal) closeModal();
+      });
+    }
+
+    // 3. API Delete Trigger
+    if (confirmDeleteBtn) {
+      confirmDeleteBtn.addEventListener("click", async () => {
+        if (!activeDeleteSlug) return;
+        
+        confirmDeleteBtn.disabled = true;
+        if (deleteBtnText) deleteBtnText.innerText = "Deleting...";
+
+        try {
+          const res = await fetch("/api/pages-crud", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ slug: activeDeleteSlug })
+          });
+          const result = await res.json();
+          
+          if (result.success) {
+            showToast("Page deleted successfully!");
+            setTimeout(() => {
+              window.location.reload();
+            }, 1000);
+          } else {
+            showToast("Error: " + (result.error || "Could not delete page"));
+            confirmDeleteBtn.disabled = false;
+            if (deleteBtnText) deleteBtnText.innerText = "Yes, Delete Page";
+          }
+        } catch (e) {
+          showToast("Network Error: Could not delete page");
+          confirmDeleteBtn.disabled = false;
+          if (deleteBtnText) deleteBtnText.innerText = "Yes, Delete Page";
+        }
+      });
+    }
+
+    // 4. Page Duplication
+    document.querySelectorAll(".duplicate-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const slug = btn.getAttribute("data-slug");
+        btn.disabled = true;
+        
+        showToast("Cloning page structure...");
+
+        try {
+          // Fetch existing data
+          const getRes = await fetch(`/api/pages-crud?action=get&slug=${slug}`);
+          const getData = await getRes.json();
+
+          if (!getData.success) {
+            showToast("Error retrieving page schema");
+            btn.disabled = false;
+            return;
+          }
+
+          const originalPage = getData.page;
+          const newSlug = `${originalPage.slug}-copy`;
+          
+          // Construct cloned data
+          const clonedPage = {
+            title: `${originalPage.title} (Cloned)`,
+            slug: newSlug,
+            status: "draft",
+            seo: {
+              ...originalPage.seo,
+              metaTitle: `${originalPage.seo?.metaTitle} (Copy)`,
+              canonicalUrl: ""
+            },
+            blocks: originalPage.blocks || [],
+            body: getData.body || ""
+          };
+
+          // Save Cloned
+          const postRes = await fetch("/api/pages-crud", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(clonedPage)
+          });
+          const postResult = await postRes.json();
+
+          if (postResult.success) {
+            showToast("Page duplicated successfully!");
+            setTimeout(() => {
+              window.location.reload();
+            }, 1000);
+          } else {
+            showToast("Error: " + (postResult.errors?.slug || "Duplication failed. Slug may already exist."));
+            btn.disabled = false;
+          }
+        } catch (e) {
+          showToast("Network Error: Could not duplicate page");
+          btn.disabled = false;
+        }
+      });
+    });
+
+    // Toast Utility
+    const toast = document.getElementById("toast-notify");
+    const toastMsg = document.getElementById("toast-message");
+    
+    function showToast(message) {
+      if (toast && toastMsg) {
+        toastMsg.innerText = message;
+        toast.classList.add("active");
+        setTimeout(() => {
+          toast.classList.remove("active");
+        }, 3000);
+      }
+    }
+  }
+
+  // Bind init functions
+  document.addEventListener("DOMContentLoaded", initDashboard);
+  document.addEventListener("astro:page-load", initDashboard);
+  if (document.readyState === "interactive" || document.readyState === "complete") {
+    initDashboard();
+  }
+</script>

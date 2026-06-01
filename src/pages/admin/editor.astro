@@ -1,0 +1,1644 @@
+---
+import AdminLayout from "../../layouts/admin/AdminLayout.astro";
+import fs from "node:fs";
+import path from "node:path";
+import { parse } from "yaml";
+import { BLOCK_REGISTRY } from "../../block-registry/blocks";
+
+export const prerender = false;
+
+// 1. Check if we are editing an existing page
+const slug = Astro.url.searchParams.get("slug") || "";
+let isEditMode = false;
+let pageData = {
+  title: "",
+  slug: "",
+  status: "draft",
+  seo: {
+    metaTitle: "",
+    metaDescription: "",
+    canonicalUrl: "",
+    robots: "index, follow",
+    ogTitle: "",
+    ogDescription: "",
+    ogImage: "",
+    twitterCard: "summary_large_image",
+    focusKeyword: "",
+    schemaMarkup: "",
+    schemaType: "none"
+  },
+  blocks: [] as any[]
+};
+let rawBody = "";
+
+if (slug) {
+  const filePath = path.resolve("src/content/pages", `${slug}.md`);
+  if (fs.existsSync(filePath)) {
+    isEditMode = true;
+    const content = fs.readFileSync(filePath, "utf-8");
+    const parts = content.split(/^---$/m);
+    if (parts.length >= 3) {
+      try {
+        pageData = parse(parts[1]);
+        rawBody = parts.slice(2).join("---").trim();
+      } catch (e) {
+        console.error("Error parsing YAML in editor:", e);
+      }
+    }
+  }
+}
+---
+
+<AdminLayout title={isEditMode ? `Edit Page: ${pageData.title}` : "Create New Page"}>
+  
+  <div class="editor-header-bar">
+    <div class="header-back-wrap">
+      <a href="/admin" class="back-link">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        <span>Back to Pages</span>
+      </a>
+      <h2>{isEditMode ? `Edit: ${pageData.title}` : "New Landing Page"}</h2>
+    </div>
+    
+    <div class="editor-action-buttons">
+      {isEditMode && (
+        <a href={pageData.status === 'published' ? `/${pageData.slug}` : `/${pageData.slug}?preview=true`} target="_blank" class="btn btn-outline btn-sm">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          <span>Preview Page</span>
+        </a>
+      )}
+      <button class="btn btn-primary" id="save-page-btn">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+        <span id="save-btn-label">Save Changes</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="editor-layout">
+    
+    <!-- Main Content Form Area -->
+    <div class="editor-main-form">
+      <form id="cms-editor-form" onsubmit="return false;">
+        
+        <!-- Basic Configuration block -->
+        <div class="form-card">
+          <div class="card-header">
+            <h3>Page Settings</h3>
+          </div>
+          <div class="card-body">
+            <div class="form-grid">
+              <div class="form-group col-6">
+                <label for="page-title">Page Title <span class="required">*</span></label>
+                <input type="text" id="page-title" value={pageData.title} placeholder="e.g., Performance SEO Agency" required />
+                <span class="field-error" id="err-title"></span>
+              </div>
+              
+              <div class="form-group col-6">
+                <label for="page-slug">URL Slug <span class="required">*</span></label>
+                <input type="text" id="page-slug" value={pageData.slug} placeholder="e.g., performance-seo" required disabled={isEditMode} />
+                <span class="field-error" id="err-slug"></span>
+                <span class="field-help">Only lowercase letters, numbers, dashes, and underscores.</span>
+              </div>
+
+              <div class="form-group col-6">
+                <label for="page-status">Publication Status</label>
+                <select id="page-status">
+                  <option value="draft" selected={pageData.status === "draft"}>Draft (Visible only under admin previews)</option>
+                  <option value="published" selected={pageData.status === "published"}>Published (Live on site & indexing allowed)</option>
+                </select>
+                <span class="field-error" id="err-status"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Dynamic Page Builder Section -->
+        <div class="form-card" style="margin-top: 1.5rem;">
+          <div class="card-header block-header-flex">
+            <h3>Page Builder Blocks</h3>
+            <div class="block-controls-wrap">
+              <select id="add-block-select">
+                <!-- Will be dynamically populated by registry -->
+              </select>
+              <button type="button" class="btn btn-primary btn-sm" id="add-block-btn">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <span>Add Section</span>
+              </button>
+            </div>
+          </div>
+          
+          <div class="card-body padding-zero">
+            <!-- Dynamic Blocks Stack Container -->
+            <div class="blocks-stack-container" id="blocks-stack">
+              <!-- JS will inject dynamic fields forms here -->
+            </div>
+            
+            <div class="no-blocks-fallback" id="blocks-fallback">
+              <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.4; margin-bottom:1rem;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="9"></line><line x1="9" y1="13" x2="15" y2="13"></line><line x1="9" y1="17" x2="11" y2="17"></line></svg>
+              <h4>No sections inside the builder stack yet</h4>
+              <p>Add components using the select dropdown above to assemble your landing page layout.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Optional Raw Content body -->
+        <div class="form-card" style="margin-top: 1.5rem;">
+          <div class="card-header">
+            <h3>Additional Markdown Body</h3>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label for="page-body">Markdown Content</label>
+              <textarea id="page-body" rows="6" placeholder="Write additional text or markdown content that renders at the bottom of the page...">{rawBody}</textarea>
+            </div>
+          </div>
+        </div>
+
+      </form>
+    </div>
+
+    <!-- Right Sidebar for SEO Management & Revisions -->
+    <div class="editor-sidebar">
+      
+      <!-- SEO Scoring Panel -->
+      <div class="sidebar-card">
+        <div class="sidebar-card-header">
+          <h4>Real-time SEO Manager</h4>
+        </div>
+        <div class="sidebar-card-body">
+          <div class="seo-score-meter-wrap">
+            <div class="seo-gauge">
+              <svg viewBox="0 0 36 36" class="circular-chart">
+                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
+                <path class="circle" id="seo-score-ring" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
+                <text x="18" y="20.35" class="percentage" id="seo-score-text">0%</text>
+              </svg>
+            </div>
+            <div class="seo-score-label">
+              <span id="seo-health-text">Not Rated</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="seo-focus-keyword">Focus Keyword</label>
+            <input type="text" id="seo-focus-keyword" value={pageData.seo.focusKeyword} placeholder="e.g., performance marketing" />
+          </div>
+
+          <div class="form-group">
+            <label for="seo-title">Meta Title <span class="required">*</span></label>
+            <input type="text" id="seo-title" value={pageData.seo.metaTitle} placeholder="50-60 characters ideal" required />
+            <span class="length-counter" id="cnt-seo-title">0 chars</span>
+            <span class="field-error" id="err-seo-title"></span>
+          </div>
+
+          <div class="form-group">
+            <label for="seo-description">Meta Description <span class="required">*</span></label>
+            <textarea id="seo-description" rows="3" placeholder="120-160 characters ideal" required>{pageData.seo.metaDescription}</textarea>
+            <span class="length-counter" id="cnt-seo-description">0 chars</span>
+            <span class="field-error" id="err-seo-description"></span>
+          </div>
+
+          <!-- Collapsible Advanced SEO Controls -->
+          <details class="advanced-details">
+            <summary>Advanced SEO Configurations</summary>
+            
+            <div class="form-group" style="margin-top:0.75rem;">
+              <label for="seo-canonical">Canonical URL</label>
+              <input type="url" id="seo-canonical" value={pageData.seo.canonicalUrl} placeholder="https://www.tangence.in/url" />
+            </div>
+
+            <div class="form-group">
+              <label for="seo-robots">Robots Meta</label>
+              <input type="text" id="seo-robots" value={pageData.seo.robots} placeholder="index, follow" />
+            </div>
+
+            <div class="form-group">
+              <label for="seo-og-title">OG Title</label>
+              <input type="text" id="seo-og-title" value={pageData.seo.ogTitle} />
+            </div>
+
+            <div class="form-group">
+              <label for="seo-og-description">OG Description</label>
+              <textarea id="seo-og-description" rows="2">{pageData.seo.ogDescription}</textarea>
+            </div>
+
+            <div class="form-group">
+              <label for="seo-og-image">OG Image URL</label>
+              <div class="input-picker-wrap">
+                <input type="text" id="seo-og-image" value={pageData.seo.ogImage} />
+                <button type="button" class="btn btn-outline btn-sm media-picker-trigger" data-target="seo-og-image">Pick</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="seo-twitter">Twitter Card</label>
+              <select id="seo-twitter">
+                <option value="summary" selected={pageData.seo.twitterCard === "summary"}>Summary</option>
+                <option value="summary_large_image" selected={pageData.seo.twitterCard === "summary_large_image"}>Summary Large Image</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="seo-schema-type">JSON-LD Schema Type</label>
+              <select id="seo-schema-type">
+                <option value="none" selected={pageData.seo.schemaType === "none"}>None (Auto / Omit)</option>
+                <option value="organization" selected={pageData.seo.schemaType === "organization"}>Organization</option>
+                <option value="faq" selected={pageData.seo.schemaType === "faq"}>FAQ Page Schema</option>
+                <option value="article" selected={pageData.seo.schemaType === "article"}>Article Details</option>
+                <option value="custom" selected={pageData.seo.schemaType === "custom"}>Custom Input</option>
+              </select>
+            </div>
+
+            <div class="form-group" id="custom-schema-group" style="display:none;">
+              <label for="seo-schema-markup">Custom JSON-LD Markup</label>
+              <textarea id="seo-schema-markup" rows="4" placeholder="JSON format context script content">{pageData.seo.schemaMarkup}</textarea>
+            </div>
+          </details>
+
+          <!-- SEO Checklist Indicators -->
+          <div class="seo-checklist">
+            <h5>SEO Checklist</h5>
+            <ul id="seo-checks-list">
+              <!-- JS loaded dynamically -->
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Revision Logs Panel -->
+      {isEditMode && (
+        <div class="sidebar-card" style="margin-top: 1.5rem;">
+          <div class="sidebar-card-header">
+            <h4>Revision History</h4>
+          </div>
+          <div class="sidebar-card-body padding-zero">
+            <div class="revisions-list" id="revisions-list">
+              <!-- Loaded via dynamic fetch -->
+              <div class="revision-placeholder">Loading revisions history...</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  </div>
+
+  <!-- Reusable Media Library Selector Modal Dialog -->
+  <div class="confirm-modal-overlay" id="media-picker-overlay">
+    <div class="confirm-modal media-modal">
+      <div class="confirm-modal-header">
+        <h4>Select Asset from Media Catalog</h4>
+        <button class="close-modal-btn" id="close-media-modal">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="media-modal-actions">
+        <form id="media-upload-form" onsubmit="return false;" style="display:flex; gap:0.5rem; width:100%;">
+          <input type="file" id="media-upload-file" accept="image/*" style="display:none;" />
+          <button type="button" class="btn btn-outline btn-sm" id="trigger-file-select" style="flex:1;">
+            Choose Upload File
+          </button>
+          <button type="button" class="btn btn-primary btn-sm" id="upload-media-btn" disabled>
+            Upload
+          </button>
+        </form>
+      </div>
+      <div class="media-picker-grid" id="media-picker-grid">
+        <!-- Injected dynamic catalog grid -->
+        <p class="media-empty">No catalog images. Upload a new asset.</p>
+      </div>
+      <div class="confirm-modal-footer">
+        <button class="btn btn-outline" id="close-media-picker-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Banner -->
+  <div class="toast-notification" id="toast-notify">
+    <div class="toast-content">
+      <span class="toast-message" id="toast-message">Page saved successfully!</span>
+    </div>
+  </div>
+
+</AdminLayout>
+
+<style>
+  .editor-header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    gap: 1.5rem;
+  }
+  .header-back-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  .back-link:hover {
+    color: var(--primary);
+  }
+  .editor-header-bar h2 {
+    font-size: 1.35rem;
+    font-weight: 700;
+  }
+  .editor-action-buttons {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .editor-layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 1.5rem;
+    align-items: start;
+  }
+  @media (max-width: 1024px) {
+    .editor-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Form Elements */
+  .form-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 15px var(--color-shadow);
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 1.15rem 1.5rem;
+    border-bottom: 1px solid var(--bg-surface-border);
+    background: rgba(156, 163, 175, 0.02);
+  }
+  .card-header h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+  .block-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .block-controls-wrap {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .block-controls-wrap select {
+    padding: 0.4rem 0.75rem;
+    border-radius: var(--radius-sm);
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-main);
+    font-size: 0.85rem;
+  }
+
+  .card-body {
+    padding: 1.5rem;
+  }
+  .padding-zero {
+    padding: 0;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 1.25rem;
+  }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    position: relative;
+  }
+  .col-6 {
+    grid-column: span 6;
+  }
+  @media (max-width: 640px) {
+    .col-6 {
+      grid-column: span 12;
+    }
+  }
+  
+  label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+  .required {
+    color: var(--color-error);
+    margin-left: 2px;
+  }
+  input[type="text"], input[type="url"], input[type="number"], select, textarea {
+    padding: 0.65rem 0.85rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-main);
+    font-size: 0.9rem;
+    transition: var(--transition);
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  }
+  input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .field-help {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+  .field-error {
+    font-size: 0.78rem;
+    color: var(--color-error);
+    font-weight: 500;
+  }
+
+  /* Input Picker */
+  .input-picker-wrap {
+    display: flex;
+    gap: 0.4rem;
+  }
+  .input-picker-wrap input {
+    flex: 1;
+  }
+
+  /* Dynamic Builder Blocks styles */
+  .no-blocks-fallback {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-dim);
+  }
+  .no-blocks-fallback h4 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+  }
+  .no-blocks-fallback p {
+    font-size: 0.82rem;
+  }
+
+  .blocks-stack-container {
+    display: flex;
+    flex-direction: column;
+  }
+  .builder-block-card {
+    border-bottom: 1px solid var(--bg-surface-border);
+    padding: 1.5rem;
+    background: rgba(156, 163, 175, 0.005);
+    transition: var(--transition);
+  }
+  .builder-block-card:last-child {
+    border-bottom: none;
+  }
+  .block-header-wrap {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.15rem;
+    gap: 1rem;
+  }
+  .block-badge-title {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+  }
+  .block-type-badge {
+    padding: 0.2rem 0.5rem;
+    background: var(--primary-light);
+    color: var(--primary);
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: 1px solid rgba(99, 102, 241, 0.15);
+  }
+  .block-badge-title h4 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+  .block-actions {
+    display: flex;
+    gap: 0.35rem;
+  }
+  .btn-icon-sm {
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+  }
+  .btn-icon-sm:hover {
+    color: var(--text-main);
+    background: rgba(156, 163, 175, 0.08);
+  }
+  .btn-delete-block:hover {
+    color: var(--color-error);
+    background: rgba(239, 68, 68, 0.08);
+    border-color: var(--color-error);
+  }
+
+  /* Block Form Grid items */
+  .block-form-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 1rem;
+  }
+
+  /* Repeaters blocks */
+  .repeater-section {
+    grid-column: span 12;
+    margin-top: 0.75rem;
+    background: rgba(156, 163, 175, 0.015);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+  }
+  .repeater-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+  }
+  .repeater-header h5 {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.03em;
+  }
+  .repeater-items-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .repeater-item-row {
+    background: var(--bg-surface-solid);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.85rem;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+  .repeater-item-actions {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+  }
+
+  /* Sidebars Cards */
+  .sidebar-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 15px var(--color-shadow);
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+  }
+  .sidebar-card-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--bg-surface-border);
+    background: rgba(156, 163, 175, 0.02);
+  }
+  .sidebar-card-header h4 {
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+  .sidebar-card-body {
+    padding: 1.25rem;
+  }
+
+  /* Circular SEO score gauge meter */
+  .seo-score-meter-wrap {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+    background: rgba(156, 163, 175, 0.03);
+    padding: 0.85rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+  }
+  .seo-gauge {
+    width: 65px;
+    height: 65px;
+  }
+  .circular-chart {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+  }
+  .circle-bg {
+    fill: none;
+    stroke: rgba(156, 163, 175, 0.1);
+    stroke-width: 2.8;
+  }
+  .circle {
+    fill: none;
+    stroke-width: 2.8;
+    stroke-linecap: round;
+    transition: stroke-dasharray 0.35s ease;
+  }
+  .percentage {
+    fill: var(--text-main);
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 9px;
+    text-anchor: middle;
+  }
+  .seo-score-label {
+    display: flex;
+    flex-direction: column;
+  }
+  #seo-health-text {
+    font-size: 0.92rem;
+    font-weight: 700;
+    font-family: var(--font-heading);
+  }
+  .length-counter {
+    align-self: flex-end;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin-top: -2px;
+  }
+  .advanced-details {
+    margin-top: 1.15rem;
+    cursor: pointer;
+  }
+  .advanced-details summary {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--primary);
+    outline: none;
+  }
+  .seo-checklist {
+    margin-top: 1.25rem;
+    border-top: 1px solid var(--border-color);
+    padding-top: 1rem;
+  }
+  .seo-checklist h5 {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+  }
+  .seo-checklist ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .seo-checklist li {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .seo-check-icon {
+    flex-shrink: 0;
+  }
+  
+  /* Revisions list styles */
+  .revisions-list {
+    display: flex;
+    flex-direction: column;
+    max-height: 250px;
+    overflow-y: auto;
+  }
+  .revision-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--bg-surface-border);
+    transition: var(--transition);
+  }
+  .revision-row:last-child {
+    border-bottom: none;
+  }
+  .revision-row:hover {
+    background: rgba(156, 163, 175, 0.02);
+  }
+  .rev-date {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+  .rev-action-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
+  }
+
+  /* Media library selector dialog custom styles */
+  .media-modal {
+    max-width: 650px !important;
+  }
+  .media-modal-actions {
+    margin-bottom: 1rem;
+    background: rgba(156, 163, 175, 0.03);
+    padding: 0.75rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+  }
+  .media-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 0.75rem;
+    max-height: 280px;
+    overflow-y: auto;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-base);
+  }
+  .media-picker-item {
+    aspect-ratio: 1;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 2px solid transparent;
+    cursor: pointer;
+    position: relative;
+    background: rgba(156, 163, 175, 0.03);
+    transition: var(--transition);
+  }
+  .media-picker-item:hover {
+    transform: scale(1.03);
+    border-color: var(--primary);
+  }
+  .media-picker-item.selected {
+    border-color: var(--accent);
+  }
+  .media-picker-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .media-empty {
+    grid-column: span 12;
+    text-align: center;
+    padding: 2.5rem;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+  }
+
+  .toast-notification {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--bg-surface-solid);
+    border-left: 4px solid var(--primary);
+    border-top: 1px solid var(--bg-surface-border);
+    border-bottom: 1px solid var(--bg-surface-border);
+    border-right: 1px solid var(--bg-surface-border);
+    padding: 1rem 1.5rem;
+    border-radius: var(--radius-sm);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+    z-index: 1100;
+    transform: translateY(150%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    backdrop-filter: blur(8px);
+  }
+  .toast-notification.active {
+    transform: translateY(0);
+  }
+  .toast-content {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-main);
+  }
+</style>
+
+<script is:inline define:vars={{ pageData, isEditMode, BLOCK_REGISTRY }}>
+  // Hold initial state from server
+  let blocks = pageData.blocks || [];
+  let originalSlug = pageData.slug || "";
+  let activeMediaPickerTarget = "";
+
+  function initEditor() {
+    // Populate select element dynamically from central registry
+    const select = document.getElementById("add-block-select");
+    if (select) {
+      select.innerHTML = BLOCK_REGISTRY.map(b => `<option value="${b.type}">${b.name} (${b.category.toUpperCase()})</option>`).join('');
+    }
+
+    renderBlocks();
+    setupEventListeners();
+    updateSeoIndicators();
+    
+    if (isEditMode) {
+      fetchRevisions();
+    }
+  }
+
+  // Define SVG Icons for Block Controls
+  const ICONS = {
+    arrowUp: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"></polyline></svg>`,
+    arrowDown: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>`,
+    delete: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`
+  };
+
+  // Setup Global Event Listeners
+  function setupEventListeners() {
+    const addBlockBtn = document.getElementById("add-block-btn");
+    if (addBlockBtn) {
+      addBlockBtn.addEventListener("click", () => {
+        const select = document.getElementById("add-block-select");
+        const type = select.value;
+        addNewBlock(type);
+      });
+    }
+
+    const saveBtn = document.getElementById("save-page-btn");
+    if (saveBtn) {
+      saveBtn.addEventListener("click", submitPageForm);
+    }
+
+    // SEO inputs event mapping
+    const titleInput = document.getElementById("page-title");
+    const seoTitleInput = document.getElementById("seo-title");
+    const seoDescInput = document.getElementById("seo-description");
+    const seoKeywordInput = document.getElementById("seo-focus-keyword");
+
+    if (titleInput && !isEditMode) {
+      // Auto-slugify on title input for new pages
+      titleInput.addEventListener("input", () => {
+        const slugInput = document.getElementById("page-slug");
+        if (slugInput) {
+          slugInput.value = titleInput.value
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9\s-_]/g, "")
+            .replace(/\s+/g, "-");
+        }
+      });
+    }
+
+    if (seoTitleInput) seoTitleInput.addEventListener("input", updateSeoIndicators);
+    if (seoDescInput) seoDescInput.addEventListener("input", updateSeoIndicators);
+    if (seoKeywordInput) seoKeywordInput.addEventListener("input", updateSeoIndicators);
+
+    // Schema Type change
+    const schemaTypeSelect = document.getElementById("seo-schema-type");
+    const customSchemaGroup = document.getElementById("custom-schema-group");
+    if (schemaTypeSelect && customSchemaGroup) {
+      schemaTypeSelect.addEventListener("change", () => {
+        customSchemaGroup.style.display = schemaTypeSelect.value === "custom" ? "block" : "none";
+      });
+      // Initial trigger
+      customSchemaGroup.style.display = schemaTypeSelect.value === "custom" ? "block" : "none";
+    }
+
+    // Media Modal close bindings
+    const closePickerX = document.getElementById("close-media-modal");
+    const closePickerBtn = document.getElementById("close-media-picker-btn");
+    if (closePickerX) closePickerX.addEventListener("click", hideMediaModal);
+    if (closePickerBtn) closePickerBtn.addEventListener("click", hideMediaModal);
+
+    // Dynamic Media triggers hooking on delegates
+    document.addEventListener("click", (e) => {
+      if (e.target && e.target.classList.contains("media-picker-trigger")) {
+        const targetId = e.target.getAttribute("data-target");
+        openMediaModal(targetId);
+      }
+    });
+
+    // File Upload listeners in modal
+    const fileSelectBtn = document.getElementById("trigger-file-select");
+    const fileInput = document.getElementById("media-upload-file");
+    const uploadBtn = document.getElementById("upload-media-btn");
+
+    if (fileSelectBtn && fileInput) {
+      fileSelectBtn.addEventListener("click", () => fileInput.click());
+      fileInput.addEventListener("change", () => {
+        if (fileInput.files.length > 0) {
+          fileSelectBtn.innerText = fileInput.files[0].name;
+          if (uploadBtn) uploadBtn.disabled = false;
+        } else {
+          fileSelectBtn.innerText = "Choose Upload File";
+          if (uploadBtn) uploadBtn.disabled = true;
+        }
+      });
+    }
+
+    if (uploadBtn) {
+      uploadBtn.addEventListener("click", uploadMediaFile);
+    }
+  }
+
+  // Append new empty block record based on registry defaults
+  function addNewBlock(type) {
+    const config = BLOCK_REGISTRY.find(b => b.type === type);
+    if (!config) return;
+    
+    // Deep clone defaults to prevent shared reference bugs!
+    const blockData = JSON.parse(JSON.stringify(config.defaultValues));
+    blocks.push(blockData);
+    
+    renderBlocks();
+    showToast(`${config.name} added to stack!`);
+  }
+
+  // Reorder Block Up/Down
+  window.moveBlock = function(index, direction) {
+    const targetIdx = index + direction;
+    if (targetIdx < 0 || targetIdx >= blocks.length) return;
+    
+    // Swap items
+    const temp = blocks[index];
+    blocks[index] = blocks[targetIdx];
+    blocks[targetIdx] = temp;
+    
+    renderBlocks();
+  }
+
+  // Remove block
+  window.deleteBlock = function(index) {
+    if (confirm("Are you sure you want to delete this section block?")) {
+      blocks.splice(index, 1);
+      renderBlocks();
+      showToast("Block removed");
+    }
+  }
+
+  // Synchronize inputs back to array state on change
+  window.syncField = function(blockIdx, fieldName, value) {
+    blocks[blockIdx][fieldName] = value;
+    updateSeoIndicators();
+  }
+
+  // Dynamic simple lists string helpers
+  window.addListStringItem = function(blockIdx, fieldName) {
+    if (!blocks[blockIdx][fieldName]) blocks[blockIdx][fieldName] = [];
+    blocks[blockIdx][fieldName].push("");
+    renderBlocks();
+  };
+
+  window.syncListStringField = function(blockIdx, fieldName, itemIdx, value) {
+    blocks[blockIdx][fieldName][itemIdx] = value;
+  };
+
+  window.removeListStringItem = function(blockIdx, fieldName, itemIdx) {
+    blocks[blockIdx][fieldName].splice(itemIdx, 1);
+    renderBlocks();
+  };
+
+  // Dynamic nested list string helpers
+  window.addNestedListStringItem = function(blockIdx, repeaterName, itemIdx, fieldName) {
+    if (!blocks[blockIdx][repeaterName][itemIdx][fieldName]) {
+      blocks[blockIdx][repeaterName][itemIdx][fieldName] = [];
+    }
+    blocks[blockIdx][repeaterName][itemIdx][fieldName].push("");
+    renderBlocks();
+  };
+
+  window.syncNestedListStringField = function(blockIdx, repeaterName, itemIdx, fieldName, sItemIdx, value) {
+    blocks[blockIdx][repeaterName][itemIdx][fieldName][sItemIdx] = value;
+  };
+
+  window.removeNestedListStringItem = function(blockIdx, repeaterName, itemIdx, fieldName, sItemIdx) {
+    blocks[blockIdx][repeaterName][itemIdx][fieldName].splice(sItemIdx, 1);
+    renderBlocks();
+  };
+
+  // Repeater helpers
+  window.addRegistryRepeaterItem = function(blockIdx, fieldName, repeaterFieldsSchema) {
+    if (!blocks[blockIdx][fieldName]) blocks[blockIdx][fieldName] = [];
+    
+    // Create new item with defaults
+    const newItem = {};
+    repeaterFieldsSchema.forEach(field => {
+      newItem[field.name] = field.default !== undefined ? field.default : "";
+    });
+    
+    blocks[blockIdx][fieldName].push(newItem);
+    renderBlocks();
+  };
+
+  window.syncRepeaterRegistryField = function(blockIdx, repeaterName, itemIdx, fieldName, value) {
+    blocks[blockIdx][repeaterName][itemIdx][fieldName] = value;
+    updateSeoIndicators();
+  };
+
+  window.removeRepeaterRegistryItem = function(blockIdx, repeaterName, itemIdx) {
+    blocks[blockIdx][repeaterName].splice(itemIdx, 1);
+    renderBlocks();
+  };
+
+  // Dynamic form renderer driven completely by BLOCK_REGISTRY
+  function renderBlocks() {
+    const container = document.getElementById("blocks-stack");
+    const fallback = document.getElementById("blocks-fallback");
+    
+    if (!container) return;
+    container.innerHTML = "";
+
+    if (blocks.length === 0) {
+      if (fallback) fallback.style.display = "block";
+      return;
+    }
+    
+    if (fallback) fallback.style.display = "none";
+
+    blocks.forEach((block, idx) => {
+      const card = document.createElement("div");
+      card.className = "builder-block-card";
+      
+      const config = BLOCK_REGISTRY.find(b => b.type === block.type);
+      const blockTitle = config ? config.name : block.type;
+      
+      let fieldsHtml = "";
+
+      if (config) {
+        config.fields.forEach(field => {
+          const val = block[field.name] !== undefined ? block[field.name] : (field.default !== undefined ? field.default : "");
+          const isRequired = field.required ? '<span class="required">*</span>' : '';
+          
+          let inputFieldHtml = "";
+          
+          if (field.type === "text") {
+            inputFieldHtml = `<input type="text" value="${val}" oninput="syncField(${idx}, '${field.name}', this.value)" placeholder="${field.label}" ${field.required ? 'required' : ''} />`;
+          } else if (field.type === "number") {
+            inputFieldHtml = `<input type="number" value="${val}" oninput="syncField(${idx}, '${field.name}', parseFloat(this.value) || 0)" placeholder="${field.label}" ${field.required ? 'required' : ''} />`;
+          } else if (field.type === "textarea") {
+            inputFieldHtml = `<textarea rows="4" oninput="syncField(${idx}, '${field.name}', this.value)" placeholder="${field.label}" ${field.required ? 'required' : ''}>${val}</textarea>`;
+          } else if (field.type === "boolean") {
+            inputFieldHtml = `
+              <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.25rem;">
+                <input type="checkbox" id="block-${idx}-${field.name}" ${val ? 'checked' : ''} onchange="syncField(${idx}, '${field.name}', this.checked)" style="width:auto;" />
+                <label for="block-${idx}-${field.name}" style="font-weight:500; cursor:pointer;">${field.label}</label>
+              </div>
+            `;
+          } else if (field.type === "select") {
+            const options = (field.options || []).map(opt => `
+              <option value="${opt}" ${val === opt ? 'selected' : ''}>${opt.charAt(0).toUpperCase() + opt.slice(1)}</option>
+            `).join('');
+            inputFieldHtml = `<select onchange="syncField(${idx}, '${field.name}', this.value)">${options}</select>`;
+          } else if (field.type === "image") {
+            inputFieldHtml = `
+              <div class="input-picker-wrap">
+                <input type="text" id="block-${idx}-${field.name}" value="${val}" oninput="syncField(${idx}, '${field.name}', this.value)" placeholder="Image relative path" />
+                <button type="button" class="btn btn-outline btn-sm media-picker-trigger" data-target="block-${idx}-${field.name}">Pick</button>
+              </div>
+            `;
+          } else if (field.type === "list") {
+            const items = Array.isArray(val) ? val : [];
+            inputFieldHtml = `
+              <div class="repeater-section">
+                <div class="repeater-header">
+                  <h5>${field.label}</h5>
+                  <button type="button" class="btn btn-outline btn-sm" onclick="addListStringItem(${idx}, '${field.name}')">+ Add Item</button>
+                </div>
+                <div class="repeater-items-wrap">
+                  ${items.map((item, itemIdx) => `
+                    <div style="display:flex; gap:0.5rem;">
+                      <input type="text" value="${item}" oninput="syncListStringField(${idx}, '${field.name}', ${itemIdx}, this.value)" placeholder="Bullet / highlight text" style="flex:1;" />
+                      <button type="button" class="btn-icon-sm btn-delete-block" onclick="removeListStringItem(${idx}, '${field.name}', ${itemIdx})">${ICONS.delete}</button>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            `;
+          } else if (field.type === "repeater") {
+            const items = Array.isArray(val) ? val : [];
+            const fieldsSchemaString = JSON.stringify(field.repeaterFields || []).replace(/"/g, '&quot;');
+            
+            inputFieldHtml = `
+              <div class="repeater-section">
+                <div class="repeater-header">
+                  <h5>${field.label}</h5>
+                  <button type="button" class="btn btn-outline btn-sm" onclick='addRegistryRepeaterItem(${idx}, "${field.name}", ${fieldsSchemaString})'>+ Add Item</button>
+                </div>
+                <div class="repeater-items-wrap">
+                  ${items.map((item, itemIdx) => {
+                    let subFieldsHtml = "";
+                    
+                    if (field.repeaterFields) {
+                      field.repeaterFields.forEach(subField => {
+                        const subVal = item[subField.name] !== undefined ? item[subField.name] : "";
+                        const isSubRequired = subField.required ? '<span class="required">*</span>' : '';
+                        
+                        let subInputHtml = "";
+                        const subId = `block-${idx}-${field.name}-${itemIdx}-${subField.name}`;
+                        
+                        if (subField.type === "text") {
+                          subInputHtml = `<input type="text" value="${subVal}" oninput="syncRepeaterRegistryField(${idx}, '${field.name}', ${itemIdx}, '${subField.name}', this.value)" ${subField.required ? 'required' : ''} />`;
+                        } else if (subField.type === "number") {
+                          subInputHtml = `<input type="number" value="${subVal}" oninput="syncRepeaterRegistryField(${idx}, '${field.name}', ${itemIdx}, '${subField.name}', parseFloat(this.value) || 0)" ${subField.required ? 'required' : ''} />`;
+                        } else if (subField.type === "textarea") {
+                          subInputHtml = `<textarea rows="2" oninput="syncRepeaterRegistryField(${idx}, '${field.name}', ${itemIdx}, '${subField.name}', this.value)" ${subField.required ? 'required' : ''}>${subVal}</textarea>`;
+                        } else if (subField.type === "boolean") {
+                          subInputHtml = `
+                            <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.25rem;">
+                              <input type="checkbox" id="${subId}" ${subVal ? 'checked' : ''} onchange="syncRepeaterRegistryField(${idx}, '${field.name}', ${itemIdx}, '${subField.name}', this.checked)" style="width:auto;" />
+                              <label for="${subId}" style="font-weight:500; cursor:pointer;">${subField.label}</label>
+                            </div>
+                          `;
+                        } else if (subField.type === "select") {
+                          const subOpts = (subField.options || []).map(opt => `
+                            <option value="${opt}" ${subVal === opt ? 'selected' : ''}>${opt.charAt(0).toUpperCase() + opt.slice(1)}</option>
+                          `).join('');
+                          subInputHtml = `<select onchange="syncRepeaterRegistryField(${idx}, '${field.name}', ${itemIdx}, '${subField.name}', this.value)">${subOpts}</select>`;
+                        } else if (subField.type === "image") {
+                          subInputHtml = `
+                            <div class="input-picker-wrap">
+                              <input type="text" id="${subId}" value="${subVal}" oninput="syncRepeaterRegistryField(${idx}, '${field.name}', ${itemIdx}, '${subField.name}', this.value)" />
+                              <button type="button" class="btn btn-outline btn-sm media-picker-trigger" data-target="${subId}">Pick</button>
+                            </div>
+                          `;
+                        } else if (subField.type === "list") {
+                          const subItems = Array.isArray(subVal) ? subVal : [];
+                          subInputHtml = `
+                            <div class="repeater-section">
+                              <div class="repeater-header">
+                                <h5>${subField.label}</h5>
+                                <button type="button" class="btn btn-outline btn-sm" onclick="addNestedListStringItem(${idx}, '${field.name}', ${itemIdx}, '${subField.name}')">+ Add Sub-Item</button>
+                              </div>
+                              <div class="repeater-items-wrap">
+                                ${subItems.map((sItem, sItemIdx) => `
+                                  <div style="display:flex; gap:0.5rem;">
+                                    <input type="text" value="${sItem}" oninput="syncNestedListStringField(${idx}, '${field.name}', ${itemIdx}, '${subField.name}', ${sItemIdx}, this.value)" style="flex:1;" />
+                                    <button type="button" class="btn-icon-sm btn-delete-block" onclick="removeNestedListStringItem(${idx}, '${field.name}', ${itemIdx}, '${subField.name}', ${sItemIdx})">${ICONS.delete}</button>
+                                  </div>
+                                `).join('')}
+                              </div>
+                            </div>
+                          `;
+                        }
+                        
+                        subFieldsHtml += `
+                          <div class="form-group col-12" style="margin-top:0.4rem;">
+                            <label>${subField.label} ${isSubRequired}</label>
+                            ${subInputHtml}
+                          </div>
+                        `;
+                      });
+                    }
+                    
+                    return `
+                      <div class="repeater-item-row">
+                        <div class="repeater-item-actions">
+                          <button type="button" class="btn-icon-sm btn-delete-block" onclick="removeRepeaterRegistryItem(${idx}, '${field.name}', ${itemIdx})">${ICONS.delete}</button>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:0.5rem; width:100%; padding-right:2rem;">
+                          ${subFieldsHtml}
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            `;
+          }
+          
+          fieldsHtml += `
+            <div class="form-group ${field.type === 'repeater' || field.type === 'list' || field.type === 'textarea' ? 'col-12' : 'col-6'}">
+              <label>${field.label} ${isRequired}</label>
+              ${inputFieldHtml}
+            </div>
+          `;
+        });
+      }
+
+      card.innerHTML = `
+        <div class="block-header-wrap">
+          <div class="block-badge-title">
+            <span class="block-type-badge">${block.type}</span>
+            <h4>${blockTitle} Block</h4>
+          </div>
+          <div class="block-actions">
+            <button type="button" class="btn-icon-sm" onclick="moveBlock(${idx}, -1)" title="Move Up">${ICONS.arrowUp}</button>
+            <button type="button" class="btn-icon-sm" onclick="moveBlock(${idx}, 1)" title="Move Down">${ICONS.arrowDown}</button>
+            <button type="button" class="btn-icon-sm btn-delete-block" onclick="deleteBlock(${idx})" title="Delete Block">${ICONS.delete}</button>
+          </div>
+        </div>
+        <div class="block-form-grid">
+          ${fieldsHtml}
+        </div>
+      `;
+
+      container.appendChild(card);
+    });
+  }
+
+  // Real-time SEO Scoring & Character Counter logic
+  function updateSeoIndicators() {
+    const titleInput = document.getElementById("seo-title");
+    const descInput = document.getElementById("seo-description");
+    const keywordInput = document.getElementById("seo-focus-keyword");
+
+    const titleVal = titleInput ? titleInput.value.trim() : "";
+    const descVal = descInput ? descInput.value.trim() : "";
+    const keywordVal = keywordInput ? keywordInput.value.trim().toLowerCase() : "";
+
+    // Length counters
+    const cntTitle = document.getElementById("cnt-seo-title");
+    const cntDesc = document.getElementById("cnt-seo-description");
+    
+    if (cntTitle) cntTitle.innerText = `${titleVal.length} chars`;
+    if (cntDesc) cntDesc.innerText = `${descVal.length} chars`;
+
+    // scoring metrics
+    let score = 0;
+    const checks = [];
+
+    // Title Check
+    if (titleVal.length > 0) {
+      if (titleVal.length >= 30 && titleVal.length <= 60) {
+        score += 30;
+        checks.push({ name: "Meta Title length is perfect (30-60 chars)", passed: true });
+      } else {
+        checks.push({ name: "Meta Title length should be between 30 and 60 chars", passed: false });
+      }
+    } else {
+      checks.push({ name: "Meta Title is missing", passed: false });
+    }
+
+    // Description Check
+    if (descVal.length > 0) {
+      if (descVal.length >= 120 && descVal.length <= 160) {
+        score += 30;
+        checks.push({ name: "Meta Description length is perfect (120-160 chars)", passed: true });
+      } else {
+        checks.push({ name: "Meta Description length should be between 120 and 160 chars", passed: false });
+      }
+    } else {
+      checks.push({ name: "Meta Description is missing", passed: false });
+    }
+
+    // Keyword Check
+    if (keywordVal.length > 0) {
+      score += 20;
+      checks.push({ name: "Focus Keyword provided", passed: true });
+      
+      const keywordInTitle = titleVal.toLowerCase().includes(keywordVal);
+      const keywordInDesc = descVal.toLowerCase().includes(keywordVal);
+
+      if (keywordInTitle) {
+        score += 10;
+        checks.push({ name: "Focus keyword found in Meta Title", passed: true });
+      } else {
+        checks.push({ name: "Focus keyword not found in Meta Title", passed: false });
+      }
+
+      if (keywordInDesc) {
+        score += 10;
+        checks.push({ name: "Focus keyword found in Meta Description", passed: true });
+      } else {
+        checks.push({ name: "Focus keyword not found in Meta Description", passed: false });
+      }
+    } else {
+      checks.push({ name: "Focus Keyword is missing", passed: false });
+    }
+
+    // Update Score Circle and Ring
+    const scoreRing = document.getElementById("seo-score-ring");
+    const scoreText = document.getElementById("seo-score-text");
+    const healthText = document.getElementById("seo-health-text");
+
+    if (scoreRing) {
+      scoreRing.setAttribute("stroke-dasharray", `${score}, 100`);
+      
+      let strokeColor = "var(--color-error)";
+      let health = "Poor SEO";
+      if (score >= 80) {
+        strokeColor = "var(--color-success)";
+        health = "Excellent SEO";
+      } else if (score >= 50) {
+        strokeColor = "var(--color-warning)";
+        health = "Needs Tweaks";
+      }
+      
+      scoreRing.style.stroke = strokeColor;
+      if (healthText) {
+        healthText.innerText = health;
+        healthText.style.color = strokeColor;
+      }
+    }
+
+    if (scoreText) scoreText.innerText = `${score}%`;
+
+    // Render Checklist
+    const checksList = document.getElementById("seo-checks-list");
+    if (checksList) {
+      checksList.innerHTML = checks.map(c => `
+        <li>
+          <span class="seo-check-icon" style="color: ${c.passed ? 'var(--color-success)' : 'var(--color-error)'};">
+            ${c.passed ? '✓' : '✗'}
+          </span>
+          <span>${c.name}</span>
+        </li>
+      `).join('');
+    }
+  }
+
+  // Save changes via API
+  async function submitPageForm() {
+    const title = document.getElementById("page-title").value.trim();
+    const slugVal = document.getElementById("page-slug").value.trim();
+    const status = document.getElementById("page-status").value;
+    const body = document.getElementById("page-body").value.trim();
+    
+    // SEO fields
+    const metaTitle = document.getElementById("seo-title").value.trim();
+    const metaDescription = document.getElementById("seo-description").value.trim();
+    const canonicalUrl = document.getElementById("seo-canonical").value.trim();
+    const robots = document.getElementById("seo-robots").value.trim();
+    const ogTitle = document.getElementById("seo-og-title").value.trim();
+    const ogDescription = document.getElementById("seo-og-description").value.trim();
+    const ogImage = document.getElementById("seo-og-image").value.trim();
+    const twitterCard = document.getElementById("seo-twitter").value;
+    const schemaType = document.getElementById("seo-schema-type").value;
+    const schemaMarkup = document.getElementById("seo-schema-markup").value.trim();
+    const focusKeyword = document.getElementById("seo-focus-keyword").value.trim();
+
+    // Clear previous errors
+    document.querySelectorAll(".field-error").forEach(el => el.innerText = "");
+
+    // Client-side quick check
+    let hasClientErrors = false;
+    if (!title) {
+      document.getElementById("err-title").innerText = "Page Title is required";
+      hasClientErrors = true;
+    }
+    if (!slugVal) {
+      document.getElementById("err-slug").innerText = "Slug is required";
+      hasClientErrors = true;
+    }
+    if (!metaTitle) {
+      document.getElementById("err-seo-title").innerText = "Meta Title is required";
+      hasClientErrors = true;
+    }
+    if (!metaDescription) {
+      document.getElementById("err-seo-description").innerText = "Meta Description is required";
+      hasClientErrors = true;
+    }
+
+    if (hasClientErrors) {
+      showToast("Please fix the validation errors.");
+      return;
+    }
+
+    const payload = {
+      originalSlug,
+      title,
+      slug: slugVal,
+      status,
+      body,
+      seo: {
+        metaTitle,
+        metaDescription,
+        canonicalUrl,
+        robots,
+        ogTitle,
+        ogDescription,
+        ogImage,
+        twitterCard,
+        schemaType,
+        schemaMarkup,
+        focusKeyword
+      },
+      blocks
+    };
+
+    const saveBtn = document.getElementById("save-page-btn");
+    const saveLabel = document.getElementById("save-btn-label");
+    saveBtn.disabled = true;
+    saveLabel.innerText = "Saving...";
+
+    try {
+      const res = await fetch("/api/pages-crud", {
+        method: isEditMode ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        showToast(isEditMode ? "Page updated successfully!" : "Page created successfully!");
+        setTimeout(() => {
+          window.location.href = `/admin/editor?slug=${slugVal}`;
+        }, 1000);
+      } else {
+        showToast("Error: Failed to save changes");
+        // Print backend validation errors
+        if (data.errors) {
+          for (const [field, errMsg] of Object.entries(data.errors)) {
+            // Match main fields
+            if (field === "title") document.getElementById("err-title").innerText = errMsg;
+            if (field === "slug") document.getElementById("err-slug").innerText = errMsg;
+            if (field === "seo.metaTitle") document.getElementById("err-seo-title").innerText = errMsg;
+            if (field === "seo.metaDescription") document.getElementById("err-seo-description").innerText = errMsg;
+            
+            // Highlight blocks error inside stack
+            if (field.startsWith("blocks.")) {
+              showToast(`Block Error: ${errMsg}`);
+            }
+          }
+        }
+        saveBtn.disabled = false;
+        saveLabel.innerText = "Save Changes";
+      }
+    } catch (e) {
+      showToast("Network Error: Could not save page content");
+      saveBtn.disabled = false;
+      saveLabel.innerText = "Save Changes";
+    }
+  }
+
+  // Load Revisions from Endpoint
+  async function fetchRevisions() {
+    const listContainer = document.getElementById("revisions-list");
+    if (!listContainer) return;
+
+    try {
+      const res = await fetch(`/api/pages-crud?action=revisions&slug=${originalSlug}`);
+      const data = await res.json();
+
+      if (data.success && data.revisions.length > 0) {
+        listContainer.innerHTML = data.revisions.map(rev => `
+          <div class="revision-row">
+            <span class="rev-date">${rev.date}</span>
+            <button type="button" class="btn btn-outline btn-sm rev-action-btn" onclick="rollbackRevision('${rev.timestamp}')">
+              Rollback
+            </button>
+          </div>
+        `).join('');
+      } else {
+        listContainer.innerHTML = `<div class="revision-placeholder" style="padding:1.5rem; text-align:center; color:var(--text-dim); font-size:0.8rem;">No backups saved yet. Changes save revisions automatically.</div>`;
+      }
+    } catch (e) {
+      listContainer.innerHTML = `<div class="revision-placeholder" style="color:var(--color-error); padding:1rem;">Error fetching revision records</div>`;
+    }
+  }
+
+  // Rollback to specific timestamp
+  window.rollbackRevision = async function(timestamp) {
+    if (confirm("This will overwrite your current draft configuration with the revision data. Are you sure you want to proceed?")) {
+      showToast("Rolling back page draft...");
+      try {
+        const res = await fetch(`/api/pages-crud?action=rollback&slug=${originalSlug}&timestamp=${timestamp}`);
+        const data = await res.json();
+        
+        if (data.success) {
+          showToast("Draft restored successfully!");
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        } else {
+          showToast("Error: " + data.error);
+        }
+      } catch (e) {
+        showToast("Error restoring revision backup.");
+      }
+    }
+  };
+
+  // Toast banner utility
+  const toast = document.getElementById("toast-notify");
+  const toastMsg = document.getElementById("toast-message");
+  
+  function showToast(message) {
+    if (toast && toastMsg) {
+      toastMsg.innerText = message;
+      toast.classList.add("active");
+      setTimeout(() => {
+        toast.classList.remove("active");
+      }, 3000);
+    }
+  }
+
+  // Interactive Media Modal functions
+  function openMediaModal(targetId) {
+    activeMediaPickerTarget = targetId;
+    const modal = document.getElementById("media-picker-overlay");
+    if (modal) modal.classList.add("active");
+    loadMediaCatalogGrid();
+  }
+
+  function hideMediaModal() {
+    const modal = document.getElementById("media-picker-overlay");
+    if (modal) modal.classList.remove("active");
+    activeMediaPickerTarget = "";
+  }
+
+  // Load physical catalog and meta JSON in modal
+  async function loadMediaCatalogGrid() {
+    const grid = document.getElementById("media-picker-grid");
+    if (!grid) return;
+
+    try {
+      const res = await fetch("/api/media-crud");
+      const data = await res.json();
+
+      if (data.success && data.media.length > 0) {
+        grid.innerHTML = data.media.map(item => `
+          <div class="media-picker-item" onclick="selectMediaAsset('${item.url}')" title="${item.alt || item.title}">
+            <img src="${item.url}" alt="${item.alt || ''}" />
+          </div>
+        `).join('');
+      } else {
+        grid.innerHTML = `<p class="media-empty">No catalog images. Upload a new asset.</p>`;
+      }
+    } catch (e) {
+      grid.innerHTML = `<p class="media-empty" style="color:var(--color-error);">Error loading media catalog files.</p>`;
+    }
+  }
+
+  // Pick media item
+  window.selectMediaAsset = function(url) {
+    if (activeMediaPickerTarget) {
+      const targetInput = document.getElementById(activeMediaPickerTarget);
+      if (targetInput) {
+        targetInput.value = url;
+        
+        // Trigger manual input update event to sync array block state!
+        const changeEvent = new Event('input', { bubbles: true });
+        targetInput.dispatchEvent(changeEvent);
+      }
+      hideMediaModal();
+    }
+  };
+
+  // Upload local media file directly in modal
+  async function uploadMediaFile() {
+    const fileInput = document.getElementById("media-upload-file");
+    const uploadBtn = document.getElementById("upload-media-btn");
+    const fileSelectBtn = document.getElementById("trigger-file-select");
+
+    if (!fileInput || fileInput.files.length === 0) return;
+
+    const file = fileInput.files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("alt", file.name.split(".")[0]);
+
+    uploadBtn.disabled = true;
+    uploadBtn.innerText = "Uploading...";
+
+    try {
+      const res = await fetch("/api/media-crud", {
+        method: "POST",
+        body: formData
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        showToast("Asset uploaded successfully!");
+        
+        // Clear upload state
+        fileInput.value = "";
+        fileSelectBtn.innerText = "Choose Upload File";
+        uploadBtn.innerText = "Upload";
+        
+        // Pick uploaded image directly
+        selectMediaAsset(result.media.url);
+      } else {
+        showToast("Error: " + (result.error || "Upload failed"));
+        uploadBtn.disabled = false;
+        uploadBtn.innerText = "Upload";
+      }
+    } catch (e) {
+      showToast("Network Error: Could not upload file asset");
+      uploadBtn.disabled = false;
+      uploadBtn.innerText = "Upload";
+    }
+  }
+
+  // Hook layout on content loads
+  document.addEventListener("DOMContentLoaded", initEditor);
+  document.addEventListener("astro:page-load", initEditor);
+  if (document.readyState === "interactive" || document.readyState === "complete") {
+    initEditor();
+  }
+</script>
