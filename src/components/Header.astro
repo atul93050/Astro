@@ -1,0 +1,25 @@
+---
+const currentPath = Astro.url.pathname;
+---
+
+<nav class="top">
+  <div class="container nav-row">
+    <div class="logo">
+      <img src="/images/tangence-black.png" alt="Tangence" />
+    </div>
+
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a
+        href="/about-us"
+        class:list={{
+          active: currentPath === "/about-us",
+        }}
+      >
+        About Us
+      </a>
+      <a href="/contact-us">Contact</a>
+      <a href="#book-audit" class="btn-call"> Book a free audit </a>
+    </div>
+  </div>
+</nav>

@@ -1,0 +1,575 @@
+---
+import { getEntry, render } from "astro:content";
+import MainLayout from "../layouts/MainLayout.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+
+// Enable hybrid dynamic SSR, so updates are instantly reflected upon reload
+export const prerender = false;
+
+// Query the 'about' collection entry
+let entry = await getEntry("about", "about");
+let data = entry?.data;
+
+// Fallback in case of content synchronization delays
+if (!entry || !data) {
+  // In the absolute rarest case, fallback to static defaults
+  data = {
+    title: "About Us",
+    seoTitle: "About Us - Tangence Performance Marketing",
+    seoDescription: "Tangence was founded in 2006. We help brands scale through performance marketing.",
+    hero: {
+      title: "Built for the long game",
+      description: "We help brands scale through performance marketing with dedicated, results-driven strategies.",
+      image: "/uploads/about-hero.png"
+    },
+    mission: {
+      title: "Our Mission",
+      description: "To guide high-growth brands to scale sustainably through performance marketing, aligning our growth directly with our clients' success.",
+      image: "/uploads/mission.png"
+    },
+    vision: {
+      title: "Our Vision",
+      description: "To build a global performance engine that transforms the digital marketing landscape through cutting-edge technology and world-class talent.",
+      image: "/uploads/vision.png"
+    },
+    team: []
+  };
+}
+
+// Render markdown body content
+const { Content } = entry ? await render(entry) : { Content: null };
+---
+
+<MainLayout 
+  title={data.seoTitle} 
+  description={data.seoDescription}
+>
+  <Header />
+
+  <!-- Premium Hero Section -->
+  <section class="about-hero">
+    <div class="glow-sphere sphere-1"></div>
+    <div class="glow-sphere sphere-2"></div>
+    
+    <div class="container hero-grid">
+      <div class="hero-text-area">
+        <span class="eyebrow">{data.title}</span>
+        <h1>{data.hero.title}</h1>
+        <p class="hero-desc">{data.hero.description}</p>
+        <div class="hero-actions">
+          <a href="#story" class="btn btn-filled">Our Story</a>
+          <a href="#team" class="btn btn-outline">Meet The Team</a>
+        </div>
+      </div>
+      <div class="hero-visual-area">
+        <div class="image-wrapper">
+          <img src={data.hero.image || "/uploads/about-hero.png"} alt="Tangence Hero Visual" />
+          <div class="accent-border"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Mission & Vision Section -->
+  <section class="mission-vision">
+    <div class="container section-grid">
+      
+      <!-- Mission Card -->
+      <div class="mv-card">
+        <div class="card-icon-box">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        </div>
+        <h2>{data.mission.title}</h2>
+        <p>{data.mission.description}</p>
+        {data.mission.image && (
+          <div class="card-media">
+            <img src={data.mission.image} alt="Our Mission Graphic" />
+          </div>
+        )}
+      </div>
+
+      <!-- Vision Card -->
+      <div class="mv-card">
+        <div class="card-icon-box accent-box">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        </div>
+        <h2>{data.vision.title}</h2>
+        <p>{data.vision.description}</p>
+        {data.vision.image && (
+          <div class="card-media">
+            <img src={data.vision.image} alt="Our Vision Graphic" />
+          </div>
+        )}
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Rich Markdown Story Section -->
+  <section id="story" class="story-section">
+    <div class="container prose-container">
+      <div class="glass-story-box">
+        {Content ? (
+          <article class="prose">
+            <Content />
+          </article>
+        ) : (
+          <div class="prose">
+            <h2>Our Story</h2>
+            <p>Tangence was founded in 2006. We specialize in scaling brands through end-to-end performance marketing.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  </section>
+
+  <!-- Team Grid Section -->
+  {data.team && data.team.length > 0 && (
+    <section id="team" class="team-section">
+      <div class="container">
+        <div class="section-header">
+          <span class="eyebrow">The Brains</span>
+          <h2>Meet Our Leaders</h2>
+          <p>Meet the visionary practitioners guiding our strategy and growth.</p>
+        </div>
+
+        <div class="team-grid">
+          {data.team.map((member: any) => (
+            <div class="team-card">
+              <div class="team-image-box">
+                <img src={member.image || "/uploads/team-placeholder.png"} alt={member.name} />
+                <div class="hover-overlay">
+                  <p class="member-bio">{member.bio}</p>
+                </div>
+              </div>
+              <div class="team-details">
+                <h3>{member.name}</h3>
+                <span class="member-role">{member.role}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
+  <Footer />
+</MainLayout>
+
+<style>
+  /* Premium Stylesheet for About Us */
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+
+  .eyebrow {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #6366F1;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  /* 1. Hero Styling */
+  .about-hero {
+    position: relative;
+    padding: 8rem 0 6rem 0;
+    background-color: #050811;
+    overflow: hidden;
+  }
+
+  .glow-sphere {
+    position: absolute;
+    border-radius: 50%;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .sphere-1 {
+    top: -10%;
+    left: -10%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, rgba(99, 102, 241, 0) 70%);
+  }
+
+  .sphere-2 {
+    bottom: -10%;
+    right: -10%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, rgba(16, 185, 129, 0) 70%);
+  }
+
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 4rem;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+  }
+
+  .hero-text-area h1 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 3.5rem;
+    line-height: 1.1;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: white;
+    margin-bottom: 1.5rem;
+  }
+
+  .hero-desc {
+    font-size: 1.15rem;
+    line-height: 1.6;
+    color: #9CA3AF;
+    margin-bottom: 2rem;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 1.25rem;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.85rem 2rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.25s ease;
+    text-decoration: none;
+  }
+
+  .btn-filled {
+    background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+  }
+
+  .btn-filled:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
+  }
+
+  .btn-outline {
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: white;
+    background: transparent;
+  }
+
+  .btn-outline:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+
+  .hero-visual-area .image-wrapper {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+  }
+
+  .hero-visual-area img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    transition: transform 0.5s ease;
+  }
+
+  .hero-visual-area:hover img {
+    transform: scale(1.03);
+  }
+
+  .accent-border {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    right: 15px;
+    bottom: 15px;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    pointer-events: none;
+    border-radius: 12px;
+  }
+
+  /* 2. Mission & Vision Styling */
+  .mission-vision {
+    padding: 6rem 0;
+    background-color: #03060E;
+  }
+
+  .section-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2.5rem;
+  }
+
+  .mv-card {
+    background: rgba(17, 24, 39, 0.6);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 20px;
+    padding: 2.5rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    backdrop-filter: blur(12px);
+    transition: all 0.3s ease;
+  }
+
+  .mv-card:hover {
+    border-color: rgba(99, 102, 241, 0.25);
+    transform: translateY(-4px);
+    box-shadow: 0 15px 35px rgba(99, 102, 241, 0.1);
+  }
+
+  .card-icon-box {
+    width: 50px;
+    height: 50px;
+    background: rgba(99, 102, 241, 0.15);
+    color: #6366F1;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .card-icon-box.accent-box {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10B981;
+  }
+
+  .mv-card h2 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.75rem;
+    color: white;
+    margin-bottom: 1rem;
+    letter-spacing: -0.01em;
+  }
+
+  .mv-card p {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #9CA3AF;
+    margin-bottom: 1.5rem;
+  }
+
+  .card-media {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .card-media img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    display: block;
+  }
+
+  /* 3. Rich Text Story Styling */
+  .story-section {
+    padding: 4rem 0 6rem 0;
+    background-color: #050811;
+  }
+
+  .glass-story-box {
+    background: linear-gradient(135deg, rgba(17,24,39,0.5) 0%, rgba(17,24,39,0.2) 100%);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 24px;
+    padding: 4rem;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+  }
+
+  /* GFM Prose styling */
+  .prose {
+    color: #D1D5DB;
+    line-height: 1.85;
+    font-size: 1.1rem;
+  }
+
+  .prose h1, .prose h2, .prose h3 {
+    color: white;
+    font-family: 'Outfit', sans-serif;
+    margin-top: 2.5rem;
+    margin-bottom: 1rem;
+    letter-spacing: -0.02em;
+  }
+
+  .prose h1 { font-size: 2.25rem; font-weight: 800; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.5rem; }
+  .prose h2 { font-size: 1.75rem; font-weight: 700; }
+  .prose h3 { font-size: 1.35rem; font-weight: 600; }
+
+  .prose p {
+    margin-bottom: 1.5rem;
+  }
+
+  .prose ul, .prose ol {
+    margin-bottom: 1.5rem;
+    padding-left: 1.75rem;
+  }
+
+  .prose li {
+    margin-bottom: 0.5rem;
+  }
+
+  .prose strong {
+    color: white;
+    font-weight: 600;
+  }
+
+  /* 4. Team Grid Styling */
+  .team-section {
+    padding: 6rem 0 8rem 0;
+    background-color: #03060E;
+    border-top: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .section-header {
+    text-align: center;
+    max-width: 600px;
+    margin: 0 auto 4rem auto;
+  }
+
+  .section-header h2 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 2.5rem;
+    color: white;
+    font-weight: 800;
+    margin-top: 0.25rem;
+    letter-spacing: -0.02em;
+  }
+
+  .section-header p {
+    color: #9CA3AF;
+    font-size: 1.05rem;
+    margin-top: 0.5rem;
+  }
+
+  .team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 2.5rem;
+  }
+
+  .team-card {
+    background: rgba(17, 24, 39, 0.4);
+    border: 1px solid rgba(255,255,255,0.04);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .team-card:hover {
+    border-color: rgba(99, 102, 241, 0.3);
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  }
+
+  .team-image-box {
+    position: relative;
+    width: 100%;
+    height: 320px;
+    overflow: hidden;
+    background: #000;
+  }
+
+  .team-image-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+  }
+
+  .team-card:hover .team-image-box img {
+    transform: scale(1.05);
+  }
+
+  .hover-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(10, 15, 26, 0.9);
+    padding: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .team-card:hover .hover-overlay {
+    opacity: 1;
+  }
+
+  .member-bio {
+    color: #D1D5DB;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    text-align: center;
+  }
+
+  .team-details {
+    padding: 1.5rem;
+    text-align: center;
+    border-top: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .team-details h3 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    color: white;
+    font-weight: 600;
+  }
+
+  .member-role {
+    color: #6366F1;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: block;
+    margin-top: 0.25rem;
+  }
+
+  /* Responsive styling */
+  @media (max-width: 1024px) {
+    .hero-grid {
+      grid-template-columns: 1fr;
+      gap: 3rem;
+      text-align: center;
+    }
+    .hero-text-area h1 {
+      font-size: 2.8rem;
+    }
+    .hero-actions {
+      justify-content: center;
+    }
+    .hero-visual-area {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .section-grid {
+      grid-template-columns: 1fr;
+    }
+    .glass-story-box {
+      padding: 2rem;
+    }
+    .about-hero {
+      padding-top: 6rem;
+    }
+  }
+</style>

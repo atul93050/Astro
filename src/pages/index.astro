@@ -1,11 +1,82 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
+import { getEntry } from "astro:content";
+import MainLayout from '../layouts/MainLayout.astro';
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+import Header from '../components/Header.astro';
+import Hero from '../components/Hero.astro';
+import LogoBar from '../components/LogoBar.astro';
+import VideoSection from '../components/VideoSection.astro';
+import Pillars from '../components/Pillars.astro';
+import CaseStudies from '../components/CaseStudies.astro';
+import Stats from '../components/Stats.astro';
+import Team from '../components/Team.astro';
+import Services from '../components/Services.astro';
+import Pricing from '../components/Pricing.astro';
+import RiskReversal from '../components/RiskReversal.astro';
+import FinalCTA from '../components/FinalCTA.astro';
+import FAQ from '../components/FAQ.astro';
+import Footer from '../components/Footer.astro';
+
+export const prerender = false;
+
+// Fetch homepage collection database entry
+const entry = await getEntry("home", "home");
+console.log("HOMEDATA ENTRY:", entry ? { id: entry.id, hasData: !!entry.data } : "NOT FOUND");
+const data = entry?.data;
+
+// Realistic fallback seeding in case of compilation/first sync delays
+const homeData = data || {
+  title: "Home",
+  seoTitle: "Performance Marketing Agency India - Tangence",
+  seoDescription: "Tangence is a performance marketing agency founded in 2006. We help brands scale through paid ads.",
+  hero: {
+    badge: "20 years · still here",
+    title: "Performance marketing that's outlasted every \"growth hack\" of the last 20 years.",
+    description: "₹500 Cr+ in ad budgets managed across paid search, Meta, Bing, and Amazon programmatic.",
+    bullets: ["Senior strategists, not account managers", "Live ROAS dashboard"],
+    formTitle: "Get my free 30-min audit",
+    formDescription: "We'll screen-share your ad account and find 3 things to fix.",
+    formTrust: "No sales pitch. No marketing emails."
+  },
+  stats: {
+    eyebrow: "Why Tangence",
+    title: "Built for the long game.",
+    description: "Most agencies are 3-5 years old. We've been at this for two decades.",
+    items: []
+  },
+  pricing: {
+    eyebrow: "How we work together",
+    title: "Three engagement models.",
+    description: "No contract gotchas. We publish pricing.",
+    footer: "3-month minimum.",
+    items: []
+  },
+  faq: {
+    eyebrow: "Common questions",
+    title: "The things buyers actually ask us.",
+    items: []
+  }
+};
 ---
 
-<Layout>
-	<Welcome />
-</Layout>
+<MainLayout
+  title={homeData.seoTitle}
+  description={homeData.seoDescription}
+>
+
+<Header />
+<Hero hero={homeData.hero} />
+<LogoBar />
+<VideoSection />
+<Pillars />
+<CaseStudies />
+<Stats stats={homeData.stats} />
+<Team />
+<Services />
+<Pricing pricing={homeData.pricing} />
+<RiskReversal />
+<FinalCTA />
+<FAQ faq={homeData.faq} />
+<Footer />
+
+</MainLayout>

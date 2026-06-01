@@ -1,0 +1,56 @@
+---
+import { pillars } from "../data/pillars";
+---
+
+<section id="how" class="pillars anno">
+  <div class="container">
+
+    <div class="section-head">
+      <span class="section-eyebrow">
+        How we work
+      </span>
+
+      <h2>
+        Find the leak. Fix the leak. Scale what works.
+      </h2>
+
+      <p>
+        Not "data-driven strategy." Not "funnel optimization."
+      </p>
+    </div>
+
+    <div class="pillar-grid">
+
+      {pillars.map((pillar) => (
+
+        <div class="pillar-card">
+
+          <div class="pillar-num">
+            {pillar.number}
+          </div>
+
+          <h3>
+            {pillar.title}
+          </h3>
+
+          <div class="pill-method">
+            {pillar.method}
+          </div>
+
+          <p>
+            {pillar.description}
+          </p>
+
+          <div class="pillar-proof">
+            <strong>Proof:</strong>
+            {pillar.proof}
+          </div>
+
+        </div>
+
+      ))}
+
+    </div>
+
+  </div>
+</section>

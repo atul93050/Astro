@@ -1,0 +1,41 @@
+[
+  {
+    "title": "Retainer",
+    "price": "From ₹25K",
+    "suffix": "/month",
+    "subtext": "Best for ₹10L+ monthly ad budget",
+    "featured": false,
+    "features": [
+      "Strategy + media buying",
+      "Creative direction",
+      "Weekly reporting",
+      "Senior strategist (not AM)"
+    ]
+  },
+  {
+    "title": "% of ad spend",
+    "price": "6% or 25K",
+    "suffix": "whichever is higher",
+    "subtext": "Best for ₹50L+ monthly accounts",
+    "featured": true,
+    "features": [
+      "Everything in Retainer",
+      "Higher alignment, lower fixed cost",
+      "Bi-weekly senior reviews",
+      "Priority creative team access"
+    ]
+  },
+  {
+    "title": "Performance-based",
+    "price": "Hybrid",
+    "suffix": "retainer + bonus",
+    "subtext": "After a 90-day baseline",
+    "featured": false,
+    "features": [
+      "Lower retainer",
+      "Bonus on hitting agreed KPIs",
+      "Available after baseline period",
+      "For mature accounts only"
+    ]
+  }
+]

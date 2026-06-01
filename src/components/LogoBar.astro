@@ -1,0 +1,28 @@
+---
+const logos = [
+ "Bluehost.svg",
+ "S.Chand.svg",
+ "Bigrock.svg",
+ "Usha.svg",
+ "Caratlane.svg",
+ "fnp-new.png",
+ "Hostgator.svg"
+];
+---
+
+<section class="logo-bar">
+
+<div class="logo-row">
+
+{logos.map((logo)=>(
+<div class="brand">
+  <img
+    src={`/images/slider/${logo}`}
+    alt=""
+  />
+</div>
+))}
+
+</div>
+
+</section>

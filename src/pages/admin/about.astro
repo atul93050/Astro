@@ -1,0 +1,1185 @@
+---
+import AdminLayout from "../../layouts/admin/AdminLayout.astro";
+import fs from "node:fs";
+import path from "node:path";
+
+export const prerender = false;
+
+// Read the markdown file directly from disk to avoid cache delays
+const markdownPath = path.resolve("src/content/about/about.md");
+let fileContent = "";
+try {
+  fileContent = fs.readFileSync(markdownPath, "utf-8");
+} catch (e) {
+  // If file doesn't exist, use fallback content
+  fileContent = `---
+title: "About Us"
+seoTitle: "About Us"
+seoDescription: ""
+hero:
+  title: ""
+  description: ""
+  image: ""
+mission:
+  title: ""
+  description: ""
+  image: ""
+vision:
+  title: ""
+  description: ""
+  image: ""
+team: []
+---
+`;
+}
+
+// Custom simple robust YAML parser to load data into the form
+function parseYAML(yaml: string) {
+  const lines = yaml.split("\n");
+  const result: any = {
+    title: "",
+    seoTitle: "",
+    seoDescription: "",
+    hero: { title: "", description: "", image: "" },
+    mission: { title: "", description: "", image: "" },
+    vision: { title: "", description: "", image: "" },
+    team: [],
+  };
+
+  let currentSection = "";
+  let currentMember: any = null;
+
+  const cleanVal = (val: string) => {
+    let clean = val.trim();
+    if (clean.startsWith('"') && clean.endsWith('"')) {
+      clean = clean.substring(1, clean.length - 1);
+    } else if (clean.startsWith("'") && clean.endsWith("'")) {
+      clean = clean.substring(1, clean.length - 1);
+    }
+    return clean.replace(/\\"/g, '"').replace(/\\n/g, "\n");
+  };
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    // Detect section header
+    if (trimmed === "hero:") {
+      currentSection = "hero";
+      continue;
+    } else if (trimmed === "mission:") {
+      currentSection = "mission";
+      continue;
+    } else if (trimmed === "vision:") {
+      currentSection = "vision";
+      continue;
+    } else if (trimmed === "team:") {
+      currentSection = "team";
+      continue;
+    }
+
+    // Match standard key-value
+    const kvMatch = trimmed.match(/^([a-zA-Z0-9_]+)\s*:\s*(.*)$/);
+    if (kvMatch) {
+      const key = kvMatch[1];
+      const val = cleanVal(kvMatch[2]);
+
+      // If root fields
+      if (!currentSection) {
+        if (key === "title" || key === "seoTitle" || key === "seoDescription") {
+          result[key] = val;
+        }
+      } else if (currentSection === "hero" || currentSection === "mission" || currentSection === "vision") {
+        if (key === "title" || key === "description" || key === "image") {
+          result[currentSection][key] = val;
+        }
+      }
+    } else if (trimmed.startsWith("-") && currentSection === "team") {
+      // Start of a team list item
+      const itemContent = trimmed.substring(1).trim();
+      const kv = itemContent.match(/^([a-zA-Z0-9_]+)\s*:\s*(.*)$/);
+      currentMember = { name: "", role: "", bio: "", image: "" };
+      if (kv) {
+        currentMember[kv[1]] = cleanVal(kv[2]);
+      }
+      result.team.push(currentMember);
+    } else if (currentMember && currentSection === "team") {
+      // Inside a team list item
+      const kv = trimmed.match(/^([a-zA-Z0-9_]+)\s*:\s*(.*)$/);
+      if (kv) {
+        currentMember[kv[1]] = cleanVal(kv[2]);
+      }
+    }
+  }
+
+  return result;
+}
+
+const match = fileContent.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
+const yamlString = match ? match[1] : "";
+const markdownBody = match ? match[2].trim() : fileContent.trim();
+const cmsData = parseYAML(yamlString);
+---
+
+<AdminLayout title="Edit About Us Page">
+  <div class="cms-header">
+    <div class="cms-title-area">
+      <span class="badge">CMS Core</span>
+      <h1>Edit About Us</h1>
+      <p class="subtitle">Modify sections, manage team members, and optimize SEO meta fields without a database.</p>
+    </div>
+    <div class="cms-actions-area">
+      <a href="/about-us" target="_blank" class="btn btn-outline">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+        View Live Page
+      </a>
+      <button type="submit" form="cms-form" class="btn btn-primary" id="save-button">
+        <svg class="icon-save" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+        <span>Save Changes</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Notification Banner -->
+  <div id="status-alert" class="alert hidden">
+    <div class="alert-icon"></div>
+    <div class="alert-content">
+      <h4 class="alert-title"></h4>
+      <p class="alert-desc"></p>
+    </div>
+    <button class="alert-close">&times;</button>
+  </div>
+
+  <!-- Main Grid Form -->
+  <form id="cms-form" method="POST" enctype="multipart/form-data" class="cms-grid-layout">
+    <!-- Left Navigation Sticky Tabs -->
+    <div class="cms-tabs">
+      <button type="button" class="tab-btn active" data-tab="hero">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        Hero Section
+      </button>
+      <button type="button" class="tab-btn" data-tab="mission-vision">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+        Mission & Vision
+      </button>
+      <button type="button" class="tab-btn" data-tab="team">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        Team Section
+      </button>
+      <button type="button" class="tab-btn" data-tab="seo">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        SEO & Metadata
+      </button>
+      <button type="button" class="tab-btn" data-tab="body">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        Page Story Content
+      </button>
+    </div>
+
+    <!-- Main Content Form Cards -->
+    <div class="cms-form-content">
+      
+      <!-- HERO TAB -->
+      <div class="form-section active" id="tab-hero">
+        <div class="card">
+          <div class="card-header">
+            <h3>General & Hero Section</h3>
+            <p>Define the core page header details and primary CTA image.</p>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label for="title">Page Title <span class="required">*</span></label>
+              <input type="text" id="title" name="title" value={cmsData.title} placeholder="e.g. About Us" required />
+              <span class="error-msg" id="err-title"></span>
+            </div>
+
+            <div class="form-group">
+              <label for="heroTitle">Hero Title <span class="required">*</span></label>
+              <input type="text" id="heroTitle" name="heroTitle" value={cmsData.hero.title} placeholder="e.g. Built for the long game" required />
+              <span class="error-msg" id="err-heroTitle"></span>
+            </div>
+
+            <div class="form-group">
+              <label for="heroDescription">Hero Description <span class="required">*</span></label>
+              <textarea id="heroDescription" name="heroDescription" rows="4" placeholder="Enter brief hero introduction..." required>{cmsData.hero.description}</textarea>
+              <span class="error-msg" id="err-heroDescription"></span>
+            </div>
+
+            <div class="form-group image-upload-group">
+              <label>Hero Featured Image</label>
+              <div class="image-preview-container">
+                <img id="preview-hero" src={cmsData.hero.image || "/uploads/about-hero.png"} alt="Hero Preview" />
+                <div class="image-inputs">
+                  <input type="text" name="heroImageExisting" value={cmsData.hero.image} class="hidden-path-input" readonly />
+                  <input type="file" id="heroImageFile" name="heroImageFile" accept="image/*" class="file-input" />
+                  <span class="input-tip">Click to upload a new image or leave blank to keep current.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MISSION & VISION TAB -->
+      <div class="form-section" id="tab-mission-vision">
+        <div class="card">
+          <div class="card-header">
+            <h3>Our Mission</h3>
+            <p>Outline the short term goal and fundamental values.</p>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label for="missionTitle">Mission Title <span class="required">*</span></label>
+              <input type="text" id="missionTitle" name="missionTitle" value={cmsData.mission.title} placeholder="e.g. Our Mission" required />
+              <span class="error-msg" id="err-missionTitle"></span>
+            </div>
+
+            <div class="form-group">
+              <label for="missionDescription">Mission Description <span class="required">*</span></label>
+              <textarea id="missionDescription" name="missionDescription" rows="4" placeholder="Describe the mission statement..." required>{cmsData.mission.description}</textarea>
+              <span class="error-msg" id="err-missionDescription"></span>
+            </div>
+
+            <div class="form-group image-upload-group">
+              <label>Mission Section Image</label>
+              <div class="image-preview-container">
+                <img id="preview-mission" src={cmsData.mission.image || "/uploads/mission.png"} alt="Mission Preview" />
+                <div class="image-inputs">
+                  <input type="text" name="missionImageExisting" value={cmsData.mission.image} class="hidden-path-input" readonly />
+                  <input type="file" id="missionImageFile" name="missionImageFile" accept="image/*" class="file-input" />
+                  <span class="input-tip">Upload section graphic.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 2rem;">
+          <div class="card-header">
+            <h3>Our Vision</h3>
+            <p>Describe the future objective and long-term legacy.</p>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label for="visionTitle">Vision Title <span class="required">*</span></label>
+              <input type="text" id="visionTitle" name="visionTitle" value={cmsData.vision.title} placeholder="e.g. Our Vision" required />
+              <span class="error-msg" id="err-visionTitle"></span>
+            </div>
+
+            <div class="form-group">
+              <label for="visionDescription">Vision Description <span class="required">*</span></label>
+              <textarea id="visionDescription" name="visionDescription" rows="4" placeholder="Describe the vision statement..." required>{cmsData.vision.description}</textarea>
+              <span class="error-msg" id="err-visionDescription"></span>
+            </div>
+
+            <div class="form-group image-upload-group">
+              <label>Vision Section Image</label>
+              <div class="image-preview-container">
+                <img id="preview-vision" src={cmsData.vision.image || "/uploads/vision.png"} alt="Vision Preview" />
+                <div class="image-inputs">
+                  <input type="text" name="visionImageExisting" value={cmsData.vision.image} class="hidden-path-input" readonly />
+                  <input type="file" id="visionImageFile" name="visionImageFile" accept="image/*" class="file-input" />
+                  <span class="input-tip">Upload section graphic.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TEAM TAB -->
+      <div class="form-section" id="tab-team">
+        <div class="card">
+          <div class="card-header flex-header">
+            <div>
+              <h3>Team Members</h3>
+              <p>Add, edit, or remove staff displayed on the About Us page.</p>
+            </div>
+            <button type="button" class="btn btn-outline btn-sm" id="add-member-btn">
+              + Add Member
+            </button>
+          </div>
+          <div class="card-body">
+            <div id="team-list" class="team-grid">
+              <!-- Team Member Subcards injected dynamically & rendered initially -->
+              {cmsData.team.map((member: any, index: number) => (
+                <div class="team-member-card" data-index={index}>
+                  <div class="member-card-header">
+                    <h4>Member #{index + 1}</h4>
+                    <button type="button" class="remove-member-btn" title="Remove Member">&times;</button>
+                  </div>
+                  <div class="member-card-body">
+                    <div class="form-group">
+                      <label>Full Name <span class="required">*</span></label>
+                      <input type="text" name="teamName[]" value={member.name} placeholder="e.g. Atul Verma" required />
+                    </div>
+                    <div class="form-group">
+                      <label>Job Title <span class="required">*</span></label>
+                      <input type="text" name="teamRole[]" value={member.role} placeholder="e.g. Founder & CEO" required />
+                    </div>
+                    <div class="form-group">
+                      <label>Short Bio</label>
+                      <textarea name="teamBio[]" rows="2" placeholder="Brief tagline or description...">{member.bio}</textarea>
+                    </div>
+                    <div class="form-group image-upload-group">
+                      <label>Member Photo</label>
+                      <div class="member-photo-preview">
+                        <img class="preview-team" src={member.image || "/uploads/team-placeholder.png"} />
+                        <div class="photo-inputs">
+                          <input type="text" name="teamImageExisting[]" value={member.image} class="hidden-path-input" readonly />
+                          <input type="file" name="teamImageFile[]" accept="image/*" class="member-file-input" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEO TAB -->
+      <div class="form-section" id="tab-seo">
+        <div class="card">
+          <div class="card-header">
+            <h3>SEO & Metadata Optimization</h3>
+            <p>Optimize your search engine rankings and snippet preview.</p>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label for="seoTitle">SEO Title <span class="required">*</span></label>
+              <input type="text" id="seoTitle" name="seoTitle" value={cmsData.seoTitle} placeholder="Search snippet title" required />
+              <span class="error-msg" id="err-seoTitle"></span>
+            </div>
+
+            <div class="form-group">
+              <label for="seoDescription">SEO Meta Description <span class="required">*</span></label>
+              <textarea id="seoDescription" name="seoDescription" rows="4" placeholder="Brief search index snippet description..." required>{cmsData.seoDescription}</textarea>
+              <span class="error-msg" id="err-seoDescription"></span>
+            </div>
+
+            <!-- SEO Preview Card -->
+            <div class="seo-preview-card">
+              <span class="preview-url">www.tangence.in &rsaquo; about-us</span>
+              <h4 id="google-preview-title" class="preview-title">{cmsData.seoTitle || "Page Title"}</h4>
+              <p id="google-preview-desc" class="preview-desc">{cmsData.seoDescription || "Please provide a meta description to see how this page will display in Google Search Results."}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BODY CONTENT TAB -->
+      <div class="form-section" id="tab-body">
+        <div class="card">
+          <div class="card-header">
+            <h3>Markdown Body Content</h3>
+            <p>Edit the rich-text story content at the bottom of the page in markdown.</p>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label for="body">Our Story Markdown Body</label>
+              <textarea id="body" name="body" rows="15" class="code-textarea" placeholder="# Our Story\n\nWrite your rich markdown here...">{markdownBody}</textarea>
+              <span class="input-tip">Markdown headers, lists, links, and styling are fully supported and compiled.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </form>
+
+  <style>
+    /* CMS Page Layout Styling */
+    .cms-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid var(--bg-surface-border);
+      padding-bottom: 1.5rem;
+    }
+
+    .cms-title-area h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: white;
+      margin-top: 0.25rem;
+    }
+
+    .badge {
+      background: var(--primary-light);
+      color: var(--primary);
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border: 1px solid rgba(99, 102, 241, 0.2);
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-top: 0.25rem;
+    }
+
+    .cms-actions-area {
+      display: flex;
+      gap: 1rem;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: var(--radius-md);
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      border: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%);
+      color: white;
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+    }
+
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--text-muted);
+    }
+
+    .btn-sm {
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      border-radius: var(--radius-sm);
+    }
+
+    /* Main Grid Structure */
+    .cms-grid-layout {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 2.5rem;
+      align-items: start;
+    }
+
+    /* Sticky Tab Navigation */
+    .cms-tabs {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      position: sticky;
+      top: 2rem;
+    }
+
+    .tab-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 1rem 1.25rem;
+      border-radius: var(--radius-md);
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--bg-surface-border);
+      text-align: left;
+      font-weight: 500;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .tab-btn:hover {
+      color: white;
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .tab-btn.active {
+      color: white;
+      background: var(--bg-surface);
+      border-color: var(--primary);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .tab-btn svg {
+      opacity: 0.7;
+      transition: var(--transition);
+    }
+
+    .tab-btn.active svg {
+      color: var(--primary);
+      opacity: 1;
+    }
+
+    /* Cards & Container */
+    .cms-form-content {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .form-section {
+      display: none;
+    }
+
+    .form-section.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--bg-surface-border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+      backdrop-filter: blur(12px);
+    }
+
+    .card-header {
+      padding: 1.75rem 2rem;
+      border-bottom: 1px solid var(--bg-surface-border);
+    }
+
+    .flex-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-header h3 {
+      font-size: 1.3rem;
+      color: white;
+      font-weight: 600;
+    }
+
+    .card-header p {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-top: 0.25rem;
+    }
+
+    .card-body {
+      padding: 2rem;
+    }
+
+    /* Form Elements */
+    .form-group {
+      margin-bottom: 1.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .form-group:last-of-type {
+      margin-bottom: 0;
+    }
+
+    label {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .required {
+      color: var(--color-error);
+    }
+
+    input[type="text"],
+    textarea,
+    select {
+      width: 100%;
+      padding: 0.85rem 1.2rem;
+      border-radius: var(--radius-md);
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      color: white;
+      font-size: 0.95rem;
+      font-family: var(--font-body);
+      transition: var(--transition);
+    }
+
+    input[type="text"]:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--input-border-focus);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+    }
+
+    .input-tip {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-top: 0.25rem;
+    }
+
+    .error-msg {
+      font-size: 0.8rem;
+      color: var(--color-error);
+      font-weight: 500;
+    }
+
+    /* Image Preview Widget */
+    .image-preview-container {
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px dashed var(--input-border);
+      padding: 1.25rem;
+      border-radius: var(--radius-md);
+    }
+
+    .image-preview-container img {
+      width: 120px;
+      height: 120px;
+      object-fit: cover;
+      border-radius: var(--radius-md);
+      background: #000;
+      border: 1px solid var(--bg-surface-border);
+    }
+
+    .image-inputs {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .hidden-path-input {
+      font-size: 0.75rem;
+      background: rgba(0, 0, 0, 0.2);
+      color: var(--text-dim);
+      border: 1px solid var(--bg-surface-border);
+    }
+
+    .file-input {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    /* Dynamic Team Grid */
+    .team-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .team-member-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--bg-surface-border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      transition: var(--transition);
+    }
+
+    .team-member-card:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .member-card-header {
+      padding: 1rem 1.25rem;
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid var(--bg-surface-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .member-card-header h4 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: white;
+    }
+
+    .remove-member-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      font-size: 1.4rem;
+      line-height: 1;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .remove-member-btn:hover {
+      color: var(--color-error);
+      transform: scale(1.1);
+    }
+
+    .member-card-body {
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .member-photo-preview {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .member-photo-preview img {
+      width: 60px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+    }
+
+    .photo-inputs {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .member-file-input {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+
+    /* SEO Snippet Preview */
+    .seo-preview-card {
+      background: #ffffff;
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      margin-top: 1.5rem;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      max-width: 600px;
+    }
+
+    .preview-url {
+      font-size: 0.85rem;
+      color: #202124;
+      display: block;
+      font-family: -apple-system, sans-serif;
+    }
+
+    .preview-title {
+      font-size: 1.25rem;
+      color: #1a0dab;
+      margin: 0.25rem 0;
+      font-family: -apple-system, sans-serif;
+      font-weight: 400;
+      line-height: 1.3;
+    }
+
+    .preview-title:hover {
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    .preview-desc {
+      font-size: 0.875rem;
+      color: #4d5156;
+      font-family: -apple-system, sans-serif;
+      line-height: 1.4;
+      margin: 0;
+    }
+
+    /* Markdown Code textarea */
+    .code-textarea {
+      font-family: 'Courier New', Courier, monospace;
+      background-color: #050811;
+      color: #c9d1d9;
+      line-height: 1.5;
+    }
+
+    /* Alert Banner */
+    .alert {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      padding: 1.25rem 1.5rem;
+      border-radius: var(--radius-md);
+      margin-bottom: 2rem;
+      border: 1px solid transparent;
+      animation: slideIn 0.3s ease;
+      position: relative;
+    }
+
+    .alert.hidden {
+      display: none;
+    }
+
+    .alert-success {
+      background-color: rgba(16, 185, 129, 0.08);
+      border-color: rgba(16, 185, 129, 0.25);
+      color: #a7f3d0;
+    }
+
+    .alert-success .alert-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--color-success);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .alert-success .alert-icon::after {
+      content: "✓";
+      color: white;
+      font-weight: bold;
+      font-size: 0.85rem;
+    }
+
+    .alert-error {
+      background-color: rgba(239, 68, 68, 0.08);
+      border-color: rgba(239, 68, 68, 0.25);
+      color: #fca5a5;
+    }
+
+    .alert-error .alert-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--color-error);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .alert-error .alert-icon::after {
+      content: "!";
+      color: white;
+      font-weight: bold;
+      font-size: 0.85rem;
+    }
+
+    .alert-content {
+      flex: 1;
+    }
+
+    .alert-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .alert-desc {
+      font-size: 0.85rem;
+      opacity: 0.9;
+    }
+
+    .alert-close {
+      background: transparent;
+      border: none;
+      color: inherit;
+      font-size: 1.3rem;
+      cursor: pointer;
+      opacity: 0.7;
+      transition: var(--transition);
+      line-height: 1;
+    }
+
+    .alert-close:hover {
+      opacity: 1;
+    }
+
+    /* Keyframes */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 1024px) {
+      .cms-grid-layout {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+      }
+      .cms-tabs {
+        flex-direction: row;
+        overflow-x: auto;
+        position: static;
+        padding-bottom: 0.5rem;
+      }
+      .tab-btn {
+        white-space: nowrap;
+        padding: 0.75rem 1rem;
+      }
+    }
+  </style>
+
+  <!-- Client-Side Controller & Interactivity -->
+  <script is:inline>
+    function initCMS() {
+      const cmsForm = document.getElementById("cms-form");
+      if (!cmsForm || cmsForm.classList.contains("cms-js-active")) return;
+      cmsForm.classList.add("cms-js-active");
+
+      // 1. Tab Switching Controller
+      const tabButtons = document.querySelectorAll(".tab-btn");
+      const sections = document.querySelectorAll(".form-section");
+
+      tabButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+          const tabId = btn.getAttribute("data-tab");
+
+          tabButtons.forEach(b => b.classList.remove("active"));
+          sections.forEach(s => s.classList.remove("active"));
+
+          btn.classList.add("active");
+          document.getElementById(`tab-${tabId}`).classList.add("active");
+        });
+      });
+
+      // 2. SEO Snippet Mirror Preview
+      const seoTitleInput = document.getElementById("seoTitle");
+      const seoDescInput = document.getElementById("seoDescription");
+      const previewTitle = document.getElementById("google-preview-title");
+      const previewDesc = document.getElementById("google-preview-desc");
+
+      if (seoTitleInput && previewTitle) {
+        seoTitleInput.addEventListener("input", (e) => {
+          previewTitle.textContent = e.target.value || "Page Title";
+        });
+      }
+
+      if (seoDescInput && previewDesc) {
+        seoDescInput.addEventListener("input", (e) => {
+          previewDesc.textContent = e.target.value || "Please provide a meta description...";
+        });
+      }
+
+      // 3. Image Upload Local Object Preview
+      function setupImagePreview(fileInputId, imgPreviewId) {
+        const input = document.getElementById(fileInputId);
+        const img = document.getElementById(imgPreviewId);
+        
+        if (input && img) {
+          input.addEventListener("change", function() {
+            const file = this.files[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = function(e) {
+                img.src = e.target.result;
+              }
+              reader.readAsDataURL(file);
+            }
+          });
+        }
+      }
+
+      setupImagePreview("heroImageFile", "preview-hero");
+      setupImagePreview("missionImageFile", "preview-mission");
+      setupImagePreview("visionImageFile", "preview-vision");
+
+      // Dynamic photo preview listener for dynamic team members
+      document.addEventListener("change", function(e) {
+        if (e.target && e.target.classList.contains("member-file-input")) {
+          const file = e.target.files[0];
+          if (file) {
+            const img = e.target.closest(".member-photo-preview").querySelector(".preview-team");
+            if (img) {
+              const reader = new FileReader();
+              reader.onload = function(ev) {
+                img.src = ev.target.result;
+              }
+              reader.readAsDataURL(file);
+            }
+          }
+        }
+      });
+
+      // 4. Dynamic Team Member Management
+      const teamList = document.getElementById("team-list");
+      const addMemberBtn = document.getElementById("add-member-btn");
+
+      function updateTeamIndices() {
+        if (!teamList) return;
+        const cards = teamList.querySelectorAll(".team-member-card");
+        cards.forEach((card, index) => {
+          card.setAttribute("data-index", index);
+          card.querySelector("h4").textContent = `Member #${index + 1}`;
+        });
+      }
+
+      if (addMemberBtn && teamList) {
+        // Add Member click
+        addMemberBtn.addEventListener("click", () => {
+          const index = teamList.querySelectorAll(".team-member-card").length;
+          
+          const newCard = document.createElement("div");
+          newCard.className = "team-member-card";
+          newCard.setAttribute("data-index", index);
+          newCard.innerHTML = `
+            <div class="member-card-header">
+              <h4>Member #${index + 1}</h4>
+              <button type="button" class="remove-member-btn" title="Remove Member">&times;</button>
+            </div>
+            <div class="member-card-body">
+              <div class="form-group">
+                <label>Full Name <span class="required">*</span></label>
+                <input type="text" name="teamName[]" placeholder="e.g. Atul Verma" required />
+              </div>
+              <div class="form-group">
+                <label>Job Title <span class="required">*</span></label>
+                <input type="text" name="teamRole[]" placeholder="e.g. Founder & CEO" required />
+              </div>
+              <div class="form-group">
+                <label>Short Bio</label>
+                <textarea name="teamBio[]" rows="2" placeholder="Brief tagline or description..."></textarea>
+              </div>
+              <div class="form-group image-upload-group">
+                <label>Member Photo</label>
+                <div class="member-photo-preview">
+                  <img class="preview-team" src="/uploads/team-placeholder.png" />
+                  <div class="photo-inputs">
+                    <input type="text" name="teamImageExisting[]" value="" class="hidden-path-input" readonly />
+                    <input type="file" name="teamImageFile[]" accept="image/*" class="member-file-input" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+          
+          teamList.appendChild(newCard);
+          newCard.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+
+        // Remove Member click delegated
+        teamList.addEventListener("click", (e) => {
+          if (e.target && e.target.classList.contains("remove-member-btn")) {
+            const card = e.target.closest(".team-member-card");
+            if (card) {
+              card.classList.add("removing");
+              card.style.opacity = "0";
+              card.style.transform = "scale(0.9)";
+              setTimeout(() => {
+                card.remove();
+                updateTeamIndices();
+              }, 200);
+            }
+          }
+        });
+      }
+
+      // 5. Async CMS Form Submission via Fetch API
+      const statusAlert = document.getElementById("status-alert");
+      const saveButton = document.getElementById("save-button");
+
+      function showAlert(type, title, desc) {
+        if (!statusAlert) return;
+        statusAlert.className = `alert alert-${type}`;
+        statusAlert.querySelector(".alert-title").textContent = title;
+        statusAlert.querySelector(".alert-desc").textContent = desc;
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      if (statusAlert) {
+        const closeBtn = statusAlert.querySelector(".alert-close");
+        if (closeBtn) {
+          closeBtn.addEventListener("click", () => {
+            statusAlert.classList.add("hidden");
+          });
+        }
+      }
+
+      // Explicitly trigger form validation and submit on saveButton click
+      if (saveButton) {
+        saveButton.addEventListener("click", (e) => {
+          e.preventDefault();
+          cmsForm.requestSubmit();
+        });
+      }
+
+      cmsForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!saveButton) return;
+
+        // Show loader state
+        const origBtnContent = saveButton.innerHTML;
+        saveButton.disabled = true;
+        saveButton.innerHTML = `<svg class="spinner" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" style="animation: spin 1s linear infinite;"><circle cx="12" cy="12" r="10" opacity="0.25"></circle><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path></svg> Saving...`;
+
+        // Clear previous inputs error messages
+        document.querySelectorAll(".error-msg").forEach(el => el.textContent = "");
+
+        const formData = new FormData(cmsForm);
+
+        try {
+          const response = await fetch("/api/about-update", {
+            method: "POST",
+            body: formData
+          });
+
+          const data = await response.json();
+
+          if (response.ok && data.success) {
+            showAlert("success", "Success!", data.message || "About Us content has been successfully updated on disk.");
+            setTimeout(() => {
+              window.location.reload();
+            }, 1200);
+          } else {
+            showAlert("error", "Updates Failed", "Please check your inputs and try again.");
+            if (data.errors) {
+              Object.keys(data.errors).forEach(key => {
+                const errSpan = document.getElementById(`err-${key}`);
+                if (errSpan) {
+                  errSpan.textContent = data.errors[key];
+                }
+              });
+            }
+          }
+        } catch (err) {
+          console.error("Fetch submit error:", err);
+          showAlert("error", "System Exception", "An unexpected error occurred while communicating with the server.");
+        } finally {
+          setTimeout(() => {
+            saveButton.disabled = false;
+            saveButton.innerHTML = origBtnContent;
+          }, 1000);
+        }
+      });
+    }
+
+    // Initialize CMS hooks on DOM ready & View Transitions reload
+    document.addEventListener("DOMContentLoaded", initCMS);
+    document.addEventListener("astro:page-load", initCMS);
+    // Safe execution check in case script is loaded dynamically
+    if (document.readyState === "interactive" || document.readyState === "complete") {
+      initCMS();
+    }
+  </script>
+
+  <style is:global>
+    /* CSS animations and spinner styling */
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .spinner {
+      animation: spin 1s linear infinite;
+    }
+    .team-member-card.removing {
+      transition: all 0.2s ease;
+    }
+  </style>
+</AdminLayout>

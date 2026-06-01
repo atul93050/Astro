@@ -1,0 +1,98 @@
+---
+import { caseStudies } from "../data/caseStudies";
+---
+
+<section id="cases" class="anno">
+
+  <div class="container">
+
+    <div class="section-head">
+      <span class="section-eyebrow">
+        The receipts
+      </span>
+
+      <h2>
+        Three case studies. Real baselines.
+        Real time-frames.
+      </h2>
+
+      <p>
+        No "+1000% clicks" without context.
+      </p>
+    </div>
+
+    <div class="case-grid">
+
+      {caseStudies.map((study) => (
+
+        <div class="case-card">
+
+          <div class="case-brand">
+
+            <div class="name">
+              {study.brand}
+            </div>
+
+            <div class="industry">
+              {study.industry}
+            </div>
+
+          </div>
+
+          <div class="case-body">
+
+            <h3>
+              {study.title}
+            </h3>
+
+            <div class="case-meta">
+
+              {study.stats.map((stat) => (
+
+                <div class="case-stat">
+
+                  <div class="delta">
+                    {stat.delta}
+                  </div>
+
+                  <div class="label">
+                    {stat.label}
+                  </div>
+
+                </div>
+
+              ))}
+
+            </div>
+
+            <div class="case-detail">
+
+              <div>
+                <strong>Problem</strong>
+
+                {study.problem}
+              </div>
+
+              <div>
+                <strong>Approach</strong>
+
+                {study.approach}
+              </div>
+
+            </div>
+
+            <div class="case-quote">
+              {study.quote}
+            </div>
+
+          </div>
+
+        </div>
+
+      ))}
+
+    </div>
+
+  </div>
+
+</section>

@@ -1,0 +1,183 @@
+---
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+import Sidebar from "../../components/admin/Sidebar.astro";
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{title} | Tangence CMS</title>
+  
+  <!-- Modern Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Reset & Styling variables -->
+  <style is:global>
+    :root {
+      --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      
+      /* Pure Dark Theme Archetype */
+      --bg-base: #0B0F19;
+      --bg-surface: rgba(17, 24, 39, 0.7);
+      --bg-surface-border: rgba(255, 255, 255, 0.08);
+      
+      /* Curated Palette */
+      --primary: #6366F1;       /* Indigo */
+      --primary-hover: #4F46E5;
+      --primary-light: rgba(99, 102, 241, 0.15);
+      --accent: #10B981;        /* Emerald */
+      --accent-hover: #059669;
+      --accent-light: rgba(16, 185, 129, 0.15);
+      
+      /* Neutrals */
+      --text-main: #F3F4F6;
+      --text-muted: #9CA3AF;
+      --text-dim: #6B7280;
+      --border-color: rgba(255, 255, 255, 0.08);
+      --input-bg: rgba(17, 24, 39, 0.9);
+      --input-border: rgba(255, 255, 255, 0.1);
+      --input-border-focus: #6366F1;
+      
+      /* Feedback colors */
+      --color-success: #10B981;
+      --color-error: #EF4444;
+      --color-warning: #F59E0B;
+      --color-info: #3B82F6;
+      
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+      --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      display: flex;
+      overflow-x: hidden;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-base);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Global Typography & Elements */
+    h1, h2, h3, h4, h5, h6 {
+      font-family: var(--font-heading);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button, input, textarea, select {
+      font-family: inherit;
+    }
+  </style>
+
+  <style>
+    .admin-container {
+      display: flex;
+      width: 100%;
+      min-height: 100vh;
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 2.5rem 3rem;
+      margin-left: 280px; /* Sidebar width */
+      min-width: 0; /* Prevent flex overflow */
+      position: relative;
+    }
+
+    /* Ambient background glows */
+    .ambient-glow-1 {
+      position: fixed;
+      top: -10%;
+      right: -10%;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, rgba(99, 102, 241, 0) 70%);
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    .ambient-glow-2 {
+      position: fixed;
+      bottom: -10%;
+      left: 10%;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.05) 0%, rgba(16, 185, 129, 0) 70%);
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    @media (max-width: 1024px) {
+      .main-content {
+        padding: 2rem;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .admin-container {
+        flex-direction: column;
+      }
+      .main-content {
+        margin-left: 0;
+        padding: 1.5rem;
+        padding-top: 5rem; /* Allow space for mobile menu toggle */
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Ambient Gradients for Depth -->
+  <div class="ambient-glow-1"></div>
+  <div class="ambient-glow-2"></div>
+
+  <div class="admin-container">
+    <!-- Sidebar Navigation -->
+    <Sidebar />
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <slot />
+    </main>
+  </div>
+</body>
+</html>

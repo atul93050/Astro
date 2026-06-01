@@ -1,0 +1,31 @@
+{
+  "description": "Performance marketing built to outlast algorithm changes, recessions, and growth-hack fads. Since 2006.",
+
+  "phone": "+91-995-812-9810",
+
+  "offices": [
+    {
+      "title": "Delhi Office",
+      "icon": "/images/icons/Path-529.png",
+      "address": "F 298, Sec 63, Noida, 201301"
+    },
+    {
+      "title": "Mumbai Office",
+      "icon": "/images/icons/Path-530.png",
+      "address": "D 421/422 Neelkanth Business Park Station Road Vidyavihar West Mumbai, 400086"
+    },
+    {
+      "title": "U.S",
+      "icon": "/images/icons/us.svg",
+      "address": "6081 Meridian Ave, San Jose, 95120"
+    }
+  ],
+
+  "cities": [
+    "Noida",
+    "Mumbai",
+    "Hyderabad",
+    "Pune",
+    "Bangalore"
+  ]
+}

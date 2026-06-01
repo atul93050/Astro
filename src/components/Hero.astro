@@ -1,0 +1,108 @@
+---
+import LeadForm from "./LeadForm.astro";
+
+interface Props {
+  hero?: {
+    badge: string;
+    title: string;
+    description: string;
+    bullets: string[];
+    formTitle: string;
+    formDescription: string;
+    formTrust: string;
+  };
+}
+
+const { hero } = Astro.props;
+
+// Seeding standard defaults if not passed or empty
+const badge = hero?.badge || "20 years · 4 algorithm overhauls · 3 recessions · still here";
+const title = hero?.title || 'Performance marketing that\'s outlasted <span class="accent">every "growth hack"</span> of the last 20 years.';
+const description = hero?.description || "₹500 Cr+ in ad budgets managed across Google Ads, PPC advertising, Meta Ads, LinkedIn, Amazon, and programmatic for brands like FNP, USHA, Clovia, Revolt, and EaseMyTrip.";
+const bullets = hero?.bullets && hero.bullets.length > 0 ? hero.bullets : [
+  "Senior strategists, not account managers",
+  "Live ROAS dashboard"
+];
+const formTitle = hero?.formTitle || "Get my free 30-min audit";
+const formDescription = hero?.formDescription || "We'll screen-share your ad account and find 3 things to fix whether or not you hire us.";
+const formTrust = hero?.formTrust || "<strong>No sales pitch.</strong> No marketing emails. We screen-share your account, point at 3 things, and leave you alone.";
+---
+
+<section
+  class="hero anno"
+  style="padding-top:56px;"
+>
+
+  <div class="container hero-grid">
+
+    <div>
+
+      <div class="badge-20yr">
+        <span class="dot"></span>
+        {badge}
+      </div>
+
+      <h1 set:html={title}></h1>
+
+      <p class="lede">
+        {description}
+      </p>
+
+      <div class="hero-bullets">
+        {bullets.map((bullet) => (
+          <span>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;display:inline-block;vertical-align:middle;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            {bullet}
+          </span>
+        ))}
+      </div>
+
+      <div class="partners-logo">
+
+        <div class="partner-item">
+          <img
+            src="/images/hero/Google-Ads-Certified.png"
+            alt="Google Ads Certified"
+          />
+        </div>
+
+        <div class="partner-item">
+          <img
+            src="/images/hero/bing-logo.png"
+            alt="Bing Ads"
+          />
+        </div>
+
+        <div class="partner-item">
+          <img
+            src="/images/hero/meta-partner.webp"
+            alt="Meta Partner"
+          />
+        </div>
+
+      </div>
+
+    </div>
+
+    <div
+      class="form-card anno"
+      id="book-audit"
+    >
+
+      <h3>
+        {formTitle}
+      </h3>
+
+      <p class="sub">
+        {formDescription}
+      </p>
+
+      <LeadForm />
+
+      <div class="form-trust" set:html={formTrust}></div>
+
+    </div>
+
+  </div>
+
+</section>
