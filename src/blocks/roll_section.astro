@@ -1,0 +1,118 @@
+---
+interface Props {
+  Title?: string;
+  Badge?: string;
+  des?: string;
+}
+
+const {
+  Title = "Roll Section Title Placeholder",
+  Badge = "DYNAMIC BLOCK",
+  des = "hELLO USER",
+} = Astro.props;
+---
+
+<section class="roll-section">
+  <div class="container">
+    <div class="roll-card">
+      <div class="glow-sphere"></div>
+      <div class="content-wrapper">
+        <span class="badge">{Badge}</span>
+        <h2 class="title">{Title}</h2>
+        <p class="description">
+          {des}
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .roll-section {
+    padding: 6rem 0;
+    background-color: #050811;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+
+  .roll-card {
+    position: relative;
+    background: linear-gradient(
+      135deg,
+      rgba(17, 24, 39, 0.7) 0%,
+      rgba(139, 92, 246, 0.05) 100%
+    );
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    padding: 4rem 3rem;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(10px);
+  }
+
+  .glow-sphere {
+    position: absolute;
+    top: -20%;
+    right: -10%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(
+      circle,
+      rgba(139, 92, 246, 0.12) 0%,
+      rgba(139, 92, 246, 0) 70%
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .content-wrapper {
+    position: relative;
+    z-index: 2;
+    max-width: 800px;
+  }
+
+  .badge {
+    font-family: "Outfit", sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: #8b5cf6;
+    background: rgba(139, 92, 246, 0.1);
+    padding: 0.25rem 0.75rem;
+    border-radius: 99px;
+    display: inline-block;
+    margin-bottom: 1.25rem;
+    text-transform: uppercase;
+    border: 1px solid rgba(139, 92, 246, 0.2);
+  }
+
+  .title {
+    font-family: "Outfit", sans-serif;
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: white;
+    letter-spacing: -0.02em;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+  }
+
+  .description {
+    font-size: 1.05rem;
+    color: #9ca3af;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  @media (max-width: 768px) {
+    .roll-card {
+      padding: 3rem 1.5rem;
+    }
+    .title {
+      font-size: 2rem;
+    }
+  }
+</style>

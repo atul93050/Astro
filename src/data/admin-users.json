@@ -1,0 +1,12 @@
+[
+  {
+    "username": "admin@tangence.com",
+    "passwordHash": "c733fd5b61ba4e266e985099bc07bbd7c3b7237c007f627e500ea182c0278411",
+    "role": "superadmin"
+  },
+  {
+    "username": "atul800498@gmail.com",
+    "passwordHash": "57c8dc2498fec9273b392af7ecbb9d19b3eb9a599400ba54ee8200a31ec43f4e",
+    "role": "admin"
+  }
+]

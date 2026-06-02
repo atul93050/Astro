@@ -3,9 +3,32 @@ import AdminLayout from "../../layouts/admin/AdminLayout.astro";
 import fs from "node:fs";
 import path from "node:path";
 import { parse } from "yaml";
-import { BLOCK_REGISTRY } from "../../block-registry/blocks";
 
 export const prerender = false;
+
+// Load section definitions registry (dynamic, replaces hardcoded BLOCK_REGISTRY)
+const definitionsPath = path.resolve("src/data/section-definitions.json");
+let BLOCK_REGISTRY: any[] = [];
+try {
+  if (fs.existsSync(definitionsPath)) {
+    const rawDefs = JSON.parse(fs.readFileSync(definitionsPath, "utf-8"));
+    // Map to legacy BLOCK_REGISTRY shape for compatibility
+    BLOCK_REGISTRY = rawDefs.map((d: any) => ({
+      type: d.key,
+      name: d.name,
+      category: d.category,
+      icon: d.key,
+      description: d.description || "",
+      componentPath: d.componentPath || "",
+      fields: d.fields || [],
+      defaultValues: Object.fromEntries(
+        (d.fields || []).map((f: any) => [f.name, f.default !== undefined ? f.default : ""])
+      )
+    }));
+  }
+} catch (e) {
+  console.error("Failed to load section definitions for editor:", e);
+}
 
 // 1. Check if we are editing an existing page
 const slug = Astro.url.searchParams.get("slug") || "";
@@ -57,7 +80,7 @@ if (slug) {
   
   <div class="editor-header-bar">
     <div class="header-back-wrap">
-      <a href="/admin" class="back-link">
+      <a href="/admin/pages" class="back-link">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
         <span>Back to Pages</span>
       </a>
@@ -121,10 +144,10 @@ if (slug) {
           <div class="card-header block-header-flex">
             <h3>Page Builder Blocks</h3>
             <div class="block-controls-wrap">
-              <select id="add-block-select">
-                <!-- Will be dynamically populated by registry -->
-              </select>
-              <button type="button" class="btn btn-primary btn-sm" id="add-block-btn">
+              <button type="button" class="btn btn-outline btn-sm" id="attach-existing-btn">
+                <span>Attach Existing Section</span>
+              </button>
+              <button type="button" class="btn btn-primary btn-sm" id="open-add-block-modal-btn">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                 <span>Add Section</span>
               </button>
@@ -335,12 +358,117 @@ if (slug) {
           </button>
         </form>
       </div>
-      <div class="media-picker-grid" id="media-picker-grid">
+      <div class="media-picker-grid" id="media-picker-grid" style="max-height:280px; overflow-y:auto; overflow-x:hidden;">
         <!-- Injected dynamic catalog grid -->
         <p class="media-empty">No catalog images. Upload a new asset.</p>
       </div>
       <div class="confirm-modal-footer">
         <button class="btn btn-outline" id="close-media-picker-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 1: Visual Block Catalog Selector -->
+  <div class="confirm-modal-overlay" id="add-section-modal-overlay">
+    <div class="confirm-modal create-section-modal" style="max-width: 600px;">
+      <div class="confirm-modal-header">
+        <h4>Add Layout Block Section</h4>
+        <button type="button" class="close-modal-btn" id="close-add-section-modal">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="confirm-modal-body">
+        <div class="catalog-filters" style="display:flex; gap:0.35rem; margin-bottom:0.75rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">
+          <button type="button" class="catalog-tab-btn active" data-category="all">All</button>
+          <button type="button" class="catalog-tab-btn" data-category="hero">Hero</button>
+          <button type="button" class="catalog-tab-btn" data-category="content">Content</button>
+          <button type="button" class="catalog-tab-btn" data-category="marketing">Marketing</button>
+          <button type="button" class="catalog-tab-btn" data-category="social">Social</button>
+          <button type="button" class="catalog-tab-btn" data-category="other">Other</button>
+        </div>
+        <div class="block-catalog-grid" id="add-section-catalog" style="max-height: 320px; overflow-y: auto;">
+          <!-- Dynamically loaded list of blocks in BLOCK_REGISTRY -->
+        </div>
+      </div>
+      <div class="confirm-modal-footer">
+        <button type="button" class="btn btn-outline" id="cancel-add-section-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Attach Existing Reusable Section Selector (Enhanced Visual Browser) -->
+  <div class="confirm-modal-overlay" id="attach-section-modal-overlay">
+    <div class="confirm-modal" style="max-width: 950px; width: 90vw;">
+      <div class="confirm-modal-header">
+        <h4>Visual Section Browser</h4>
+        <button type="button" class="close-modal-btn" id="close-attach-section-modal">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="confirm-modal-body">
+        <p style="margin-bottom:0.75rem; font-size:0.85rem; color:var(--text-muted);">Search, filter, preview, and select one or more reusable sections to insert into the page builder blocks stack.</p>
+        
+        <!-- Search and Filter controls -->
+        <div class="attach-toolbar" style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1rem; align-items:center; background:var(--bg-base); padding:0.75rem; border-radius:6px; border:1px solid var(--border-color);">
+          <input type="text" id="attach-search" placeholder="Search by name, type, id..." style="flex:1.5; min-width:180px; padding:0.4rem 0.6rem; font-size:0.82rem;" />
+          
+          <select id="attach-filter-type" style="padding:0.4rem 0.6rem; font-size:0.82rem; width:auto;">
+            <option value="all">All Types</option>
+          </select>
+          
+          <select id="attach-filter-status" style="padding:0.4rem 0.6rem; font-size:0.82rem; width:auto;">
+            <option value="all">All Statuses</option>
+            <option value="published">Published</option>
+            <option value="draft">Draft</option>
+            <option value="archived">Archived</option>
+          </select>
+          
+          <select id="attach-sort" style="padding:0.4rem 0.6rem; font-size:0.82rem; width:auto;">
+            <option value="updated">Recently Updated</option>
+            <option value="created">Recently Created</option>
+            <option value="used">Most Used</option>
+            <option value="alpha">Alphabetical</option>
+          </select>
+          
+          <div style="display:flex; align-items:center; gap:0.25rem; margin-left:auto; white-space:nowrap;">
+            <input type="checkbox" id="attach-select-all" style="width:auto; cursor:pointer;" />
+            <label for="attach-select-all" style="font-size:0.78rem; font-weight:600; cursor:pointer; user-select:none; color:var(--text-muted);">Select All</label>
+          </div>
+        </div>
+
+        <div class="sections-attach-list-grid" id="sections-attach-list" style="max-height: 380px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-base);">
+          <!-- Loaded dynamically via API -->
+          <p class="media-empty">No matching reusable sections found.</p>
+        </div>
+      </div>
+      
+      <div class="confirm-modal-footer">
+        <button type="button" class="btn btn-outline" id="cancel-attach-section-btn">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirm-attach-selected-btn" disabled>Attach Selected (0)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3: Section Live Viewport Preview Overlay -->
+  <div class="preview-overlay" id="preview-overlay" style="z-index:4000;">
+    <div class="preview-modal-wrap">
+      <div class="preview-modal-top">
+        <div class="preview-modal-title">
+          <h4 id="preview-section-title">Preview: Section</h4>
+        </div>
+        <div class="preview-device-selectors">
+          <button type="button" class="device-btn active" data-device="desktop">Desktop</button>
+          <button type="button" class="device-btn" data-device="tablet">Tablet</button>
+          <button type="button" class="device-btn" data-device="mobile">Mobile</button>
+        </div>
+        <button type="button" class="close-modal-btn" id="close-preview-overlay">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="preview-modal-body-frame">
+        <div class="device-viewport desktop" id="preview-device-viewport">
+          <iframe id="preview-iframe" src="about:blank"></iframe>
+        </div>
       </div>
     </div>
   </div>
@@ -355,6 +483,79 @@ if (slug) {
 </AdminLayout>
 
 <style is:global>
+  /* Catalog Grid inside modal */
+  .catalog-filters {
+    display: flex;
+    gap: 0.35rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .catalog-tab-btn {
+    padding: 0.3rem 0.75rem;
+    border-radius: 4px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .catalog-tab-btn.active {
+    background: var(--primary-light);
+    color: var(--primary);
+  }
+  .block-catalog-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    max-height: 260px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    padding: 0.5rem;
+    border-radius: var(--radius-sm);
+    background: var(--bg-base);
+  }
+  .catalog-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: var(--bg-surface-solid);
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .catalog-item:hover {
+    border-color: var(--primary);
+    transform: scale(1.01);
+  }
+  .catalog-item-icon {
+    color: var(--primary);
+    opacity: 0.7;
+    flex-shrink: 0;
+  }
+  .catalog-item-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .catalog-item-info strong {
+    font-size: 0.85rem;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .catalog-item-info span {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    text-transform: capitalize;
+  }
+
   .editor-header-bar {
     display: flex;
     justify-content: space-between;
@@ -973,16 +1174,12 @@ if (slug) {
   let originalSlug = pageData.slug || "";
   let activeMediaPickerTarget = "";
 
+  let attachSectionsData = [];
+
   function initEditor() {
     const form = document.getElementById("cms-editor-form");
     if (!form || form.dataset.listenerBound) return;
     form.dataset.listenerBound = "true";
-
-    // Populate select element dynamically from central registry
-    const select = document.getElementById("add-block-select");
-    if (select) {
-      select.innerHTML = BLOCK_REGISTRY.map(b => `<option value="${b.type}">${b.name} (${b.category.toUpperCase()})</option>`).join('');
-    }
 
     renderBlocks();
     setupEventListeners();
@@ -1002,14 +1199,105 @@ if (slug) {
 
   // Setup Global Event Listeners
   function setupEventListeners() {
-    const addBlockBtn = document.getElementById("add-block-btn");
-    if (addBlockBtn) {
-      addBlockBtn.addEventListener("click", () => {
-        const select = document.getElementById("add-block-select");
-        const type = select.value;
-        addNewBlock(type);
+    const openAddBtn = document.getElementById("open-add-block-modal-btn");
+    if (openAddBtn) {
+      openAddBtn.addEventListener("click", () => {
+        document.getElementById("add-section-modal-overlay").classList.add("active");
+        renderVisualCatalog();
       });
     }
+    
+    const closeAddX = document.getElementById("close-add-section-modal");
+    const cancelAddBtn = document.getElementById("cancel-add-section-btn");
+    if (closeAddX) closeAddX.addEventListener("click", () => document.getElementById("add-section-modal-overlay").classList.remove("active"));
+    if (cancelAddBtn) cancelAddBtn.addEventListener("click", () => document.getElementById("add-section-modal-overlay").classList.remove("active"));
+
+    const attachBtn = document.getElementById("attach-existing-btn");
+    if (attachBtn) {
+      attachBtn.addEventListener("click", openAttachModal);
+    }
+
+    const closeAttachX = document.getElementById("close-attach-section-modal");
+    const cancelAttachBtn = document.getElementById("cancel-attach-section-btn");
+    if (closeAttachX) closeAttachX.addEventListener("click", () => document.getElementById("attach-section-modal-overlay").classList.remove("active"));
+    if (cancelAttachBtn) cancelAttachBtn.addEventListener("click", () => document.getElementById("attach-section-modal-overlay").classList.remove("active"));
+
+    // Visual Section Browser Search, Filters & Sorting
+    const attachSearch = document.getElementById("attach-search");
+    if (attachSearch) {
+      attachSearch.addEventListener("input", filterAndRenderAttachList);
+    }
+    const attachFilterType = document.getElementById("attach-filter-type");
+    if (attachFilterType) {
+      attachFilterType.addEventListener("change", filterAndRenderAttachList);
+    }
+    const attachFilterStatus = document.getElementById("attach-filter-status");
+    if (attachFilterStatus) {
+      attachFilterStatus.addEventListener("change", filterAndRenderAttachList);
+    }
+    const attachSort = document.getElementById("attach-sort");
+    if (attachSort) {
+      attachSort.addEventListener("change", filterAndRenderAttachList);
+    }
+
+    // Select All Checkbox
+    const selectAllCheckbox = document.getElementById("attach-select-all");
+    if (selectAllCheckbox) {
+      selectAllCheckbox.addEventListener("change", (e) => {
+        const checkboxes = document.querySelectorAll(".attach-checkbox");
+        checkboxes.forEach(cb => {
+          cb.checked = e.target.checked;
+        });
+        updateAttachSelectedButton();
+      });
+    }
+
+    // Event delegation for checkbox changes to update count and "Select All" checked state
+    const attachListContainer = document.getElementById("sections-attach-list");
+    if (attachListContainer) {
+      attachListContainer.addEventListener("change", (e) => {
+        if (e.target && e.target.classList.contains("attach-checkbox")) {
+          const selectAll = document.getElementById("attach-select-all");
+          if (selectAll) {
+            const allCheckboxCount = document.querySelectorAll(".attach-checkbox").length;
+            const checkedCount = document.querySelectorAll(".attach-checkbox:checked").length;
+            selectAll.checked = allCheckboxCount > 0 && checkedCount === allCheckboxCount;
+          }
+          updateAttachSelectedButton();
+        }
+      });
+    }
+
+    // Attach Selected Button
+    const confirmAttachBtn = document.getElementById("confirm-attach-selected-btn");
+    if (confirmAttachBtn) {
+      confirmAttachBtn.addEventListener("click", attachMultipleSelected);
+    }
+
+    // Close Section Preview Overlay
+    const closePreviewBtn = document.getElementById("close-preview-overlay");
+    if (closePreviewBtn) {
+      closePreviewBtn.addEventListener("click", () => {
+        const overlay = document.getElementById("preview-overlay");
+        const iframe = document.getElementById("preview-iframe");
+        if (overlay) overlay.classList.remove("active");
+        if (iframe) iframe.src = "about:blank";
+      });
+    }
+
+    // Preview Device Viewport Switcher
+    const deviceButtons = document.querySelectorAll(".preview-device-selectors .device-btn");
+    const viewport = document.getElementById("preview-device-viewport");
+    deviceButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        deviceButtons.forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        const device = btn.getAttribute("data-device");
+        if (viewport) {
+          viewport.className = `device-viewport ${device}`;
+        }
+      });
+    });
 
     const saveBtn = document.getElementById("save-page-btn");
     if (saveBtn) {
@@ -1098,6 +1386,293 @@ if (slug) {
     }
   }
 
+  function renderVisualCatalog() {
+    const grid = document.getElementById("add-section-catalog");
+    if (!grid) return;
+    grid.innerHTML = BLOCK_REGISTRY.map(b => `
+      <div class="catalog-item" data-category="${b.category}" onclick="addNewBlock('${b.type}'); document.getElementById('add-section-modal-overlay').classList.remove('active');">
+        <div class="catalog-item-icon">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line></svg>
+        </div>
+        <div class="catalog-item-info">
+          <strong>${b.name}</strong>
+          <span>Category: ${b.category}</span>
+        </div>
+      </div>
+    `).join('');
+    
+    // Bind catalog category tabs inside modal
+    const tabs = document.querySelectorAll("#add-section-modal-overlay .catalog-tab-btn");
+    tabs.forEach(tab => {
+      tab.addEventListener("click", (e) => {
+        e.stopPropagation();
+        tabs.forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        const cat = tab.getAttribute("data-category");
+        document.querySelectorAll("#add-section-catalog .catalog-item").forEach(item => {
+          const itemCat = item.getAttribute("data-category");
+          if (cat === "all" || itemCat === cat) {
+            item.style.display = "flex";
+          } else {
+            item.style.display = "none";
+          }
+        });
+      });
+    });
+  }
+
+  async function openAttachModal() {
+    const searchInput = document.getElementById("attach-search");
+    if (searchInput) searchInput.value = "";
+    
+    const typeFilter = document.getElementById("attach-filter-type");
+    if (typeFilter) {
+      typeFilter.value = "all";
+      // Populate type filter choices dynamically from BLOCK_REGISTRY
+      typeFilter.innerHTML = `<option value="all">All Types</option>` + BLOCK_REGISTRY.map(b => `<option value="${b.type}">${b.name}</option>`).join('');
+    }
+    
+    const statusFilter = document.getElementById("attach-filter-status");
+    if (statusFilter) statusFilter.value = "all";
+    
+    const sortVal = document.getElementById("attach-sort");
+    if (sortVal) sortVal.value = "updated";
+    
+    const selectAll = document.getElementById("attach-select-all");
+    if (selectAll) selectAll.checked = false;
+    
+    const confirmBtn = document.getElementById("confirm-attach-selected-btn");
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.innerText = "Attach Selected (0)";
+    }
+
+    document.getElementById("attach-section-modal-overlay").classList.add("active");
+    const container = document.getElementById("sections-attach-list");
+    if (container) container.innerHTML = `<p class="media-empty">Loading reusable sections catalog...</p>`;
+
+    try {
+      const res = await fetch("/api/sections-crud?action=list");
+      const data = await res.json();
+      if (data.success) {
+        attachSectionsData = data.sections;
+        filterAndRenderAttachList();
+      } else {
+        if (container) container.innerHTML = `<p class="media-empty">Error loading reusable sections catalog.</p>`;
+      }
+    } catch(e) {
+      if (container) container.innerHTML = `<p class="media-empty">Network connection error.</p>`;
+    }
+  }
+
+  function filterAndRenderAttachList() {
+    const q = document.getElementById("attach-search").value.trim().toLowerCase();
+    const typeFilter = document.getElementById("attach-filter-type").value;
+    const statusFilter = document.getElementById("attach-filter-status").value;
+    const sortVal = document.getElementById("attach-sort").value;
+
+    let filtered = [...attachSectionsData];
+
+    // Search filter
+    if (q) {
+      filtered = filtered.filter(s => 
+        s.id.toLowerCase().includes(q) || 
+        s.name.toLowerCase().includes(q) || 
+        s.typeName.toLowerCase().includes(q)
+      );
+    }
+
+    // Type filter
+    if (typeFilter !== "all") {
+      filtered = filtered.filter(s => s.type === typeFilter);
+    }
+
+    // Status filter
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(s => s.status === statusFilter);
+    }
+
+    // Sorting
+    if (sortVal === "updated") {
+      filtered.sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime());
+    } else if (sortVal === "created") {
+      filtered.sort((a, b) => a.id.localeCompare(b.id));
+    } else if (sortVal === "used") {
+      filtered.sort((a, b) => (b.usedIn?.length || 0) - (a.usedIn?.length || 0));
+    } else if (sortVal === "alpha") {
+      filtered.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    renderAttachList(filtered);
+  }
+
+  function renderAttachList(list) {
+    const container = document.getElementById("sections-attach-list");
+    if (!container) return;
+
+    if (list.length === 0) {
+      container.innerHTML = `<p class="media-empty">No matching reusable sections found.</p>`;
+      return;
+    }
+
+    container.innerHTML = list.map(sec => {
+      const pageUsagesStr = sec.usedIn && sec.usedIn.length > 0 
+        ? `Used on ${sec.usedIn.length} page${sec.usedIn.length > 1 ? 's' : ''}`
+        : 'Not used';
+      const statusClass = sec.status === 'published' ? 'badge-success' : sec.status === 'draft' ? 'badge-warning' : 'badge-danger';
+      const fallbackPreviewImg = `/images/previews/${sec.type}.png`;
+
+      return `
+        <div class="section-attach-card" style="border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-surface-solid); padding: 0.75rem; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+          <div style="position: absolute; top: 0.5rem; left: 0.5rem; z-index: 10;">
+            <input type="checkbox" class="attach-checkbox" data-id="${sec.id}" data-name="${sec.name}" style="width: 16px; height: 16px; cursor: pointer;" />
+          </div>
+          <div style="width: 100%; height: 120px; background: var(--bg-base); border-radius: 4px; overflow: hidden; margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color);">
+            <img src="${sec.previewImage || fallbackPreviewImg}" alt="${sec.name}" style="max-width: 100%; max-height: 100%; object-fit: contain;" onerror="this.src='/images/previews/hero.png'" />
+          </div>
+          <div style="flex: 1; min-width: 0; margin-bottom: 0.75rem;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.25rem;">
+              <h5 style="margin: 0 0 0.25rem 0; font-size: 0.85rem; color: var(--text-main); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(100% - 70px);" title="${sec.name}">${sec.name}</h5>
+              <span class="badge ${statusClass}" style="font-size: 0.6rem; padding: 0.15rem 0.35rem; border-radius: 4px; text-transform: uppercase;">${sec.status}</span>
+            </div>
+            <p style="margin: 0 0 0.25rem 0; font-size: 0.72rem; color: var(--text-muted); font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Type: ${sec.typeName}</p>
+            <p style="margin: 0 0 0.25rem 0; font-size: 0.72rem; color: var(--text-dim); font-weight: 500;">${pageUsagesStr}</p>
+            <p style="margin: 0; font-size: 0.68rem; color: var(--text-dim);">Updated: ${new Date(sec.lastUpdated).toLocaleDateString()}</p>
+          </div>
+          <div style="display: flex; gap: 0.5rem; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 0.5rem; margin-top: auto;">
+            <button type="button" class="btn btn-outline btn-sm" onclick="previewSection('${sec.id}', '${sec.name}')" style="padding: 0.25rem 0.5rem; font-size: 0.72rem; flex: 1;">Preview</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="attachSingleSection('${sec.id}', '${sec.name}')" style="padding: 0.25rem 0.5rem; font-size: 0.72rem; flex: 1;">Attach</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Reset select all checkbox based on visiblity state
+    const selectAll = document.getElementById("attach-select-all");
+    if (selectAll) selectAll.checked = false;
+    updateAttachSelectedButton();
+  }
+
+  function updateAttachSelectedButton() {
+    const checkboxes = document.querySelectorAll(".attach-checkbox:checked");
+    const btn = document.getElementById("confirm-attach-selected-btn");
+    if (btn) {
+      btn.disabled = checkboxes.length === 0;
+      btn.innerText = `Attach Selected (${checkboxes.length})`;
+    }
+  }
+
+  async function attachSingleSection(sectionId, name) {
+    try {
+      const res = await fetch(`/api/sections-crud?action=get&id=${sectionId}`);
+      const data = await res.json();
+      if (data.success) {
+        const attachedBlock = {
+          ...data.section,
+          sectionId: sectionId
+        };
+        const targetIdx = blocks.length;
+        blocks.push(attachedBlock);
+        renderBlocks();
+        document.getElementById("attach-section-modal-overlay").classList.remove("active");
+        showToast(`✓ ${name || sectionId} attached successfully`);
+
+        // Scroll to card element and highlight it
+        setTimeout(() => {
+          const blockCard = document.getElementById(`builder-block-${targetIdx}`);
+          if (blockCard) {
+            blockCard.scrollIntoView({ behavior: "smooth", block: "center" });
+            blockCard.style.transition = "all 0.5s ease";
+            blockCard.style.outline = "3px solid #4F46E5";
+            blockCard.style.boxShadow = "0 0 20px rgba(79, 70, 229, 0.4)";
+            setTimeout(() => {
+              blockCard.style.outline = "";
+              blockCard.style.boxShadow = "";
+            }, 2500);
+          }
+        }, 50);
+      } else {
+        alert("Error loading section details from API.");
+      }
+    } catch(e) {
+      alert("Network Connection error");
+    }
+  }
+
+  async function attachMultipleSelected() {
+    const checkboxes = document.querySelectorAll(".attach-checkbox:checked");
+    if (checkboxes.length === 0) return;
+
+    const ids = Array.from(checkboxes).map(cb => ({
+      id: cb.getAttribute("data-id"),
+      name: cb.getAttribute("data-name")
+    }));
+
+    const startIndex = blocks.length;
+    let attachedNames = [];
+
+    // Fetch and push all blocks
+    for (const item of ids) {
+      try {
+        const res = await fetch(`/api/sections-crud?action=get&id=${item.id}`);
+        const data = await res.json();
+        if (data.success) {
+          blocks.push({
+            ...data.section,
+            sectionId: item.id
+          });
+          attachedNames.push(item.name);
+        }
+      } catch (e) {
+        console.error("Error attaching", item.id, e);
+      }
+    }
+
+    if (attachedNames.length > 0) {
+      renderBlocks();
+      document.getElementById("attach-section-modal-overlay").classList.remove("active");
+      showToast(`✓ Attached ${attachedNames.length} sections successfully`);
+
+      // Scroll to the first added element and highlight all added elements
+      setTimeout(() => {
+        const firstCard = document.getElementById(`builder-block-${startIndex}`);
+        if (firstCard) {
+          firstCard.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+
+        for (let i = 0; i < attachedNames.length; i++) {
+          const cardIdx = startIndex + i;
+          const blockCard = document.getElementById(`builder-block-${cardIdx}`);
+          if (blockCard) {
+            blockCard.style.transition = "all 0.5s ease";
+            blockCard.style.outline = "3px solid #4F46E5";
+            blockCard.style.boxShadow = "0 0 20px rgba(79, 70, 229, 0.4)";
+            setTimeout(() => {
+              blockCard.style.outline = "";
+              blockCard.style.boxShadow = "";
+            }, 2500);
+          }
+        }
+      }, 50);
+    }
+  }
+
+  function previewSection(sectionId, name) {
+    const overlay = document.getElementById("preview-overlay");
+    const iframe = document.getElementById("preview-iframe");
+    const title = document.getElementById("preview-section-title");
+
+    if (overlay && iframe && title) {
+      title.innerText = `Preview: ${name} (${sectionId})`;
+      iframe.src = `/admin/sections/preview?id=${sectionId}`;
+      overlay.classList.add("active");
+    }
+  }
+
+  // Expose functions globally
+  window.attachSingleSection = attachSingleSection;
+  window.previewSection = previewSection;
+
   // Append new empty block record based on registry defaults
   function addNewBlock(type) {
     const config = BLOCK_REGISTRY.find(b => b.type === type);
@@ -1126,11 +1701,11 @@ if (slug) {
 
   // Remove block
   window.deleteBlock = function(index) {
-    if (confirm("Are you sure you want to delete this section block?")) {
+    window.customConfirm("Are you sure you want to delete this section block?", () => {
       blocks.splice(index, 1);
       renderBlocks();
       showToast("Block removed");
-    }
+    });
   }
 
   // Synchronize inputs back to array state on change
@@ -1215,6 +1790,7 @@ if (slug) {
     blocks.forEach((block, idx) => {
       const card = document.createElement("div");
       card.className = "builder-block-card";
+      card.id = `builder-block-${idx}`;
       
       const config = BLOCK_REGISTRY.find(b => b.type === block.type);
       const blockTitle = config ? config.name : block.type;
@@ -1372,11 +1948,16 @@ if (slug) {
         });
       }
 
+      const sectionIdHtml = block.sectionId 
+        ? `<span class="block-section-id-badge" style="background:#4F46E5; color:white; font-size:0.7rem; padding:0.15rem 0.45rem; border-radius:4px; font-weight:700; margin-left:0.5rem; text-transform:none;">Reusable: ${block.sectionId}</span>`
+        : "";
+
       card.innerHTML = `
         <div class="block-header-wrap">
           <div class="block-badge-title">
             <span class="block-type-badge">${block.type}</span>
             <h4>${blockTitle} Block</h4>
+            ${sectionIdHtml}
           </div>
           <div class="block-actions">
             <button type="button" class="btn-icon-sm" onclick="moveBlock(${idx}, -1)" title="Move Up">${ICONS.arrowUp}</button>
@@ -1536,7 +2117,7 @@ if (slug) {
       }
     }
 
-    if (scoreText) scoreText.innerText = `${score}%`;
+    if (scoreText) scoreText.textContent = `${score}%`;
 
     // Render Checklist
     const checksList = document.getElementById("seo-checks-list");
@@ -1702,8 +2283,8 @@ if (slug) {
   }
 
   // Rollback to specific timestamp
-  window.rollbackRevision = async function(timestamp) {
-    if (confirm("This will overwrite your current draft configuration with the revision data. Are you sure you want to proceed?")) {
+  window.rollbackRevision = function(timestamp) {
+    window.customConfirm("This will overwrite your current draft configuration with the revision data. Are you sure you want to proceed?", async () => {
       showToast("Rolling back page draft...");
       try {
         const res = await fetch(`/api/pages-crud?action=rollback&slug=${originalSlug}&timestamp=${timestamp}`);
@@ -1720,7 +2301,7 @@ if (slug) {
       } catch (e) {
         showToast("Error restoring revision backup.");
       }
-    }
+    });
   };
 
   // Toast banner utility

@@ -19,14 +19,18 @@ const rightParsed = parseColumnText(rightColumn);
 ---
 <section class="block-two-column">
   <div class="container">
-    <div class="section-head">
-      {eyebrow && <span class="eyebrow">{eyebrow}</span>}
-      <h2>{title}</h2>
-    </div>
-    <div class="columns-grid">
-      <div class="column column-left" set:html={leftParsed}></div>
-      <div class="column column-right" set:html={rightParsed}></div>
-    </div>
+    {(eyebrow || title) && (
+      <div class="section-head">
+        {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+        {title && <h2>{title}</h2>}
+      </div>
+    )}
+    {(leftParsed || rightParsed) && (
+      <div class="columns-grid">
+        {leftParsed && <div class="column column-left" set:html={leftParsed}></div>}
+        {rightParsed && <div class="column column-right" set:html={rightParsed}></div>}
+      </div>
+    )}
   </div>
 </section>
 

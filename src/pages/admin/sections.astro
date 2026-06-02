@@ -1,0 +1,1729 @@
+---
+import AdminLayout from "../../layouts/admin/AdminLayout.astro";
+import fs from "node:fs";
+import path from "node:path";
+import { parse } from "yaml";
+
+export const prerender = false;
+
+// 1. Load section definitions (developer-managed blueprints)
+const definitionsPath = path.resolve("src/data/section-definitions.json");
+let allDefinitions: any[] = [];
+try {
+  if (fs.existsSync(definitionsPath)) {
+    allDefinitions = JSON.parse(fs.readFileSync(definitionsPath, "utf-8"));
+  }
+} catch (e) {
+  console.error("Failed to load section definitions:", e);
+}
+
+// 2. Helper to parse frontmatter
+function parseMarkdown(content: string) {
+  const parts = content.split(/^---$/m);
+  if (parts.length < 3) {
+    return { data: {}, body: content };
+  }
+  const yamlStr = parts[1];
+  const body = parts.slice(2).join("---").trim();
+  try {
+    const data = parse(yamlStr);
+    return { data, body };
+  } catch (e) {
+    console.error("YAML Parse error:", e);
+    return { data: {}, body };
+  }
+}
+
+// 3. Gather usages across pages
+const pagesDir = path.resolve("src/content/pages");
+const usages: Record<string, Array<{ title: string; slug: string }>> = {};
+
+if (fs.existsSync(pagesDir)) {
+  const files = fs.readdirSync(pagesDir).filter(f => f.endsWith(".md"));
+  files.forEach(file => {
+    try {
+      const filePath = path.join(pagesDir, file);
+      const content = fs.readFileSync(filePath, "utf-8");
+      const { data } = parseMarkdown(content);
+      const slug = data.slug || path.basename(file, ".md");
+      const title = data.title || slug;
+
+      if (data && Array.isArray(data.blocks)) {
+        data.blocks.forEach((block: any) => {
+          if (block.sectionId) {
+            if (!usages[block.sectionId]) {
+              usages[block.sectionId] = [];
+            }
+            if (!usages[block.sectionId].some(p => p.slug === slug)) {
+              usages[block.sectionId].push({ title, slug });
+            }
+          }
+        });
+      }
+    } catch (e) {
+      console.error("Error reading usages for page file:", file, e);
+    }
+  });
+}
+
+// 4. Gather section instances
+const sectionsDir = path.resolve("src/content/sections");
+if (!fs.existsSync(sectionsDir)) {
+  fs.mkdirSync(sectionsDir, { recursive: true });
+}
+
+const sectionFiles = fs.readdirSync(sectionsDir).filter(f => f.endsWith(".md"));
+const allSections = sectionFiles.map(file => {
+  const filePath = path.join(sectionsDir, file);
+  const content = fs.readFileSync(filePath, "utf-8");
+  const { data } = parseMarkdown(content);
+  const sectionId = path.basename(file, ".md");
+  const type = data.type || "";
+  const definition = allDefinitions.find((d: any) => d.key === type);
+
+  return {
+    id: sectionId,
+    name: data.name || sectionId.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+    type,
+    typeName: definition ? definition.name : (type || "Unknown Type"),
+    typeCategory: definition ? definition.category : "other",
+    status: data.status || "published",
+    lastUpdated: fs.statSync(filePath).mtime.toLocaleString(),
+    usedIn: usages[sectionId] || [],
+    previewImage: data.previewImage || (definition?.previewImage) || ""
+  };
+});
+
+const categories = ["hero", "content", "marketing", "social", "other"];
+---
+
+<AdminLayout title="Section Library — CMS">
+
+  <div class="dashboard-header">
+    <div class="header-text">
+      <p class="subtitle">Section Library: Create and manage reusable content section instances from developer-defined blueprints.</p>
+    </div>
+    <div class="header-actions">
+      <a href="/admin/section-definitions" class="btn btn-outline">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+        Section Definitions
+      </a>
+      <button class="btn btn-primary" id="open-create-section-btn">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Create Section Instance</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Submodule Tab Switcher Navigation -->
+  <div class="sections-tabs-navigation" style="display:flex; gap:0.5rem; border-bottom:1px solid var(--border-color); margin-bottom:2rem; overflow-x:auto; padding-bottom:0.25rem;">
+    <button type="button" class="tab-nav-btn active" data-tab="library">Section Library</button>
+    <button type="button" class="tab-nav-btn" data-tab="create">Create Instance</button>
+    <button type="button" class="tab-nav-btn" data-tab="types">Available Types</button>
+    <button type="button" class="tab-nav-btn" data-tab="categories">Categories</button>
+    <button type="button" class="tab-nav-btn" data-tab="templates">Templates</button>
+    <button type="button" class="tab-nav-btn" data-tab="import-export">Import & Export</button>
+  </div>
+
+  <!-- Submodule 1: Section Library -->
+  <div class="submodule-view active" id="view-library">
+    <div class="section-title-wrap" style="margin-bottom:1rem; border-left:3px solid var(--primary); padding-left:0.75rem;">
+      <h3 style="font-size:1.15rem; font-weight:700; color:var(--text-main);">Section Instances ({allSections.length})</h3>
+    </div>
+
+    <!-- Search and Filter Controls -->
+    <div class="controls-bar" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; gap:1rem; flex-wrap:wrap;">
+      <div class="search-input-wrap" style="position:relative; flex:1; max-width:400px; min-width:250px;">
+        <svg class="search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute; left:0.85rem; top:50%; transform:translateY(-50%); color:var(--text-dim); pointer-events:none;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="sections-search" placeholder="Search by name, type, id..." style="padding-left:2.5rem !important;" />
+      </div>
+
+      <div class="filter-controls" style="display:flex; gap:0.5rem; align-items:center;">
+        <select id="status-filter" style="padding:0.6rem 1rem; background-color:var(--input-bg); border:1px solid var(--input-border); color:var(--text-main); border-radius:var(--radius-sm); outline:none; font-size:0.88rem; font-weight:500;">
+          <option value="all">All Statuses</option>
+          <option value="published">Published</option>
+          <option value="draft">Draft</option>
+          <option value="archived">Archived</option>
+        </select>
+        
+        <select id="type-filter" style="padding:0.6rem 1rem; background-color:var(--input-bg); border:1px solid var(--input-border); color:var(--text-main); border-radius:var(--radius-sm); outline:none; font-size:0.88rem; font-weight:500;">
+          <option value="all">All Types</option>
+          {allDefinitions.map((d: any) => (
+            <option value={d.key}>{d.name}</option>
+          ))}
+        </select>
+
+        <select id="sort-filter" style="padding:0.6rem 1rem; background-color:var(--input-bg); border:1px solid var(--input-border); color:var(--text-main); border-radius:var(--radius-sm); outline:none; font-size:0.88rem; font-weight:500;">
+          <option value="updated">Recently Updated</option>
+          <option value="created">Recently Created</option>
+          <option value="used">Most Used</option>
+          <option value="alpha">Alphabetical</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Sections Card Grid -->
+    <div class="sections-grid-layout" id="sections-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(290px, 1fr)); gap:1.5rem; margin-bottom:4rem;">
+      {allSections.length === 0 ? (
+        <div class="no-sections-fallback" style="grid-column:1 / -1; text-align:center; padding:5rem 2rem; border:1px dashed var(--border-color); border-radius:var(--radius-lg); background:var(--bg-surface); color:var(--text-dim);">
+          <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.5; margin-bottom:1rem; display:inline-block;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="9"></line><line x1="9" y1="13" x2="15" y2="13"></line></svg>
+          <h4>No reusable sections created yet</h4>
+          <p>Go to the "Create Section" tab to define a dynamic block.</p>
+        </div>
+      ) : (
+        allSections.map(section => (
+          <div class="section-card" data-id={section.id.toLowerCase()} data-name={section.name.toLowerCase()} data-type={section.type} data-typename={section.typeName.toLowerCase()} data-status={section.status} data-updated={section.lastUpdated} data-usage-count={section.usedIn.length}>
+            <div class="section-card-preview-placeholder" style="position:relative; width:100%; height:140px; background:var(--input-bg); display:flex; align-items:center; justify-content:center; overflow:hidden;">
+              {section.previewImage ? (
+                <img src={section.previewImage} alt={section.name} style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+              ) : null}
+              <div class="placeholder-icon-wrap" style={section.previewImage ? "position:absolute; display:none; align-items:center; justify-content:center; width:100%; height:100%;" : "position:absolute; display:flex; align-items:center; justify-content:center; width:100%; height:100%;"}>
+                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+              </div>
+              <span class="preview-type-tag">{section.typeName}</span>
+              <div class="card-action-overlay">
+                <button class="btn btn-primary btn-sm preview-section-btn" data-id={section.id} data-name={section.name}>Preview Live</button>
+              </div>
+            </div>
+            <div class="section-card-content">
+              <div class="section-card-meta-line">
+                <span class="section-card-id">ID: {section.id}</span>
+                <span class={`status-badge ${section.status === 'published' ? 'published' : section.status === 'draft' ? 'draft' : 'archived'}`} style="text-transform:uppercase; font-size:0.65rem; font-weight:700; padding:0.1rem 0.35rem; border-radius:4px;">{section.status}</span>
+              </div>
+              <h4 class="section-card-title">{section.name}</h4>
+              <div class="section-card-usages">
+                <strong>Used on:</strong>
+                {section.usedIn.length === 0 ? (
+                  <span class="usage-count none">Unused / Reusable</span>
+                ) : (
+                  <div class="usage-links-wrap">
+                    {section.usedIn.map(p => (
+                      <a href={p.slug === 'index' ? '/' : `/${p.slug}`} target="_blank" class="usage-link-badge">
+                        {p.title}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div class="section-card-footer">
+                <span class="card-updated">Updated: {section.lastUpdated.split(',')[0]}</span>
+                <div class="card-footer-actions">
+                  <a href={`/admin/sections/editor?id=${section.id}`} class="btn-action edit-btn" title="Edit Content">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"></path></svg>
+                  </a>
+                  <button class="btn-action duplicate-btn" data-id={section.id} title="Duplicate Block">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  </button>
+                  <button class="btn-action template-btn" onclick={`saveAsTemplate('${section.id}')`} title="Save as Template">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#10B981;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                  </button>
+                  <button class="btn-action delete-btn" data-id={section.id} data-name={section.name} data-usage-count={section.usedIn.length} title="Delete Block">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  </div>
+
+  <!-- Submodule 2: Create Section Instance -->
+  <div class="submodule-view" id="view-create">
+    <div class="section-title-wrap" style="margin-bottom:1rem; border-left:3px solid var(--primary); padding-left:0.75rem;">
+      <h3 style="font-size:1.15rem; font-weight:700; color:var(--text-main);">Create Section Instance</h3>
+    </div>
+    <p style="color:var(--text-muted); margin-bottom:1.5rem; font-size:0.9rem;">Select a Section Definition (blueprint) below. The CMS auto-generates the edit form from the schema. <a href="/admin/section-definitions" style="color:var(--primary);">Manage definitions →</a></p>
+    
+    <div style="display:flex; flex-direction:column; gap:1.25rem; background:var(--bg-surface); padding:1.5rem; border:1px solid var(--border-color); border-radius:8px; margin-bottom:2rem; max-width:600px;">
+      <div class="form-group">
+        <label for="new-section-id">Unique Section ID <span class="required">*</span></label>
+        <input type="text" id="new-section-id" placeholder="e.g. faq-careers" style="width:100%;" />
+        <span class="field-help" style="font-size:0.75rem; color:var(--text-dim); display:block; margin-top:0.25rem;">Lowercase letters, numbers, and dashes only.</span>
+        <span class="field-error" id="new-section-id-err" style="color:var(--color-error); font-size:0.78rem;"></span>
+      </div>
+      <div class="form-group">
+        <label for="new-section-name">Section Display Name <span class="required">*</span></label>
+        <input type="text" id="new-section-name" placeholder="e.g. Careers Accordion" style="width:100%;" />
+        <span class="field-error" id="new-section-name-err" style="color:var(--color-error); font-size:0.78rem;"></span>
+      </div>
+    </div>
+
+    <h5 style="margin-bottom:1rem; text-transform:uppercase; font-size:0.8rem; color:var(--text-muted); letter-spacing:0.05em; text-align:left;">Select Section Definition Blueprint</h5>
+    
+    <div class="catalog-filters" style="margin-bottom:1.25rem; display:flex; gap:0.35rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; flex-wrap:wrap;">
+      <button type="button" class="catalog-tab-btn active" data-category="all">All ({allDefinitions.length})</button>
+      {categories.map((cat: string) => (
+        <button type="button" class="catalog-tab-btn" data-category={cat} style="text-transform:capitalize;">{cat} ({allDefinitions.filter((d: any) => d.category === cat).length})</button>
+      ))}
+    </div>
+
+    <div class="block-catalog-grid" id="new-block-catalog" style="max-height:none; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:1rem; border:none; padding:0; background:none; display:grid;">
+      {allDefinitions.length === 0 ? (
+        <div style="grid-column:1/-1; text-align:center; padding:3rem; border:1px dashed var(--border-color); border-radius:8px; color:var(--text-dim);">
+          <p>No Section Definitions found. <a href="/admin/section-definitions" style="color:var(--primary);">Create a definition first →</a></p>
+        </div>
+      ) : (
+        allDefinitions.map((d: any) => (
+          <div class="catalog-item new-catalog-item" data-type={d.key} data-category={d.category} onclick={`selectCatalogType('${d.key}')`} style="border:1px solid var(--border-color); padding:1rem; display:flex; gap:1rem; align-items:center; border-radius:8px; background:var(--bg-surface-solid); transition:var(--transition); cursor:pointer;">
+            <div class="catalog-item-icon" style="background:var(--bg-base); padding:0.5rem; border-radius:6px; color:var(--primary); display:flex; align-items:center; justify-content:center;">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line></svg>
+            </div>
+            <div class="catalog-item-info" style="flex:1; min-width:0; text-align:left; display:flex; flex-direction:column;">
+              <strong style="font-size:0.9rem; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{d.name}</strong>
+              <span style="font-size:0.72rem; color:var(--text-dim); text-transform:capitalize;">Category: {d.category}</span>
+              {d.description && <span style="font-size:0.7rem; color:var(--text-dim); margin-top:0.2rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{d.description}</span>}
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+    
+    <div style="margin-top:2rem; display:flex; gap:1rem;">
+      <button type="button" class="btn btn-primary" id="btn-create-submit" style="padding:0.6rem 1.5rem;">Create & Edit Section</button>
+    </div>
+  </div>
+
+  <!-- Submodule 3: Available Section Types (from definitions) -->
+  <div class="submodule-view" id="view-types">
+    <div class="section-title-wrap" style="margin-bottom:1rem; border-left:3px solid var(--primary); padding-left:0.75rem;">
+      <h3 style="font-size:1.15rem; font-weight:700; color:var(--text-main);">Available Section Types ({allDefinitions.length})</h3>
+    </div>
+    <p style="color:var(--text-muted); margin-bottom:1rem; font-size:0.9rem;">Blueprints currently available for instantiation. These are managed by developers via <a href="/admin/section-definitions" style="color:var(--primary);">Section Definitions</a>.</p>
+    
+    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:1.5rem; margin-bottom:5rem;">
+      {allDefinitions.map((d: any) => (
+        <div style="background:var(--bg-surface); border:1px solid var(--border-color); border-radius:8px; padding:1.25rem; display:flex; flex-direction:column; gap:0.75rem; box-shadow: 0 4px 12px var(--color-shadow); text-align:left;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h4 style="margin:0; font-size:1.05rem; font-weight:700; color:var(--text-main);">{d.name}</h4>
+            <code style="font-size:0.7rem; font-family:monospace; background:var(--bg-base); border:1px solid var(--border-color); padding:0.15rem 0.45rem; border-radius:4px; color:var(--text-muted);">{d.key}</code>
+          </div>
+          <p style="margin:0; font-size:0.8rem; color:var(--text-muted);">Category: <strong style="text-transform:capitalize; color:var(--primary);">{d.category}</strong></p>
+          {d.description && <p style="margin:0; font-size:0.78rem; color:var(--text-dim); font-style:italic;">{d.description}</p>}
+          {d.componentPath && <p style="margin:0; font-size:0.72rem; color:var(--text-dim); font-family:monospace;">{d.componentPath}</p>}
+          <div style="border-top:1px solid var(--border-color); padding-top:0.75rem; margin-top:0.25rem;">
+            <h5 style="margin:0 0 0.5rem 0; font-size:0.75rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.05em;">Defined Fields ({(d.fields || []).length})</h5>
+            <div style="display:flex; flex-wrap:wrap; gap:0.3rem;">
+              {(d.fields || []).map((f: any) => (
+                <span style="font-size:0.68rem; background:var(--bg-base); border:1px solid var(--border-color); padding:0.15rem 0.4rem; border-radius:4px; font-family:monospace; color:var(--text-muted);" title={`${f.label} (${f.type})`}>
+                  {f.name} ({f.type})
+                </span>
+              ))}
+            </div>
+          </div>
+          <div style="margin-top:auto; padding-top:0.5rem;">
+            <a href={`/admin/section-definitions?edit=${d.key}`} class="btn btn-outline btn-sm" style="font-size:0.78rem;">Edit Schema</a>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  <!-- Submodule 4: Categories -->
+  <div class="submodule-view" id="view-categories">
+    <div class="section-title-wrap" style="margin-bottom:1rem; border-left:3px solid var(--primary); padding-left:0.75rem;">
+      <h3 style="font-size:1.15rem; font-weight:700; color:var(--text-main);">Categories</h3>
+    </div>
+    <p style="color:var(--text-muted); margin-bottom:2rem; font-size:0.9rem;">Logical groupings for section definitions and instances.</p>
+    
+    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:1.5rem; margin-bottom:5rem;">
+      {categories.map((cat: string) => {
+        const defsInCat = allDefinitions.filter((d: any) => d.category === cat);
+        const instancesInCat = allSections.filter((s: any) => s.typeCategory === cat);
+        
+        return (
+          <div style="background:var(--bg-surface); border:1px solid var(--border-color); border-radius:8px; padding:1.25rem; display:flex; flex-direction:column; gap:0.5rem; box-shadow: 0 4px 12px var(--color-shadow); text-align:left;">
+            <h4 style="margin:0; text-transform:capitalize; font-size:1.1rem; color:var(--text-main); font-weight:700;">{cat} Category</h4>
+            <p style="margin:0; font-size:0.82rem; color:var(--text-muted);">Definitions: <strong>{defsInCat.length} type(s)</strong></p>
+            <p style="margin:0; font-size:0.82rem; color:var(--text-muted);">Instances: <strong>{instancesInCat.length} section(s)</strong></p>
+            
+            {defsInCat.length > 0 && (
+               <div style="border-top:1px solid var(--border-color); padding-top:0.5rem; margin-top:0.5rem;">
+                 <span style="font-size:0.7rem; color:var(--text-dim); text-transform:uppercase; font-weight:600; display:block; margin-bottom:0.25rem;">Types available:</span>
+                 <span style="font-size:0.75rem; color:var(--text-muted);">{defsInCat.map((d: any) => d.name).join(', ')}</span>
+               </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  </div>
+
+  <!-- Submodule 5: Templates -->
+  <div class="submodule-view" id="view-templates">
+    <div class="section-title-wrap" style="margin-bottom:1rem; border-left:3px solid var(--primary); padding-left:0.75rem;">
+      <h3 style="font-size:1.15rem; font-weight:700; color:var(--text-main);">Saved Section Templates</h3>
+    </div>
+    <p style="color:var(--text-muted); margin-bottom:2rem; font-size:0.9rem;">Load a saved block template to quickly instantiate new sections with pre-configured content.</p>
+    
+    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(290px, 1fr)); gap:1.5rem;" id="templates-list-container">
+      <div class="no-sections-fallback" style="grid-column: 1 / -1; padding:3rem 1rem;">
+        <h4>No section templates saved yet</h4>
+        <p>Hover over any section in the Library and click the "Save as Template" action to register it.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Submodule 6: Import & Export -->
+  <div class="submodule-view" id="view-import-export">
+    <div class="section-title-wrap" style="margin-bottom:1rem; border-left:3px solid var(--primary); padding-left:0.75rem;">
+      <h3 style="font-size:1.15rem; font-weight:700; color:var(--text-main);">Import & Export Reusable Sections</h3>
+    </div>
+    <p style="color:var(--text-muted); margin-bottom:2rem; font-size:0.9rem;">Export individual block layout configs to JSON, or upload a JSON backup file to instantly create sections.</p>
+    
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:2rem; align-items:start;">
+      <!-- Import Block -->
+      <div style="background:var(--bg-surface); border:1px solid var(--border-color); border-radius:8px; padding:1.5rem; display:flex; flex-direction:column; gap:1.25rem; box-shadow: 0 4px 12px var(--color-shadow); text-align:left;">
+        <h4 style="margin:0; font-size:1.05rem; font-weight:700; color:var(--text-main);">Upload JSON Section Backup</h4>
+        
+        <div id="import-drag-zone" style="border:2px dashed var(--border-color); border-radius:8px; padding:3rem 2rem; text-align:center; cursor:pointer; background:var(--bg-base); transition:var(--transition);">
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="var(--primary)" stroke-width="2" style="margin-bottom:0.75rem; opacity:0.75; display:inline-block;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          <p style="margin:0; font-size:0.85rem; color:var(--text-muted); font-weight:500;">Click to browse or drop section JSON file here</p>
+          <input type="file" id="import-file-input" accept=".json" style="display:none;" />
+        </div>
+      </div>
+
+      <!-- Export Block -->
+      <div style="background:var(--bg-surface); border:1px solid var(--border-color); border-radius:8px; padding:1.5rem; display:flex; flex-direction:column; gap:1rem; max-height:400px; overflow-y:auto; box-shadow: 0 4px 12px var(--color-shadow);">
+        <h4 style="margin:0; font-size:1.05rem; font-weight:700; color:var(--text-main);">Export Section Configs</h4>
+        <div style="display:flex; flex-direction:column; gap:0.5rem;">
+          {allSections.map(sec => (
+            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-base); padding:0.5rem 0.75rem; border:1px solid var(--border-color); border-radius:6px;">
+              <div style="min-width:0; text-align:left;">
+                <strong style="font-size:0.85rem; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text-main);">{sec.name}</strong>
+                <span style="font-size:0.7rem; color:var(--text-dim); font-family:monospace;">ID: {sec.id}</span>
+              </div>
+              <button type="button" class="btn btn-outline btn-sm" onclick={`exportSection('${sec.id}', '${sec.name}')`} style="padding:0.25rem 0.5rem; font-size:0.72rem; cursor:pointer;">Export</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Reusable Section Modal -->
+  <div class="confirm-modal-overlay" id="create-section-modal-overlay">
+    <div class="confirm-modal create-section-modal">
+      <div class="confirm-modal-header">
+        <h4>Create Reusable Section</h4>
+        <button class="close-modal-btn" id="close-create-modal">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      
+      <div class="confirm-modal-body">
+        <div class="create-form-wrap" style="display:flex; flex-direction:column; gap:1rem; margin-bottom:1.5rem;">
+          <div class="form-group">
+            <label for="create-section-id">Unique Section ID <span class="required">*</span></label>
+            <input type="text" id="create-section-id" placeholder="e.g. faq-careers" required />
+            <span class="field-help">Lowercase letters, numbers, and dashes only.</span>
+            <span class="field-error" id="create-section-id-err"></span>
+          </div>
+
+          <div class="form-group">
+            <label for="create-section-name">Section Display Name <span class="required">*</span></label>
+            <input type="text" id="create-section-name" placeholder="e.g. Careers Accordion" required />
+            <span class="field-error" id="create-section-name-err"></span>
+          </div>
+        </div>
+
+        <h5 style="margin-bottom:0.5rem; text-transform:uppercase; font-size:0.75rem; color:var(--text-muted); letter-spacing:0.05em;">Select Section Block Type</h5>
+        
+        <div class="catalog-filters">
+          <button type="button" class="catalog-tab-btn active" data-category="all">All</button>
+          <button type="button" class="catalog-tab-btn" data-category="hero">Hero</button>
+          <button type="button" class="catalog-tab-btn" data-category="content">Content</button>
+          <button type="button" class="catalog-tab-btn" data-category="marketing">Marketing</button>
+          <button type="button" class="catalog-tab-btn" data-category="social">Social</button>
+          <button type="button" class="catalog-tab-btn" data-category="other">Other</button>
+        </div>
+
+        <div class="block-catalog-grid" id="block-catalog">
+          {allDefinitions.map((d: any) => (
+            <div class="catalog-item" data-type={d.key} data-category={d.category} onclick={`selectCatalogType('${d.key}')`}>
+              <div class="catalog-item-icon">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line></svg>
+              </div>
+              <div class="catalog-item-info">
+                <strong>{d.name}</strong>
+                <span>Category: {d.category}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div class="confirm-modal-footer">
+        <button class="btn btn-outline" id="cancel-create-btn">Cancel</button>
+        <button class="btn btn-primary" id="confirm-create-btn">
+          <span>Create & Edit Section</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Reusable Section Modal -->
+  <div class="confirm-modal-overlay" id="delete-section-overlay">
+    <div class="confirm-modal">
+      <div class="confirm-modal-header">
+        <h4>Delete Reusable Section</h4>
+        <button class="close-modal-btn" id="close-delete-modal">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="confirm-modal-body">
+        <p>Are you sure you want to delete section <strong id="delete-section-display-name">"Hero Home"</strong>?</p>
+        <div class="warning-text" id="delete-usage-warning">
+          <strong>⚠️ Active Usage Warning</strong>
+          <p style="margin-top:0.25rem;">This section is currently in use on <span id="usage-pages-count">0</span> page(s). Deleting it will permanently remove it from these page builder lists!</p>
+        </div>
+      </div>
+      <div class="confirm-modal-footer">
+        <button class="btn btn-outline" id="cancel-delete-btn">Cancel</button>
+        <button class="btn btn-danger" id="confirm-delete-btn">Delete Section</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section Preview Overlay Dialog -->
+  <div class="preview-overlay" id="preview-overlay">
+    <div class="preview-modal-wrap">
+      <div class="preview-modal-top">
+        <div class="preview-modal-title">
+          <h4 id="preview-section-title">Preview: Hero Home</h4>
+        </div>
+        <div class="preview-device-selectors">
+          <button type="button" class="device-btn active" data-device="desktop">
+            Desktop
+          </button>
+          <button type="button" class="device-btn" data-device="tablet">
+            Tablet
+          </button>
+          <button type="button" class="device-btn" data-device="mobile">
+            Mobile
+          </button>
+        </div>
+        <button class="close-modal-btn" id="close-preview-overlay">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="preview-modal-body-frame">
+        <div class="device-viewport desktop" id="preview-device-viewport">
+          <iframe id="preview-iframe" src="about:blank"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notifications -->
+  <div class="toast-notification" id="toast-notify">
+    <div class="toast-content">
+      <span class="toast-message" id="toast-message">Action successful!</span>
+    </div>
+  </div>
+
+</AdminLayout>
+
+<style is:global>
+  /* Submodule tabs and panels navigation */
+  .sections-tabs-navigation {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 2rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+  }
+  .tab-nav-btn {
+    padding: 0.6rem 1.2rem;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: var(--transition);
+    appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+    margin-bottom: -1px;
+    line-height: 1;
+    border-radius: 4px 4px 0 0;
+  }
+  .tab-nav-btn:hover {
+    color: var(--primary);
+    background: rgba(99, 102, 241, 0.06);
+  }
+  .tab-nav-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    background: rgba(99, 102, 241, 0.08);
+  }
+  .submodule-view {
+    display: none;
+  }
+  .submodule-view.active {
+    display: block;
+  }
+
+  .dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-top: 0.25rem;
+  }
+  .section-title-wrap {
+    margin-bottom: 1rem;
+    border-left: 3px solid var(--primary);
+    padding-left: 0.75rem;
+  }
+  .section-title-wrap h3 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+
+  .controls-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .search-input-wrap {
+    position: relative;
+    flex: 1;
+    max-width: 400px;
+    min-width: 250px;
+  }
+  .search-icon {
+    position: absolute;
+    left: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-dim);
+    pointer-events: none;
+  }
+  .search-input-wrap input {
+    padding-left: 2.5rem !important;
+  }
+  .filter-controls select {
+    padding: 0.6rem 2.5rem 0.6rem 1rem;
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-main);
+    border-radius: var(--radius-sm);
+    outline: none;
+    font-size: 0.88rem;
+    font-weight: 500;
+  }
+
+  /* Grid Layout of Reusable Cards */
+  .sections-grid-layout {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 4rem;
+  }
+  .no-sections-fallback {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 5rem 2rem;
+    border: 1px dashed var(--border-color);
+    border-radius: var(--radius-lg);
+    background: var(--bg-surface);
+    color: var(--text-dim);
+  }
+  .no-sections-fallback h4 {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+  }
+
+  .section-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 15px var(--color-shadow);
+    transition: var(--transition);
+  }
+  .section-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(99, 102, 241, 0.25);
+  }
+  .section-card-preview-placeholder {
+    height: 140px;
+    background: var(--input-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border-bottom: 1px solid var(--bg-surface-border);
+    overflow: hidden;
+  }
+  .preview-type-tag {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    background: rgba(8, 12, 20, 0.75);
+    backdrop-filter: blur(4px);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+  }
+  .placeholder-icon-wrap {
+    opacity: 0.15;
+    color: var(--text-main);
+  }
+  .card-action-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(8,12,20,0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: var(--transition);
+    backdrop-filter: blur(2px);
+  }
+  .section-card-preview-placeholder:hover .card-action-overlay {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .section-card-content {
+    padding: 1.15rem;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+  .section-card-meta-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+  .section-card-id {
+    font-size: 0.75rem;
+    font-family: monospace;
+    color: var(--text-dim);
+  }
+  .section-card-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 0.75rem;
+  }
+  
+  .section-card-usages {
+    font-size: 0.8rem;
+    margin-bottom: 1.25rem;
+    flex: 1;
+  }
+  .section-card-usages strong {
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 0.35rem;
+  }
+  .usage-count.none {
+    color: var(--text-dim);
+    font-style: italic;
+  }
+  .usage-links-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+  .usage-link-badge {
+    font-size: 0.7rem;
+    background: var(--primary-light);
+    color: var(--primary);
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    font-weight: 600;
+    border: 1px solid rgba(99, 102, 241, 0.12);
+  }
+  .usage-link-badge:hover {
+    background: var(--primary);
+    color: white;
+  }
+
+  .section-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--bg-surface-border);
+    padding-top: 0.75rem;
+    margin-top: auto;
+  }
+  .card-updated {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+  }
+  .card-footer-actions {
+    display: flex;
+    gap: 0.35rem;
+  }
+  .card-footer-actions .btn-action {
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+    padding: 0;
+    flex-shrink: 0;
+  }
+  .card-footer-actions .btn-action:hover {
+    background: rgba(156, 163, 175, 0.08);
+    color: var(--text-main);
+    border-color: var(--text-dim);
+  }
+  .card-footer-actions .delete-btn:hover {
+    background: rgba(239, 68, 68, 0.08);
+    color: var(--color-error);
+    border-color: var(--color-error);
+  }
+  .card-footer-actions .template-btn:hover {
+    background: rgba(16, 185, 129, 0.08);
+    color: var(--color-success);
+    border-color: var(--color-success);
+  }
+  .status-badge.archived {
+    background-color: rgba(107, 114, 128, 0.12);
+    color: #9CA3AF;
+    border: 1px solid rgba(107, 114, 128, 0.15);
+  }
+
+  /* Catalog Grid inside modal */
+  .create-section-modal {
+    max-width: 600px !important;
+  }
+  .catalog-filters {
+    display: flex;
+    gap: 0.35rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .catalog-tab-btn {
+    padding: 0.3rem 0.75rem;
+    border-radius: 4px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .catalog-tab-btn.active {
+    background: var(--primary-light);
+    color: var(--primary);
+  }
+  .block-catalog-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    max-height: 260px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    padding: 0.5rem;
+    border-radius: var(--radius-sm);
+    background: var(--bg-base);
+  }
+  .catalog-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: var(--bg-surface-solid);
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .catalog-item:hover {
+    border-color: var(--primary);
+    transform: scale(1.01);
+  }
+  .catalog-item.selected {
+    border-color: var(--primary) !important;
+    background: var(--primary-light) !important;
+  }
+  .catalog-item-icon {
+    color: var(--primary);
+    opacity: 0.7;
+    flex-shrink: 0;
+  }
+  .catalog-item-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .catalog-item-info strong {
+    font-size: 0.85rem;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .catalog-item-info span {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    text-transform: capitalize;
+  }
+
+  /* Preview device simulation wrappers */
+  .preview-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(8, 12, 20, 0.8);
+    backdrop-filter: blur(10px);
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s ease;
+  }
+  .preview-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .preview-modal-wrap {
+    width: 90vw;
+    height: 90vh;
+    background: var(--bg-surface-solid);
+    border: 1px solid var(--bg-surface-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .preview-modal-top {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--bg-surface-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(156,163,175,0.015);
+  }
+  .preview-modal-title h4 {
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+  .preview-device-selectors {
+    display: flex;
+    gap: 0.25rem;
+    background: var(--bg-base);
+    padding: 0.25rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+  }
+  .device-btn {
+    padding: 0.35rem 0.85rem;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .device-btn.active {
+    background: var(--bg-surface);
+    color: var(--primary);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .preview-modal-body-frame {
+    flex: 1;
+    background: #05080E;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    overflow: hidden;
+  }
+  .device-viewport {
+    height: 100%;
+    transition: width 0.3s ease;
+    border-radius: 12px;
+    border: 8px solid #1C2333;
+    background: white;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+  .device-viewport.desktop {
+    width: 100%;
+    max-width: 1200px;
+  }
+  .device-viewport.tablet {
+    width: 768px;
+  }
+  .device-viewport.mobile {
+    width: 375px;
+  }
+  .device-viewport iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: white;
+  }
+</style>
+
+<script is:inline>
+  const ICONS = {
+    delete: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`
+  };
+  let activeDeleteId = "";
+  let selectedBlockType = "";
+
+  function selectCatalogType(type) {
+    selectedBlockType = type;
+    document.querySelectorAll(".catalog-item").forEach(item => {
+      if (item.getAttribute("data-type") === type) {
+        item.classList.add("selected");
+      } else {
+        item.classList.remove("selected");
+      }
+    });
+  }
+  // Expose function globally for click trigger
+  window.selectCatalogType = selectCatalogType;
+
+  function initSectionsList() {
+    // 1. Search and status/type filter bindings
+    const searchInput = document.getElementById("sections-search");
+    if (!searchInput || searchInput.dataset.listenerBound) return;
+    searchInput.dataset.listenerBound = "true";
+
+    searchInput.addEventListener("input", filterAndSortSections);
+
+    const typeFilter = document.getElementById("type-filter");
+    if (typeFilter) typeFilter.addEventListener("change", filterAndSortSections);
+
+    const statusFilter = document.getElementById("status-filter");
+    if (statusFilter) statusFilter.addEventListener("change", filterAndSortSections);
+
+    const sortFilter = document.getElementById("sort-filter");
+    if (sortFilter) sortFilter.addEventListener("change", filterAndSortSections);
+
+    function filterAndSortSections() {
+      const q = searchInput.value.trim().toLowerCase();
+      const type = typeFilter ? typeFilter.value : "all";
+      const status = statusFilter ? statusFilter.value : "all";
+      const sortVal = sortFilter ? sortFilter.value : "updated";
+
+      const grid = document.getElementById("sections-grid");
+      if (!grid) return;
+      const cards = Array.from(grid.querySelectorAll(".section-card"));
+      let count = 0;
+
+      // 1. Filtering
+      cards.forEach(card => {
+        const id = card.getAttribute("data-id") || "";
+        const name = card.getAttribute("data-name") || "";
+        const cType = card.getAttribute("data-type") || "";
+        const typename = card.getAttribute("data-typename") || "";
+        const cStatus = card.getAttribute("data-status") || "published";
+
+        const matchQ = !q || id.includes(q) || name.includes(q) || typename.includes(q);
+        const matchType = type === "all" || cType === type;
+        const matchStatus = status === "all" || cStatus === status;
+
+        if (matchQ && matchType && matchStatus) {
+          card.style.display = "flex";
+          count++;
+        } else {
+          card.style.display = "none";
+        }
+      });
+
+      // 2. Sorting
+      cards.sort((a, b) => {
+        if (sortVal === "updated") {
+          const dateA = new Date(a.getAttribute("data-updated")).getTime();
+          const dateB = new Date(b.getAttribute("data-updated")).getTime();
+          return dateB - dateA;
+        } else if (sortVal === "created") {
+          return a.getAttribute("data-id").localeCompare(b.getAttribute("data-id"));
+        } else if (sortVal === "used") {
+          const countA = parseInt(a.getAttribute("data-usage-count") || "0");
+          const countB = parseInt(b.getAttribute("data-usage-count") || "0");
+          return countB - countA;
+        } else if (sortVal === "alpha") {
+          return a.getAttribute("data-name").localeCompare(b.getAttribute("data-name"));
+        }
+        return 0;
+      });
+
+      // Re-append sorted elements
+      cards.forEach(card => grid.appendChild(card));
+      
+      const fallback = document.querySelector(".no-sections-fallback");
+      if (fallback) {
+        fallback.style.display = count === 0 ? "block" : "none";
+      }
+    }
+
+    // 2. Submodule Tab switcher
+    const tabButtons = document.querySelectorAll(".tab-nav-btn");
+    tabButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        tabButtons.forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+
+        const tab = btn.getAttribute("data-tab");
+        document.querySelectorAll(".submodule-view").forEach(view => {
+          view.classList.remove("active");
+        });
+        
+        const targetView = document.getElementById(`view-${tab}`);
+        if (targetView) targetView.classList.add("active");
+
+        if (tab === "templates") {
+          renderTemplatesList();
+        }
+      });
+    });
+
+    // 3. Category catalog filters inside "Create" tab
+    const catalogTabs = document.querySelectorAll("#view-create .catalog-tab-btn");
+    catalogTabs.forEach(tab => {
+      tab.addEventListener("click", () => {
+        catalogTabs.forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        
+        const cat = tab.getAttribute("data-category");
+        document.querySelectorAll("#new-block-catalog .catalog-item").forEach(item => {
+          const itemCat = item.getAttribute("data-category");
+          if (cat === "all" || itemCat === cat) {
+            item.style.display = "flex";
+          } else {
+            item.style.display = "none";
+          }
+        });
+      });
+    });
+
+    // 4. Create submit trigger
+    const submitCreateBtn = document.getElementById("btn-create-submit");
+    if (submitCreateBtn) {
+      submitCreateBtn.addEventListener("click", async () => {
+        const idInput = document.getElementById("new-section-id");
+        const nameInput = document.getElementById("new-section-name");
+        const idErr = document.getElementById("new-section-id-err");
+        const nameErr = document.getElementById("new-section-name-err");
+
+        idErr.innerText = "";
+        nameErr.innerText = "";
+
+        const secId = idInput.value.trim().toLowerCase();
+        const secName = nameInput.value.trim();
+
+        if (!secId || !/^[a-z0-9-]+$/.test(secId)) {
+          idErr.innerText = "Please enter a valid lowercase, alphanumeric section ID.";
+          return;
+        }
+
+        if (!secName) {
+          nameErr.innerText = "Display Name is required.";
+          return;
+        }
+
+        if (!selectedBlockType) {
+          alert("Please select a section type template from the blueprint catalog.");
+          return;
+        }
+
+        submitCreateBtn.disabled = true;
+
+        try {
+          const payload = {
+            id: secId,
+            type: selectedBlockType,
+            name: secName,
+            status: "published"
+          };
+          
+          const res = await fetch("/api/sections-crud", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          
+          const data = await res.json();
+          if (data.success) {
+            showToast("Section created successfully!");
+            setTimeout(() => {
+              window.location.href = `/admin/sections/editor?id=${secId}`;
+            }, 800);
+          } else {
+            alert("Error: " + (data.error || "Save failed"));
+            submitCreateBtn.disabled = false;
+          }
+        } catch(e) {
+          alert("Connection error occurred.");
+          submitCreateBtn.disabled = false;
+        }
+      });
+    }
+
+    // 5. Delete mappings overlay triggers
+    const closeDeleteBtn = document.getElementById("close-delete-modal");
+    const cancelDeleteBtn = document.getElementById("cancel-delete-btn");
+    const confirmDeleteBtn = document.getElementById("confirm-delete-btn");
+
+    const hideDeleteModal = () => {
+      document.getElementById("delete-section-overlay").classList.remove("active");
+      activeDeleteId = "";
+    };
+
+    if (closeDeleteBtn) closeDeleteBtn.addEventListener("click", hideDeleteModal);
+    if (cancelDeleteBtn) cancelDeleteBtn.addEventListener("click", hideDeleteModal);
+
+    if (confirmDeleteBtn) {
+      confirmDeleteBtn.addEventListener("click", async () => {
+        if (!activeDeleteId) return;
+        confirmDeleteBtn.disabled = true;
+        confirmDeleteBtn.innerText = "Deleting...";
+
+        try {
+          const res = await fetch("/api/sections-crud", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: activeDeleteId })
+          });
+          const data = await res.json();
+
+          if (data.success) {
+            showToast("Section deleted successfully!");
+            setTimeout(() => {
+              window.location.reload();
+            }, 800);
+          } else {
+            alert("Error: " + (data.error || "Delete failed"));
+            confirmDeleteBtn.disabled = false;
+            confirmDeleteBtn.innerText = "Delete Section";
+          }
+        } catch(e) {
+          alert("Network connection error");
+          confirmDeleteBtn.disabled = false;
+          confirmDeleteBtn.innerText = "Delete Section";
+        }
+      });
+    }
+
+    // 6. Viewport Switcher Preview handlers
+    const deviceButtons = document.querySelectorAll(".device-btn");
+    const iframeWrapper = document.getElementById("preview-device-viewport");
+    deviceButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        deviceButtons.forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        
+        const device = btn.getAttribute("data-device");
+        iframeWrapper.className = `device-viewport ${device}`;
+      });
+    });
+
+    const closePreviewBtn = document.getElementById("close-preview-overlay");
+    if (closePreviewBtn) {
+      closePreviewBtn.addEventListener("click", () => {
+        document.getElementById("preview-overlay").classList.remove("active");
+        document.getElementById("preview-iframe").src = "about:blank";
+      });
+    }
+
+    // 7. Click delegate binds
+    document.addEventListener("click", (e) => {
+      const delBtn = e.target.closest(".delete-btn");
+      if (delBtn) {
+        const id = delBtn.getAttribute("data-id");
+        const name = delBtn.getAttribute("data-name");
+        const count = parseInt(delBtn.getAttribute("data-usage-count") || "0");
+        
+        activeDeleteId = id;
+        document.getElementById("delete-section-display-name").innerText = `"${name}"`;
+        document.getElementById("usage-pages-count").innerText = count;
+        
+        const warning = document.getElementById("delete-usage-warning");
+        if (warning) warning.style.display = count > 0 ? "block" : "none";
+
+        document.getElementById("delete-section-overlay").classList.add("active");
+      }
+
+      const dupBtn = e.target.closest(".duplicate-btn");
+      if (dupBtn) {
+        const id = dupBtn.getAttribute("data-id");
+        executeDuplication(id);
+      }
+
+      const prevBtn = e.target.closest(".preview-section-btn");
+      if (prevBtn) {
+        const id = prevBtn.getAttribute("data-id");
+        const name = prevBtn.getAttribute("data-name");
+        openLivePreview(id, name);
+      }
+    });
+
+    // 8. Import Drag and Drop upload zone binding
+    const dragZone = document.getElementById("import-drag-zone");
+    const fileInput = document.getElementById("import-file-input");
+
+    if (dragZone && fileInput) {
+      dragZone.addEventListener("click", () => fileInput.click());
+      fileInput.addEventListener("change", (e) => {
+        if (fileInput.files.length > 0) {
+          importSection(fileInput.files[0]);
+        }
+      });
+      
+      dragZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dragZone.style.borderColor = "var(--primary)";
+        dragZone.style.background = "var(--primary-light)";
+      });
+      
+      dragZone.addEventListener("dragleave", () => {
+        dragZone.style.borderColor = "var(--border-color)";
+        dragZone.style.background = "var(--bg-base)";
+      });
+      
+      dragZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dragZone.style.borderColor = "var(--border-color)";
+        dragZone.style.background = "var(--bg-base)";
+        if (e.dataTransfer.files.length > 0) {
+          importSection(e.dataTransfer.files[0]);
+        }
+      });
+    }
+
+    // 9. "Create Reusable Section" header button → open create modal
+    const createModalOverlay = document.getElementById("create-section-modal-overlay");
+    const openCreateSectionBtn = document.getElementById("open-create-section-btn");
+    if (openCreateSectionBtn && createModalOverlay) {
+      openCreateSectionBtn.addEventListener("click", () => {
+        selectedBlockType = "";
+        document.querySelectorAll(".catalog-item").forEach(item => item.classList.remove("selected"));
+        const ciInput = document.getElementById("create-section-id");
+        const cnInput = document.getElementById("create-section-name");
+        if (ciInput) ciInput.value = "";
+        if (cnInput) cnInput.value = "";
+        createModalOverlay.classList.add("active");
+      });
+    }
+
+    // 10. Create Modal — close/cancel handlers
+    const closeCreateModalX = document.getElementById("close-create-modal");
+    const cancelCreateModalBtn = document.getElementById("cancel-create-btn");
+    const hideCreateModal = () => {
+      if (createModalOverlay) createModalOverlay.classList.remove("active");
+    };
+    if (closeCreateModalX) closeCreateModalX.addEventListener("click", hideCreateModal);
+    if (cancelCreateModalBtn) cancelCreateModalBtn.addEventListener("click", hideCreateModal);
+    if (createModalOverlay) {
+      createModalOverlay.addEventListener("click", (e) => {
+        if (e.target === createModalOverlay) hideCreateModal();
+      });
+    }
+
+    // 11. Modal catalog category tab filters
+    const modalCatalogTabs = document.querySelectorAll("#create-section-modal-overlay .catalog-tab-btn");
+    modalCatalogTabs.forEach(tabEl => {
+      tabEl.addEventListener("click", () => {
+        modalCatalogTabs.forEach(t => t.classList.remove("active"));
+        tabEl.classList.add("active");
+        const cat = tabEl.getAttribute("data-category");
+        document.querySelectorAll("#block-catalog .catalog-item").forEach(item => {
+          const itemCat = item.getAttribute("data-category");
+          item.style.display = (cat === "all" || itemCat === cat) ? "flex" : "none";
+        });
+      });
+    });
+
+    // 12. confirm-create-btn — create section from modal form
+    const confirmCreateBtn = document.getElementById("confirm-create-btn");
+    if (confirmCreateBtn) {
+      confirmCreateBtn.addEventListener("click", async () => {
+        const createIdInput = document.getElementById("create-section-id");
+        const createNameInput = document.getElementById("create-section-name");
+        const createIdErr = document.getElementById("create-section-id-err");
+        const createNameErr = document.getElementById("create-section-name-err");
+
+        if (createIdErr) createIdErr.innerText = "";
+        if (createNameErr) createNameErr.innerText = "";
+
+        const secId = createIdInput ? createIdInput.value.trim().toLowerCase() : "";
+        const secName = createNameInput ? createNameInput.value.trim() : "";
+
+        if (!secId || !/^[a-z0-9-]+$/.test(secId)) {
+          if (createIdErr) createIdErr.innerText = "Please enter a valid section ID (lowercase letters, numbers, dashes only).";
+          return;
+        }
+        if (!secName) {
+          if (createNameErr) createNameErr.innerText = "Display Name is required.";
+          return;
+        }
+        if (!selectedBlockType) {
+          alert("Please select a section type blueprint from the catalog.");
+          return;
+        }
+
+        confirmCreateBtn.disabled = true;
+        const confirmSpan = confirmCreateBtn.querySelector("span");
+        if (confirmSpan) confirmSpan.innerText = "Creating...";
+
+        try {
+          const res = await fetch("/api/sections-crud", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: secId, type: selectedBlockType, name: secName, status: "published" })
+          });
+          const data = await res.json();
+          if (data.success) {
+            showToast("Section created successfully!");
+            setTimeout(() => {
+              window.location.href = `/admin/sections/editor?id=${secId}`;
+            }, 800);
+          } else {
+            alert("Error: " + (data.error || "Create failed"));
+            confirmCreateBtn.disabled = false;
+            if (confirmSpan) confirmSpan.innerText = "Create & Edit Section";
+          }
+        } catch(e) {
+          alert("Connection error occurred.");
+          confirmCreateBtn.disabled = false;
+          if (confirmSpan) confirmSpan.innerText = "Create & Edit Section";
+        }
+      });
+    }
+  }
+
+  async function executeDuplication(id) {
+    const newId = prompt("Enter a unique Section ID for the duplicated block:", `${id}-copy`);
+    if (!newId) return;
+
+    try {
+      const getRes = await fetch(`/api/sections-crud?action=get&id=${id}`);
+      const getData = await getRes.json();
+      if (!getData.success) {
+        showToast("Error reading source section");
+        return;
+      }
+
+      const payload = {
+        ...getData.section,
+        id: newId.trim().toLowerCase(),
+        name: `${getData.section.name || id} (Copy)`
+      };
+
+      const res = await fetch("/api/sections-crud", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast("Section duplicated successfully!");
+        setTimeout(() => {
+          window.location.reload();
+        }, 800);
+      } else {
+        alert("Error duplicating: " + (data.error || "failed"));
+      }
+    } catch(e) {
+      showToast("Network Error occurred.");
+    }
+  }
+
+  function openLivePreview(id, name) {
+    document.getElementById("preview-section-title").innerText = `Preview Section: "${name}"`;
+    document.getElementById("preview-iframe").src = `/admin/sections/preview?id=${id}`;
+    document.getElementById("preview-overlay").classList.add("active");
+  }
+
+  // --- TEMPLATES SYSTEM CLIENT ENGINE ---
+  function renderTemplatesList() {
+    const container = document.getElementById("templates-list-container");
+    if (!container) return;
+
+    const templates = JSON.parse(localStorage.getItem("cms_section_templates") || "[]");
+    if (templates.length === 0) {
+      container.innerHTML = `
+        <div class="no-sections-fallback" style="grid-column: 1 / -1; padding:3rem 1rem;">
+          <h4>No section templates saved yet</h4>
+          <p>Hover over any section in the Library and click the "Save as Template" action to register it.</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = templates.map((t, idx) => {
+      const blockType = t.blockData.type || "hero";
+      const fallbackImg = `/images/previews/${blockType}.png`;
+      const typeName = blockType.charAt(0).toUpperCase() + blockType.slice(1) + " Blueprint";
+
+      return `
+        <div class="section-card" style="display:flex; flex-direction:column; background:var(--bg-surface); border:1px solid var(--border-color); border-radius:8px; overflow:hidden;">
+          <div style="height:120px; background:var(--input-bg); display:flex; align-items:center; justify-content:center; overflow:hidden; border-bottom:1px solid var(--border-color);">
+            <img src="${t.blockData.previewImage || fallbackImg}" style="width:100%; height:100%; object-fit:cover;" onerror="this.src='/images/previews/hero.png';" />
+          </div>
+          <div style="padding:1rem; flex:1; display:flex; flex-direction:column; justify-content:space-between; text-align:left;">
+            <div>
+              <h4 style="margin:0 0 0.25rem 0; font-size:0.95rem; font-weight:700; color:var(--text-main);">${t.name}</h4>
+              <span style="font-size:0.7rem; font-family:monospace; background:var(--bg-base); border:1px solid var(--border-color); padding:0.1rem 0.35rem; border-radius:4px; font-weight:600; color:var(--text-dim);">${typeName}</span>
+            </div>
+            <div style="display:flex; gap:0.5rem; justify-content:space-between; align-items:center; border-top:1px solid var(--border-color); padding-top:0.75rem; margin-top:1rem;">
+              <button class="btn btn-primary btn-sm" onclick="createFromTemplate(${idx})" style="padding:0.25rem 0.5rem; font-size:0.72rem; flex:1.5;">Create Section</button>
+              <button class="btn-action delete-btn" onclick="deleteTemplate(${idx})" title="Delete Template" style="border:1px solid var(--border-color); width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:4px;">
+                ${ICONS.delete}
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function saveAsTemplate(id) {
+    const templateName = prompt("Enter a name for this section template:");
+    if (!templateName) return;
+
+    try {
+      const res = await fetch(`/api/sections-crud?action=get&id=${id}`);
+      const data = await res.json();
+      if (data.success) {
+        const templates = JSON.parse(localStorage.getItem("cms_section_templates") || "[]");
+        templates.push({
+          name: templateName,
+          blockData: data.section
+        });
+        localStorage.setItem("cms_section_templates", JSON.stringify(templates));
+        showToast(`Template "${templateName}" saved successfully!`);
+      } else {
+        alert("Error loading section content from disk.");
+      }
+    } catch(e) {
+      alert("Network Connection error");
+    }
+  }
+
+  async function createFromTemplate(templateIndex) {
+    const templates = JSON.parse(localStorage.getItem("cms_section_templates") || "[]");
+    const template = templates[templateIndex];
+    if (!template) return;
+
+    const newId = prompt("Enter unique Section ID for the new instance:", `${template.blockData.type}-from-template`);
+    if (!newId) return;
+
+    const newName = prompt("Enter section display name:", `${template.name} Instance`);
+    if (!newName) return;
+
+    try {
+      const payload = {
+        ...template.blockData,
+        id: newId.trim().toLowerCase(),
+        name: newName.trim(),
+        status: "published"
+      };
+
+      const res = await fetch("/api/sections-crud", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        showToast("Section created from template successfully!");
+        setTimeout(() => {
+          window.location.href = `/admin/sections/editor?id=${payload.id}`;
+        }, 800);
+      } else {
+        alert("Error creating: " + data.error);
+      }
+    } catch(e) {
+      alert("Network Connection error");
+    }
+  }
+
+  function deleteTemplate(index) {
+    window.customConfirm("Are you sure you want to delete this template?", () => {
+      const templates = JSON.parse(localStorage.getItem("cms_section_templates") || "[]");
+      templates.splice(index, 1);
+      localStorage.setItem("cms_section_templates", JSON.stringify(templates));
+      showToast("Template deleted successfully!");
+      renderTemplatesList();
+    });
+  }
+
+  // --- BACKUP IMPORT & EXPORT CLIENT ENGINE ---
+  async function exportSection(id, name) {
+    try {
+      const res = await fetch(`/api/sections-crud?action=get&id=${id}`);
+      const data = await res.json();
+      if (data.success) {
+        const payload = {
+          ...data.section,
+          id: id,
+          name: name
+        };
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `${id}-export.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+        showToast("✓ Section exported to JSON successfully!");
+      } else {
+        alert("Error loading section for export.");
+      }
+    } catch(e) {
+      alert("Network error exporting section.");
+    }
+  }
+
+  async function importSection(file) {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const sectionData = JSON.parse(e.target.result);
+        if (!sectionData.type) {
+          alert("Invalid backup JSON: Missing component 'type' field.");
+          return;
+        }
+
+        const newId = prompt("Enter a unique Section ID for the imported block:", sectionData.id || "imported-block");
+        if (!newId) return;
+
+        const newName = prompt("Enter Section display name:", sectionData.name || "Imported Section");
+        if (!newName) return;
+
+        const payload = {
+          ...sectionData,
+          id: newId.trim().toLowerCase(),
+          name: newName.trim(),
+          status: "published"
+        };
+
+        const res = await fetch("/api/sections-crud", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          showToast("✓ Section imported successfully!");
+          setTimeout(() => {
+            window.location.reload();
+          }, 800);
+        } else {
+          alert("Import failed: " + data.error);
+        }
+      } catch(err) {
+        alert("Error parsing JSON file. Make sure file content is valid JSON.");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // Expose triggers globally for inline click binds
+  window.saveAsTemplate = saveAsTemplate;
+  window.createFromTemplate = createFromTemplate;
+  window.deleteTemplate = deleteTemplate;
+  window.exportSection = exportSection;
+
+  function showToast(message) {
+    const notify = document.getElementById("toast-notify");
+    const msgSpan = document.getElementById("toast-message");
+    if (notify && msgSpan) {
+      msgSpan.innerText = message;
+      notify.classList.add("active");
+      setTimeout(() => {
+        notify.classList.remove("active");
+      }, 3000);
+    }
+  }
+
+  // Handle URL query parameters on page load
+  window.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const create = params.get('create');
+    const type = params.get('type');
+    if (create === 'true') {
+      const createModalOverlay = document.getElementById("create-section-modal-overlay");
+      if (createModalOverlay) {
+        // Clear inputs first
+        const ciInput = document.getElementById("create-section-id");
+        const cnInput = document.getElementById("create-section-name");
+        if (ciInput) ciInput.value = "";
+        if (cnInput) cnInput.value = "";
+        
+        // Show modal
+        createModalOverlay.classList.add("active");
+        
+        // Select type if provided
+        if (type) {
+          selectCatalogType(type);
+          
+          // Switch catalog tab filter if needed to display the selected catalog item
+          const selectedItem = document.querySelector(`#create-section-modal-overlay .catalog-item[data-type="${type}"]`);
+          if (selectedItem) {
+            const cat = selectedItem.getAttribute('data-category');
+            if (cat) {
+              const tabBtn = document.querySelector(`#create-section-modal-overlay .catalog-tab-btn[data-category="${cat}"]`);
+              if (tabBtn) tabBtn.click();
+            }
+          }
+        }
+      }
+    }
+  });
+
+  document.addEventListener("DOMContentLoaded", initSectionsList);
+  document.addEventListener("astro:page-load", initSectionsList);
+  if (document.readyState === "interactive" || document.readyState === "complete") {
+    initSectionsList();
+  }
+</script>

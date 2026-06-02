@@ -11,29 +11,34 @@ interface Props {
 }
 
 const { eyebrow, title, items = [] } = Astro.props;
+const validItems = (items || []).filter(item => item && (item.quote || item.author));
 ---
 <section class="block-testimonials">
   <div class="container">
-    <div class="section-head">
-      {eyebrow && <span class="eyebrow">{eyebrow}</span>}
-      <h2>{title}</h2>
-    </div>
+    {(eyebrow || title) && (
+      <div class="section-head">
+        {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+        {title && <h2>{title}</h2>}
+      </div>
+    )}
 
-    <div class="testimonials-grid">
-      {items.map((item) => (
-        <div class="testimonial-card">
-          <div class="quote-icon">“</div>
-          <p class="quote-text">{item.quote}</p>
-          <div class="author-details">
-            {item.avatar && <img class="avatar" src={item.avatar} alt={item.author} />}
-            <div>
-              <h4>{item.author}</h4>
-              <span>{item.role}</span>
+    {validItems.length > 0 && (
+      <div class="testimonials-grid">
+        {validItems.map((item) => (
+          <div class="testimonial-card">
+            <div class="quote-icon">“</div>
+            {item.quote && <p class="quote-text">{item.quote}</p>}
+            <div class="author-details">
+              {item.avatar && <img class="avatar" src={item.avatar} alt={item.author || "Author"} />}
+              <div>
+                {item.author && <h4>{item.author}</h4>}
+                {item.role && <span>{item.role}</span>}
+              </div>
             </div>
           </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+    )}
   </div>
 </section>
 

@@ -5,28 +5,7 @@ import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
 
 // Import block components
-import HeroBlock from "../blocks/HeroBlock.astro";
-import AboutBlock from "../blocks/AboutBlock.astro";
-import RichTextBlock from "../blocks/RichTextBlock.astro";
-import TwoColumnBlock from "../blocks/TwoColumnBlock.astro";
-import ImageContentBlock from "../blocks/ImageContentBlock.astro";
-import CtaBlock from "../blocks/CtaBlock.astro";
-import StatsBlock from "../blocks/StatsBlock.astro";
-import TeamBlock from "../blocks/TeamBlock.astro";
-import TestimonialsBlock from "../blocks/TestimonialsBlock.astro";
-import FaqBlock from "../blocks/FaqBlock.astro";
-import LogoSliderBlock from "../blocks/LogoSliderBlock.astro";
-import ServicesGridBlock from "../blocks/ServicesGridBlock.astro";
-import PricingBlock from "../blocks/PricingBlock.astro";
-import CaseStudiesBlock from "../blocks/CaseStudiesBlock.astro";
-import TimelineBlock from "../blocks/TimelineBlock.astro";
-import AwardsBlock from "../blocks/AwardsBlock.astro";
-import ContactFormBlock from "../blocks/ContactFormBlock.astro";
-import CustomHtmlBlock from "../blocks/CustomHtmlBlock.astro";
-import VideoBlock from "../blocks/VideoBlock.astro";
-import GalleryBlock from "../blocks/GalleryBlock.astro";
-import BlogListingBlock from "../blocks/BlogListingBlock.astro";
-import RelatedPagesBlock from "../blocks/RelatedPagesBlock.astro";
+import BlockRenderer from "../components/BlockRenderer.astro";
 
 import fs from "node:fs";
 import path from "node:path";
@@ -37,27 +16,11 @@ export const prerender = false;
 const { slug } = Astro.params;
 const cleanSlug = slug || "index";
 
-// 2. Query page entry
-const entry = await getEntry("pages", cleanSlug);
-
-// If page does not exist, return 404
-if (!entry) {
-  return new Response("Page Not Found", { status: 404 });
-}
-
-const page = entry.data;
-
-// 3. Draft/Publish Workflow checks
-const isPreview = Astro.url.searchParams.get("preview") === "true";
-if (page.status === "draft" && !isPreview) {
-  return new Response("This page is a draft. Please use preview mode to view it.", { status: 403 });
-}
-
-// 4. Fetch Global Site Settings (Header/Footer menus, custom code injection)
+// 2. Fetch Global Site Settings for Redirect check
 let globalSettings = {
   headerScripts: "",
   footerScripts: "",
-  redirects: [] as Array<{ from: string; to: string }>,
+  redirects: [] as Array<{ from: string; to: string; type?: string; active?: boolean }>,
 };
 
 try {
@@ -69,11 +32,53 @@ try {
   // Graceful fallback
 }
 
-// 5. Redirect Manager check
-const matchingRedirect = globalSettings.redirects?.find(r => r.from === `/${cleanSlug}` && r.active !== false);
+// Normalize current path and check redirects using Astro.url.pathname (fully case-insensitive, handles missing/extra slashes)
+const reqPath = Astro.url.pathname.toLowerCase().trim().replace(/\/$/, "");
+const matchingRedirect = globalSettings.redirects?.find(r => {
+  if (!r.from) return false;
+  // Ensure from has leading slash and no trailing slash
+  const fromNormalized = ("/" + r.from).replace(/^\/\/+/, "/").replace(/\/$/, "").toLowerCase().trim();
+  return fromNormalized === reqPath && r.active !== false;
+});
+
 if (matchingRedirect) {
   const status = matchingRedirect.type === "302" ? 302 : 301;
   return Astro.redirect(matchingRedirect.to, status);
+}
+
+// 3. Query page entry
+const entry = await getEntry("pages", cleanSlug);
+
+// If page does not exist, return 404
+if (!entry) {
+  return new Response("Page Not Found", { status: 404 });
+}
+
+const pageRaw = entry.data;
+
+// Asynchronously resolve section blocks content
+const resolvedBlocks = await Promise.all(
+  (pageRaw.blocks || []).map(async (block: any) => {
+    if (block.sectionId) {
+      const sectionEntry = await getEntry("sections", block.sectionId);
+      return {
+        ...block,
+        ...(sectionEntry ? sectionEntry.data : {})
+      };
+    }
+    return block;
+  })
+);
+
+const page = {
+  ...pageRaw,
+  blocks: resolvedBlocks
+};
+
+// 4. Draft/Publish Workflow checks
+const isPreview = Astro.url.searchParams.get("preview") === "true";
+if (page.status === "draft" && !isPreview) {
+  return new Response("This page is a draft. Please use preview mode to view it.", { status: 403 });
 }
 
 // 6. JSON-LD Schema Generator
@@ -147,56 +152,9 @@ if (page.seo.schemaMarkup) {
       </div>
     )}
 
-    {page.blocks && page.blocks.map((block: any) => {
-      switch (block.type) {
-        case "hero":
-          return <HeroBlock {...block} />;
-        case "about":
-          return <AboutBlock {...block} />;
-        case "rich_text":
-          return <RichTextBlock {...block} />;
-        case "two_column":
-          return <TwoColumnBlock {...block} />;
-        case "image_content":
-          return <ImageContentBlock {...block} />;
-        case "cta":
-          return <CtaBlock {...block} />;
-        case "stats":
-          return <StatsBlock {...block} />;
-        case "team":
-          return <TeamBlock {...block} />;
-        case "testimonials":
-          return <TestimonialsBlock {...block} />;
-        case "faq":
-          return <FaqBlock {...block} />;
-        case "logo_slider":
-          return <LogoSliderBlock {...block} />;
-        case "services_grid":
-          return <ServicesGridBlock {...block} />;
-        case "pricing":
-          return <PricingBlock {...block} />;
-        case "case_studies":
-          return <CaseStudiesBlock {...block} />;
-        case "timeline":
-          return <TimelineBlock {...block} />;
-        case "awards":
-          return <AwardsBlock {...block} />;
-        case "contact_form_block":
-          return <ContactFormBlock {...block} />;
-        case "custom_html":
-          return <CustomHtmlBlock {...block} />;
-        case "video_section":
-          return <VideoBlock {...block} />;
-        case "gallery":
-          return <GalleryBlock {...block} />;
-        case "blog_listing":
-          return <BlogListingBlock {...block} />;
-        case "related_pages":
-          return <RelatedPagesBlock {...block} />;
-        default:
-          return null;
-      }
-    })}
+    {page.blocks && page.blocks.map((block: any) => (
+      <BlockRenderer block={block} />
+    ))}
   </main>
 
   <Footer />

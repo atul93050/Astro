@@ -30,32 +30,36 @@ if (videoUrl.includes("youtube.com/watch?v=")) {
 ---
 <section class="block-video">
   <div class="container">
-    <div class="section-head">
-      {eyebrow && <span class="eyebrow">{eyebrow}</span>}
-      <h2>{title}</h2>
-      {description && <p class="desc">{description}</p>}
-    </div>
-
-    <div class="video-wrapper-outer">
-      <div class="video-container" id="video-click-container">
-        {coverImage && (
-          <div class="cover-overlay" id="video-cover-overlay">
-            <img src={coverImage} alt={title} class="cover-poster" />
-            <div class="play-btn-pulse">
-              <div class="play-icon">▶</div>
-            </div>
-          </div>
-        )}
-        <iframe
-          id="video-iframe"
-          data-src={resolvedUrl}
-          title={title}
-          frameborder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowfullscreen
-        ></iframe>
+    {(eyebrow || title || description) && (
+      <div class="section-head">
+        {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+        {title && <h2>{title}</h2>}
+        {description && <p class="desc">{description}</p>}
       </div>
-    </div>
+    )}
+
+    {videoUrl && (
+      <div class="video-wrapper-outer">
+        <div class="video-container" id="video-click-container">
+          {coverImage && (
+            <div class="cover-overlay" id="video-cover-overlay">
+              <img src={coverImage} alt={title || "Video Poster"} class="cover-poster" />
+              <div class="play-btn-pulse">
+                <div class="play-icon">▶</div>
+              </div>
+            </div>
+          )}
+          <iframe
+            id="video-iframe"
+            data-src={resolvedUrl}
+            title={title || "Video Player"}
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowfullscreen
+          ></iframe>
+        </div>
+      </div>
+    )}
   </div>
 </section>
 

@@ -1,10 +1,37 @@
 import type { APIRoute } from "astro";
+import fs from "node:fs";
+import path from "node:path";
+import crypto from "node:crypto";
 
 export const prerender = false;
 
-const ADMIN_USER = "admin@tangence.com";
-const ADMIN_PASS = "tangence@2026";
+const USERS_FILE = path.resolve("src/data/admin-users.json");
 const SESSION_TOKEN = "authenticated-admin-session-2026";
+
+function hashPassword(password: string): string {
+  return crypto.createHash("sha256").update(password).digest("hex");
+}
+
+function loadUsers(): any[] {
+  try {
+    if (!fs.existsSync(USERS_FILE)) {
+      const defaultUsers = [
+        {
+          username: "admin@tangence.com",
+          passwordHash: hashPassword("tangence@2026"),
+          role: "superadmin"
+        }
+      ];
+      fs.mkdirSync(path.dirname(USERS_FILE), { recursive: true });
+      fs.writeFileSync(USERS_FILE, JSON.stringify(defaultUsers, null, 2), "utf-8");
+      return defaultUsers;
+    }
+    return JSON.parse(fs.readFileSync(USERS_FILE, "utf-8"));
+  } catch (e) {
+    console.error("Failed to load users in login:", e);
+    return [];
+  }
+}
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
@@ -17,7 +44,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    if (username.trim() === ADMIN_USER && password === ADMIN_PASS) {
+    const targetUser = username.trim().toLowerCase();
+    const users = loadUsers();
+    const user = users.find(u => u.username === targetUser);
+
+    if (user && user.passwordHash === hashPassword(password)) {
       // Set secure HTTP-only cookie valid for 7 days
       cookies.set("cms_session", SESSION_TOKEN, {
         path: "/",

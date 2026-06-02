@@ -10,23 +10,28 @@ interface Props {
 }
 
 const { eyebrow, title, description, items = [] } = Astro.props;
+const validItems = (items || []).filter(item => item && (item.num || item.label));
 ---
 <section class="block-stats">
   <div class="container">
-    <div class="section-head">
-      {eyebrow && <span class="eyebrow">{eyebrow}</span>}
-      <h2>{title}</h2>
-      {description && <p class="desc">{description}</p>}
-    </div>
+    {(eyebrow || title || description) && (
+      <div class="section-head">
+        {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+        {title && <h2>{title}</h2>}
+        {description && <p class="desc">{description}</p>}
+      </div>
+    )}
     
-    <div class="stat-grid">
-      {items.map((stat) => (
-        <div class="stat-tile">
-          <div class="num">{stat.num}</div>
-          <div class="label">{stat.label}</div>
-        </div>
-      ))}
-    </div>
+    {validItems.length > 0 && (
+      <div class="stat-grid">
+        {validItems.map((stat) => (
+          <div class="stat-tile">
+            {stat.num && <div class="num">{stat.num}</div>}
+            {stat.label && <div class="label">{stat.label}</div>}
+          </div>
+        ))}
+      </div>
+    )}
   </div>
 </section>
 

@@ -12,35 +12,40 @@ interface Props {
 }
 
 const { eyebrow, title, description, services = [] } = Astro.props;
+const validServices = (services || []).filter(srv => srv && (srv.title || srv.description));
 ---
 <section class="block-services">
   <div class="container">
-    <div class="section-head">
-      {eyebrow && <span class="eyebrow">{eyebrow}</span>}
-      <h2>{title}</h2>
-      {description && <p class="desc">{description}</p>}
-    </div>
+    {(eyebrow || title || description) && (
+      <div class="section-head">
+        {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+        {title && <h2>{title}</h2>}
+        {description && <p class="desc">{description}</p>}
+      </div>
+    )}
 
-    <div class="services-grid">
-      {services.map((srv) => (
-        <div class="service-card">
-          <div class="card-glow"></div>
-          <div class="card-content">
-            <div class="icon-box">
-              <span class="icon">{srv.icon || "✓"}</span>
+    {validServices.length > 0 && (
+      <div class="services-grid">
+        {validServices.map((srv) => (
+          <div class="service-card">
+            <div class="card-glow"></div>
+            <div class="card-content">
+              <div class="icon-box">
+                <span class="icon">{srv.icon || "✓"}</span>
+              </div>
+              {srv.title && <h3>{srv.title}</h3>}
+              {srv.description && <p>{srv.description}</p>}
+              {srv.link && (
+                <a href={srv.link} class="learn-more">
+                  <span>Explore Capabilities</span>
+                  <span class="arrow">→</span>
+                </a>
+              )}
             </div>
-            <h3>{srv.title}</h3>
-            <p>{srv.description}</p>
-            {srv.link && (
-              <a href={srv.link} class="learn-more">
-                <span>Explore Capabilities</span>
-                <span class="arrow">→</span>
-              </a>
-            )}
           </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+    )}
   </div>
 </section>
 

@@ -15,9 +15,9 @@ const { eyebrow, title, description, buttonText, buttonLink } = Astro.props;
       <div class="glow-overlay"></div>
       <div class="cta-content">
         {eyebrow && <span class="eyebrow">{eyebrow}</span>}
-        <h2>{title}</h2>
-        <p>{description}</p>
-        <a href={buttonLink} class="btn btn-filled">{buttonText}</a>
+        {title && <h2>{title}</h2>}
+        {description && <p>{description}</p>}
+        {buttonText && buttonLink && <a href={buttonLink} class="btn btn-filled">{buttonText}</a>}
       </div>
     </div>
   </div>

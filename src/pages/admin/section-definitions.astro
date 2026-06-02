@@ -1,0 +1,838 @@
+---
+import AdminLayout from "../../layouts/admin/AdminLayout.astro";
+import fs from "node:fs";
+import path from "node:path";
+
+export const prerender = false;
+
+const definitionsPath = path.resolve("src/data/section-definitions.json");
+let allDefinitions: any[] = [];
+
+try {
+  if (fs.existsSync(definitionsPath)) {
+    allDefinitions = JSON.parse(fs.readFileSync(definitionsPath, "utf-8"));
+  }
+} catch (e) {
+  console.error("Failed to load section definitions:", e);
+}
+
+const categories = ["hero", "content", "marketing", "social", "other"];
+const fieldTypes = ["text", "textarea", "number", "boolean", "select", "image", "list", "repeater"];
+---
+
+<AdminLayout title="Section Definitions — Developer Mode">
+
+  <div class="dashboard-header">
+    <div class="header-text">
+      <p class="subtitle">Developer zone: Define new section types. Each definition becomes a blueprint that content editors can instantiate from the Section Library.</p>
+    </div>
+    <div class="header-actions">
+      <a href="/admin/sections" class="btn btn-outline">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path></svg>
+        Section Library
+      </a>
+      <button class="btn btn-primary" id="open-create-def-btn">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        New Section Definition
+      </button>
+    </div>
+  </div>
+
+  <!-- Info Banner -->
+  <div style="background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.08)); border: 1px solid rgba(99,102,241,0.25); border-radius: 10px; padding: 1.25rem 1.5rem; margin-bottom: 2rem; display:flex; gap: 1rem; align-items: flex-start;">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:0.15rem;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+    <div>
+      <strong style="font-size:0.9rem; color:var(--text-main); display:block; margin-bottom:0.25rem;">How Section Definitions Work</strong>
+      <p style="font-size:0.83rem; color:var(--text-muted); margin:0; line-height:1.6;">
+        Developers define the schema here — each definition maps to an Astro block component. 
+        The CMS reads the schema and auto-generates editor forms. 
+        Content editors then create <em>instances</em> from the <a href="/admin/sections" style="color:var(--primary);">Section Library</a>. 
+        The Astro component is always the source of truth for markup.
+      </p>
+    </div>
+  </div>
+
+  <!-- Category Tabs and Search Filter Bar -->
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:1.75rem; flex-wrap:wrap; border-bottom: 1px solid var(--border-color); padding-bottom:0.35rem;">
+    <div class="def-tabs" style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+      <button class="def-tab-btn active" data-category="all">All ({allDefinitions.length})</button>
+      {categories.map(cat => (
+        <button class="def-tab-btn" data-category={cat} style="text-transform:capitalize;">
+          {cat} ({allDefinitions.filter(d => d.category === cat).length})
+        </button>
+      ))}
+    </div>
+
+    <!-- Search Input Box -->
+    <div style="position:relative; width:100%; max-width:320px;">
+      <input type="text" id="def-search" placeholder="Search blueprints by name, key..." style="padding-left:2.5rem; font-size:0.85rem;" />
+      <span style="position:absolute; left:0.85rem; top:50%; transform:translateY(-50%); color:var(--text-dim); pointer-events:none; display:flex; align-items:center;">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      </span>
+    </div>
+  </div>
+
+  <!-- Definition Cards Grid -->
+  <div class="defs-grid" id="defs-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; margin-bottom: 5rem;">
+    {allDefinitions.length === 0 ? (
+      <div style="grid-column: 1/-1; text-align:center; padding: 5rem 2rem; border: 1px dashed var(--border-color); border-radius: 10px; background: var(--bg-surface); color: var(--text-dim);">
+        <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.4; display:inline-block; margin-bottom:1rem;"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="9" y1="9" x2="15" y2="9"></line><line x1="9" y1="13" x2="15" y2="13"></line></svg>
+        <h4 style="margin-bottom:0.5rem;">No Section Definitions Yet</h4>
+        <p style="font-size:0.875rem;">Click "New Section Definition" to create your first section blueprint.</p>
+      </div>
+    ) : (
+      allDefinitions.map(def => (
+        <div class="def-card" data-category={def.category} data-key={def.key}>
+          <div class="def-card-head">
+            <div>
+              <span class="def-category-tag" style={`background: var(--cat-${def.category}-bg, rgba(99,102,241,0.1)); color: var(--cat-${def.category}-color, var(--primary));`}>{def.category}</span>
+              <h4 class="def-card-name">{def.name}</h4>
+            </div>
+            <code class="def-key-tag">{def.key}</code>
+          </div>
+
+          {def.description && (
+            <p class="def-description">{def.description}</p>
+          )}
+
+          <div class="def-meta">
+            {def.componentPath && (
+              <div class="def-meta-row">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                <span>{def.componentPath}</span>
+              </div>
+            )}
+            <div class="def-meta-row">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line></svg>
+              <span>{def.fields?.length || 0} fields defined</span>
+            </div>
+          </div>
+
+          <!-- Fields Preview Chips -->
+          <div class="def-fields-preview">
+            {(def.fields || []).slice(0, 6).map((f: any) => (
+              <span class="field-chip" title={`${f.label} (${f.type})`}>
+                {f.name}
+                <em>{f.type}</em>
+              </span>
+            ))}
+            {(def.fields?.length || 0) > 6 && (
+              <span class="field-chip more">+{(def.fields?.length || 0) - 6} more</span>
+            )}
+          </div>
+
+          <div class="def-card-actions">
+            <button class="btn btn-outline btn-sm edit-def-btn" data-key={def.key}>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"></path></svg>
+              Edit Schema
+            </button>
+            <a href={`/admin/sections?create=true&type=${def.key}`} class="btn btn-outline btn-sm" title="Create instance from this definition">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              Add Instance
+            </a>
+            <button class="btn-action delete-def-btn" data-key={def.key} data-name={def.name} title="Delete definition">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+          </div>
+        </div>
+      ))
+    )}
+  </div>
+
+  <!-- CREATE/EDIT Definition Modal -->
+  <div class="modal-overlay" id="def-modal-overlay">
+    <div class="modal-panel" style="max-width:800px; width:95vw;">
+      <div class="modal-head">
+        <h4 id="def-modal-title">Create Section Definition</h4>
+        <button class="close-modal-btn" id="close-def-modal">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="modal-body" style="max-height:75vh; overflow-y:auto;">
+
+        <!-- Basic Info -->
+        <div class="modal-section">
+          <h5 class="modal-section-title">Definition Metadata</h5>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Definition Key <span class="req">*</span></label>
+              <input type="text" id="def-key" placeholder="e.g. hero_banner (snake_case)" id="def-key-input" />
+              <span class="field-help">Lowercase letters, numbers, underscores only. Cannot be changed after creation.</span>
+              <span id="def-key-err" class="field-err"></span>
+            </div>
+            <div class="form-group">
+              <label>Display Name <span class="req">*</span></label>
+              <input type="text" id="def-name" placeholder="e.g. Hero Banner" />
+            </div>
+            <div class="form-group">
+              <label>Category</label>
+              <select id="def-category">
+                {categories.map(c => <option value={c} style="text-transform:capitalize;">{c}</option>)}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Astro Component Path</label>
+              <input type="text" id="def-component" placeholder="e.g. src/blocks/MyBlock.astro" />
+            </div>
+            <div class="form-group" style="grid-column: 1/-1;">
+              <label>Description</label>
+              <textarea id="def-description" rows="2" placeholder="Brief description of what this section renders..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Field Builder -->
+        <div class="modal-section">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+            <h5 class="modal-section-title" style="margin:0;">Field Schema Builder</h5>
+            <button type="button" class="btn btn-outline btn-sm" id="add-field-btn">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              Add Field
+            </button>
+          </div>
+          <p style="font-size:0.8rem; color:var(--text-dim); margin-bottom:1rem;">Each field maps to a data property that Astro components receive as props. The CMS auto-generates input forms from these.</p>
+
+          <div id="fields-builder-list" style="display:flex; flex-direction:column; gap:0.75rem;">
+            <!-- Fields injected by JS -->
+            <div id="no-fields-msg" style="text-align:center; padding:2rem; border:1px dashed var(--border-color); border-radius:8px; color:var(--text-dim); font-size:0.85rem;">
+              No fields defined yet. Click "Add Field" to define your schema.
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-outline" id="cancel-def-modal">Cancel</button>
+        <button class="btn btn-primary" id="save-def-btn">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+          Save Definition
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirm Modal -->
+  <div class="modal-overlay" id="delete-confirm-overlay">
+    <div class="modal-panel" style="max-width:460px;">
+      <div class="modal-head">
+        <h4>Delete Section Definition</h4>
+        <button class="close-modal-btn" id="close-delete-modal">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p style="color:var(--text-muted); font-size:0.9rem; line-height:1.65;">Are you sure you want to delete the definition <strong id="delete-def-name" style="color:var(--color-error);"></strong>? Existing section instances using this type will no longer have a matching schema (they won't be deleted, but their edit form will be empty).</p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-outline" id="cancel-delete-btn">Cancel</button>
+        <button class="btn" style="background:var(--color-error); color:#fff;" id="confirm-delete-btn">Delete Definition</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast-notification" id="toast-notify">
+    <div class="toast-content">
+      <span class="toast-message" id="toast-message">Saved!</span>
+    </div>
+  </div>
+
+</AdminLayout>
+
+<style is:global>
+  .def-tabs .def-tab-btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    transition: var(--transition);
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+  }
+  .def-tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    background: rgba(99,102,241,0.06);
+  }
+  .def-tab-btn:hover:not(.active) {
+    color: var(--text-main);
+    background: rgba(255,255,255,0.03);
+  }
+
+  .def-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    transition: var(--transition);
+    box-shadow: 0 2px 12px var(--color-shadow);
+  }
+  .def-card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 4px 20px rgba(99,102,241,0.12);
+    transform: translateY(-1px);
+  }
+  .def-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  .def-category-tag {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 0.35rem;
+  }
+  .def-card-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 0;
+  }
+  .def-key-tag {
+    font-size: 0.7rem;
+    font-family: monospace;
+    background: var(--bg-base);
+    border: 1px solid var(--border-color);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 0.25rem;
+  }
+  .def-description {
+    font-size: 0.825rem;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.55;
+  }
+  .def-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .def-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.775rem;
+    color: var(--text-dim);
+    font-family: monospace;
+  }
+  .def-fields-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+  .field-chip {
+    font-size: 0.68rem;
+    background: var(--bg-base);
+    border: 1px solid var(--border-color);
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    color: var(--text-muted);
+    font-family: monospace;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .field-chip em {
+    font-style: normal;
+    font-size: 0.6rem;
+    color: var(--primary);
+    background: rgba(99,102,241,0.1);
+    padding: 0.05rem 0.3rem;
+    border-radius: 3px;
+  }
+  .field-chip.more {
+    color: var(--primary);
+    border-color: rgba(99,102,241,0.3);
+  }
+  .def-card-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-color);
+  }
+  .def-card-actions .btn-action {
+    margin-left: auto;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+  }
+  .def-card-actions .btn-action:hover {
+    background: rgba(239,68,68,0.08);
+    color: var(--color-error);
+    border-color: var(--color-error);
+  }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(8,12,20,0.75);
+    backdrop-filter: blur(8px);
+    z-index: 2000;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  .modal-overlay.active { opacity: 1; pointer-events: auto; }
+  .modal-panel {
+    background: var(--bg-surface-solid);
+    border: 1px solid var(--bg-surface-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    display: flex; flex-direction: column;
+    max-height: 92vh;
+    overflow: hidden;
+  }
+  .modal-head {
+    padding: 1.15rem 1.5rem;
+    border-bottom: 1px solid var(--bg-surface-border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .modal-head h4 { font-size: 1.05rem; font-weight: 700; }
+  .modal-body { padding: 1.5rem; }
+  .modal-foot {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--bg-surface-border);
+    display: flex; justify-content: flex-end; gap: 0.75rem;
+  }
+  .modal-section { margin-bottom: 1.75rem; }
+  .modal-section:last-child { margin-bottom: 0; }
+  .modal-section-title {
+    font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--text-muted);
+    margin-bottom: 1rem; padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .close-modal-btn {
+    width: 32px; height: 32px;
+    border-radius: 6px; border: 1px solid var(--border-color);
+    background: transparent; color: var(--text-muted);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: var(--transition);
+  }
+  .close-modal-btn:hover { color: var(--text-main); background: rgba(255,255,255,0.05); }
+  .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+  .form-group label { font-size: 0.83rem; font-weight: 600; color: var(--text-muted); }
+  .req { color: var(--color-error); }
+  .field-help { font-size: 0.73rem; color: var(--text-dim); }
+  .field-err { font-size: 0.75rem; color: var(--color-error); min-height: 1.1em; }
+  input[type="text"], input[type="number"], select, textarea {
+    padding: 0.6rem 0.85rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-main);
+    font-size: 0.88rem;
+    outline: none;
+    transition: var(--transition);
+    width: 100%;
+    box-sizing: border-box;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+  }
+
+  /* Field Builder Rows */
+  .field-builder-row {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr 160px auto;
+    gap: 0.75rem;
+    align-items: end;
+  }
+  .field-builder-row.has-options {
+    grid-template-columns: 1fr 1fr 160px 1fr auto;
+  }
+  .field-builder-options-row {
+    grid-column: 1 / -2;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .field-builder-repeater-row {
+    grid-column: 1 / -1;
+  }
+  .remove-field-btn {
+    width: 32px; height: 32px;
+    border-radius: 6px; border: 1px solid var(--border-color);
+    background: transparent; color: var(--text-muted);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: var(--transition); flex-shrink: 0;
+  }
+  .remove-field-btn:hover { color: var(--color-error); border-color: var(--color-error); background: rgba(239,68,68,0.08); }
+
+  /* Toast */
+  .toast-notification {
+    position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999;
+    background: var(--bg-surface-solid); border: 1px solid var(--border-color);
+    border-radius: 8px; padding: 0.85rem 1.25rem;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+    transform: translateY(100px); opacity: 0;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+    pointer-events: none;
+  }
+  .toast-notification.visible { transform: translateY(0); opacity: 1; }
+  .toast-content { display: flex; align-items: center; gap: 0.5rem; }
+  .toast-message { font-size: 0.88rem; color: var(--text-main); font-weight: 500; }
+</style>
+
+<script is:inline define:vars={{ allDefinitions, categories, fieldTypes }}>
+  let allDefs = allDefinitions || [];
+  let editMode = false;
+  let editingKey = null;
+  let fieldsData = [];
+  let pendingDeleteKey = null;
+
+  const FIELD_TYPES = fieldTypes;
+
+  // Unified tab & search filtering
+  const searchInput = document.getElementById('def-search');
+
+  function filterDefinitions() {
+    const activeTab = document.querySelector('.def-tab-btn.active');
+    const cat = activeTab ? activeTab.dataset.category : 'all';
+    const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+    document.querySelectorAll('.def-card').forEach(card => {
+      const cardCat = card.dataset.category;
+      const cardName = (card.querySelector('.def-card-name')?.textContent || '').toLowerCase();
+      const cardKey = (card.dataset.key || '').toLowerCase();
+      const cardDesc = (card.querySelector('.def-description')?.textContent || '').toLowerCase();
+
+      const categoryMatch = (cat === 'all' || cardCat === cat);
+      const searchMatch = !query || cardName.includes(query) || cardKey.includes(query) || cardDesc.includes(query);
+
+      card.style.display = (categoryMatch && searchMatch) ? '' : 'none';
+    });
+  }
+
+  document.querySelectorAll('.def-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.def-tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      filterDefinitions();
+    });
+  });
+
+  if (searchInput) {
+    searchInput.addEventListener('input', filterDefinitions);
+  }
+
+  // Open create modal
+  document.getElementById('open-create-def-btn').addEventListener('click', () => {
+    openModal(false);
+  });
+
+  // Edit buttons
+  document.querySelectorAll('.edit-def-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.key;
+      const def = allDefs.find(d => d.key === key);
+      if (def) openModal(true, def);
+    });
+  });
+
+  // Delete buttons
+  document.querySelectorAll('.delete-def-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      pendingDeleteKey = btn.dataset.key;
+      document.getElementById('delete-def-name').textContent = btn.dataset.name;
+      document.getElementById('delete-confirm-overlay').classList.add('active');
+    });
+  });
+
+  document.getElementById('close-delete-modal').addEventListener('click', () => {
+    document.getElementById('delete-confirm-overlay').classList.remove('active');
+    pendingDeleteKey = null;
+  });
+  document.getElementById('cancel-delete-btn').addEventListener('click', () => {
+    document.getElementById('delete-confirm-overlay').classList.remove('active');
+    pendingDeleteKey = null;
+  });
+  document.getElementById('confirm-delete-btn').addEventListener('click', async () => {
+    if (!pendingDeleteKey) return;
+    try {
+      const res = await fetch('/api/section-definitions-crud', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: pendingDeleteKey })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Definition deleted!');
+        document.getElementById('delete-confirm-overlay').classList.remove('active');
+        setTimeout(() => window.location.reload(), 600);
+      } else {
+        showToast('Error: ' + data.error, true);
+      }
+    } catch (e) {
+      showToast('Network error', true);
+    }
+    pendingDeleteKey = null;
+  });
+
+  // Close modal
+  document.getElementById('close-def-modal').addEventListener('click', closeModal);
+  document.getElementById('cancel-def-modal').addEventListener('click', closeModal);
+  document.getElementById('def-modal-overlay').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('def-modal-overlay')) closeModal();
+  });
+
+  // Add field button
+  document.getElementById('add-field-btn').addEventListener('click', () => {
+    fieldsData.push({ name: '', label: '', type: 'text', required: false, default: '', options: [], repeaterFields: [] });
+    renderFieldsBuilder();
+  });
+
+  // Save definition
+  document.getElementById('save-def-btn').addEventListener('click', saveDef);
+
+  function openModal(isEdit, def = null) {
+    editMode = isEdit;
+    editingKey = isEdit ? def.key : null;
+    fieldsData = isEdit ? JSON.parse(JSON.stringify(def.fields || [])) : [];
+
+    document.getElementById('def-modal-title').textContent = isEdit ? `Edit Definition: ${def.name}` : 'Create Section Definition';
+    document.getElementById('def-key').value = isEdit ? def.key : '';
+    document.getElementById('def-key').disabled = isEdit;
+    document.getElementById('def-name').value = isEdit ? def.name : '';
+    document.getElementById('def-category').value = isEdit ? (def.category || 'other') : 'other';
+    document.getElementById('def-component').value = isEdit ? (def.componentPath || '') : '';
+    document.getElementById('def-description').value = isEdit ? (def.description || '') : '';
+
+    renderFieldsBuilder();
+    document.getElementById('def-modal-overlay').classList.add('active');
+  }
+
+  function closeModal() {
+    document.getElementById('def-modal-overlay').classList.remove('active');
+    editMode = false; editingKey = null; fieldsData = [];
+  }
+
+  function renderFieldsBuilder() {
+    const container = document.getElementById('fields-builder-list');
+    const noMsg = document.getElementById('no-fields-msg');
+    if (!container) return;
+
+    if (fieldsData.length === 0) {
+      container.innerHTML = '';
+      if (noMsg) {
+        noMsg.style.display = '';
+        container.appendChild(noMsg);
+      }
+      return;
+    }
+
+    if (noMsg) noMsg.style.display = 'none';
+    container.innerHTML = '';
+
+    fieldsData.forEach((field, idx) => {
+      const row = document.createElement('div');
+      row.className = 'field-builder-row';
+      row.style = 'background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; gap: 0.65rem;';
+
+      const needsOptions = field.type === 'select';
+      const isRepeater = field.type === 'repeater';
+      const isLists = field.type === 'list';
+
+      row.innerHTML = `
+        <div style="display:grid; grid-template-columns: 1fr 1fr 160px 90px auto; gap:0.75rem; align-items:end;">
+          <div class="form-group">
+            <label style="font-size:0.75rem;">Field Name <span class="req">*</span></label>
+            <input type="text" value="${escHtml(field.name)}" placeholder="e.g. title" oninput="updateField(${idx}, 'name', this.value)" />
+          </div>
+          <div class="form-group">
+            <label style="font-size:0.75rem;">Label</label>
+            <input type="text" value="${escHtml(field.label)}" placeholder="e.g. Section Title" oninput="updateField(${idx}, 'label', this.value)" />
+          </div>
+          <div class="form-group">
+            <label style="font-size:0.75rem;">Type</label>
+            <select onchange="updateField(${idx}, 'type', this.value)">
+              ${FIELD_TYPES.map(t => `<option value="${t}" ${field.type === t ? 'selected' : ''}>${t}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group" style="flex-direction:row; align-items:center; gap:0.5rem;">
+            <input type="checkbox" id="req-${idx}" ${field.required ? 'checked' : ''} onchange="updateField(${idx}, 'required', this.checked)" style="width:auto;" />
+            <label for="req-${idx}" style="font-size:0.75rem; cursor:pointer; white-space:nowrap;">Required</label>
+          </div>
+          <button type="button" class="remove-field-btn" onclick="removeField(${idx})">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        ${needsOptions ? `
+          <div class="form-group">
+            <label style="font-size:0.75rem;">Select Options (comma-separated)</label>
+            <input type="text" value="${escHtml((field.options || []).join(', '))}" placeholder="e.g. left, right, center" oninput="updateField(${idx}, 'options', this.value.split(',').map(s=>s.trim()).filter(Boolean))" />
+          </div>
+        ` : ''}
+        ${!isRepeater ? `
+          <div class="form-group">
+            <label style="font-size:0.75rem;">Default Value</label>
+            <input type="text" value="${escHtml(typeof field.default === 'object' ? JSON.stringify(field.default) : String(field.default ?? ''))}" placeholder="Default value" oninput="updateField(${idx}, 'default', this.value)" />
+          </div>
+        ` : `
+          <div style="background:rgba(99,102,241,0.05); border:1px dashed rgba(99,102,241,0.3); border-radius:6px; padding:0.85rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+              <span style="font-size:0.75rem; font-weight:600; color:var(--text-muted); text-transform:uppercase;">Sub-fields (Repeater Items)</span>
+              <button type="button" class="btn btn-outline btn-sm" onclick="addRepeaterSubField(${idx})">+ Sub-field</button>
+            </div>
+            <div id="repeater-subfields-${idx}">
+              ${(field.repeaterFields || []).map((sf, sfIdx) => `
+                <div style="display:grid; grid-template-columns:1fr 1fr 140px auto; gap:0.5rem; margin-bottom:0.5rem; align-items:end;">
+                  <div class="form-group">
+                    <label style="font-size:0.7rem;">Name</label>
+                    <input type="text" value="${escHtml(sf.name)}" placeholder="field name" oninput="updateSubField(${idx}, ${sfIdx}, 'name', this.value)" />
+                  </div>
+                  <div class="form-group">
+                    <label style="font-size:0.7rem;">Label</label>
+                    <input type="text" value="${escHtml(sf.label)}" placeholder="field label" oninput="updateSubField(${idx}, ${sfIdx}, 'label', this.value)" />
+                  </div>
+                  <div class="form-group">
+                    <label style="font-size:0.7rem;">Type</label>
+                    <select onchange="updateSubField(${idx}, ${sfIdx}, 'type', this.value)">
+                      ${['text','textarea','number','boolean','image','select'].map(t => `<option value="${t}" ${sf.type === t ? 'selected' : ''}>${t}</option>`).join('')}
+                    </select>
+                  </div>
+                  <button type="button" class="remove-field-btn" onclick="removeSubField(${idx}, ${sfIdx})">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                  </button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `}
+      `;
+      container.appendChild(row);
+    });
+  }
+
+  function escHtml(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  window.updateField = function(idx, key, value) {
+    if (!fieldsData[idx]) return;
+    fieldsData[idx][key] = value;
+    if (key === 'type') renderFieldsBuilder();
+  };
+
+  window.updateSubField = function(parentIdx, sfIdx, key, value) {
+    if (!fieldsData[parentIdx]) return;
+    if (!fieldsData[parentIdx].repeaterFields) fieldsData[parentIdx].repeaterFields = [];
+    if (!fieldsData[parentIdx].repeaterFields[sfIdx]) return;
+    fieldsData[parentIdx].repeaterFields[sfIdx][key] = value;
+  };
+
+  window.removeField = function(idx) {
+    fieldsData.splice(idx, 1);
+    renderFieldsBuilder();
+  };
+
+  window.addRepeaterSubField = function(parentIdx) {
+    if (!fieldsData[parentIdx].repeaterFields) fieldsData[parentIdx].repeaterFields = [];
+    fieldsData[parentIdx].repeaterFields.push({ name: '', label: '', type: 'text', required: false });
+    renderFieldsBuilder();
+  };
+
+  window.removeSubField = function(parentIdx, sfIdx) {
+    fieldsData[parentIdx].repeaterFields.splice(sfIdx, 1);
+    renderFieldsBuilder();
+  };
+
+  async function saveDef() {
+    const key = document.getElementById('def-key').value.trim();
+    const name = document.getElementById('def-name').value.trim();
+    const category = document.getElementById('def-category').value;
+    const componentPath = document.getElementById('def-component').value.trim();
+    const description = document.getElementById('def-description').value.trim();
+
+    document.getElementById('def-key-err').textContent = '';
+
+    if (!name) { showToast('Display Name is required', true); return; }
+    if (!editMode && !key) { document.getElementById('def-key-err').textContent = 'Key is required.'; return; }
+    if (!editMode && !/^[a-z0-9_]+$/.test(key)) {
+      document.getElementById('def-key-err').textContent = 'Only lowercase letters, numbers, underscores.';
+      return;
+    }
+
+    const payload = {
+      key: editMode ? editingKey : key,
+      name, category, componentPath, description,
+      fields: fieldsData
+    };
+
+    try {
+      const method = editMode ? 'PUT' : 'POST';
+      const res = await fetch('/api/section-definitions-crud', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(editMode ? 'Definition updated!' : 'Definition created!');
+        closeModal();
+        setTimeout(() => window.location.reload(), 700);
+      } else {
+        showToast('Error: ' + data.error, true);
+        if (data.error?.includes('key')) {
+          document.getElementById('def-key-err').textContent = data.error;
+        }
+      }
+    } catch (e) {
+      showToast('Network error', true);
+    }
+  }
+
+  function showToast(msg, isError = false) {
+    const t = document.getElementById('toast-notify');
+    const m = document.getElementById('toast-message');
+    if (!t || !m) return;
+    m.textContent = msg;
+    t.style.borderColor = isError ? 'var(--color-error)' : 'var(--border-color)';
+    t.classList.add('visible');
+    setTimeout(() => t.classList.remove('visible'), 3000);
+  }
+
+  // Handle URL query parameters on page load to edit a schema
+  window.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const editKey = params.get('edit');
+    if (editKey) {
+      const def = allDefs.find(d => d.key === editKey);
+      if (def) {
+        openModal(true, def);
+      }
+    }
+  });
+</script>

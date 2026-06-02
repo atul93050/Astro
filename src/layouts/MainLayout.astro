@@ -58,6 +58,8 @@ try {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon.ico" sizes="any" />
 
   <title>{title}</title>
   <meta name="description" content={description} />
@@ -71,6 +73,7 @@ try {
   {ogImage && <meta property="og:image" content={ogImage.startsWith('http') ? ogImage : `https://www.tangence.in${ogImage}`} />}
   <meta property="og:url" content={Astro.url.href} />
   <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Tangence" />
 
   <!-- Twitter Cards -->
   <meta name="twitter:card" content={twitterCard} />
@@ -79,7 +82,7 @@ try {
   {ogImage && <meta name="twitter:image" content={ogImage.startsWith('http') ? ogImage : `https://www.tangence.in${ogImage}`} />}
 
   <link rel="stylesheet" href="https://www.tangence.in/font/stylesheet.css" />
-  <link rel="stylesheet" href="/performance-marketing/assets/css/font-awesome.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <link rel="stylesheet" href="/css/new-lp-page.css" />
 
   <!-- Custom Schema Markup Injection -->

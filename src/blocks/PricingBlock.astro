@@ -15,46 +15,55 @@ interface Props {
 }
 
 const { eyebrow, title, description, footer, items = [] } = Astro.props;
+const validItems = (items || []).filter(item => item && (item.title || item.price));
 ---
 <section class="block-pricing">
   <div class="container">
-    <div class="section-head">
-      {eyebrow && <span class="eyebrow">{eyebrow}</span>}
-      <h2>{title}</h2>
-      {description && <p class="desc">{description}</p>}
-    </div>
+    {(eyebrow || title || description) && (
+      <div class="section-head">
+        {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+        {title && <h2>{title}</h2>}
+        {description && <p class="desc">{description}</p>}
+      </div>
+    )}
 
-    <div class="pricing-grid">
-      {items.map((plan) => (
-        <div class={`pricing-card ${plan.featured ? "featured" : ""}`}>
-          {plan.featured && <div class="featured-badge">MOST POPULAR</div>}
-          <div class="card-glow"></div>
-          <div class="card-content">
-            <h3 class="plan-title">{plan.title}</h3>
-            <p class="plan-subtext">{plan.subtext}</p>
-            <div class="price-container">
-              <span class="price-value">{plan.price}</span>
-              <span class="price-suffix">{plan.suffix || "/mo"}</span>
+    {validItems.length > 0 && (
+      <div class="pricing-grid">
+        {validItems.map((plan) => (
+          <div class={`pricing-card ${plan.featured ? "featured" : ""}`}>
+            {plan.featured && <div class="featured-badge">MOST POPULAR</div>}
+            <div class="card-glow"></div>
+            <div class="card-content">
+              {plan.title && <h3 class="plan-title">{plan.title}</h3>}
+              {plan.subtext && <p class="plan-subtext">{plan.subtext}</p>}
+              {(plan.price || plan.suffix) && (
+                <div class="price-container">
+                  {plan.price && <span class="price-value">{plan.price}</span>}
+                  <span class="price-suffix">{plan.suffix || "/mo"}</span>
+                </div>
+              )}
+              
+              {plan.features && plan.features.length > 0 && (
+                <ul class="features-list">
+                  {plan.features.filter(f => f && f.trim() !== "").map((feat) => (
+                    <li>
+                      <svg class="check-svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                      </svg>
+                      <span>{feat}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <a href="/contact" class={`btn ${plan.featured ? "btn-primary" : "btn-secondary"}`}>
+                Get Started
+              </a>
             </div>
-            
-            <ul class="features-list">
-              {plan.features.map((feat) => (
-                <li>
-                  <svg class="check-svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                  </svg>
-                  <span>{feat}</span>
-                </li>
-              ))}
-            </ul>
-
-            <a href="/contact" class={`btn ${plan.featured ? "btn-primary" : "btn-secondary"}`}>
-              Get Started
-            </a>
           </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+    )}
 
     {footer && <p class="pricing-footnote">{footer}</p>}
   </div>

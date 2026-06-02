@@ -564,38 +564,31 @@ const submissions = files.map(file => {
   }
 
   // Delete message execution API trigger
-  async function triggerDeleteMessage(filename) {
-    if (!confirm("Are you sure you want to permanently delete this contact submission file? This cannot be undone.")) return;
+  function triggerDeleteMessage(filename) {
+    window.customConfirm("Are you sure you want to permanently delete this contact submission file? This cannot be undone.", async () => {
+      showToast("Deleting submission record...");
 
-    showToast("Deleting submission record...");
+      try {
+        const res = await fetch("/api/contact-delete", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filename })
+        });
+        const data = await res.json();
 
-    try {
-      // We can use the Pages CRUD endpoint directly, or write a dedicated endpoint.
-      // Wait, let's write a dedicated API endpoint or check if we can delete this file using a custom endpoint.
-      // Let's call /api/pages-crud but wait! This is in a different collection (contacts).
-      // Let's make sure we have a DELETE handler that deletes this file!
-      // Wait! We can write a simple endpoint or extend pages-crud? No, let's make a dedicated API route '/api/contacts-crud' or handle it inside a clean route.
-      // Wait, let's write an API route for contacts crud or implement it. Let's see: we should make sure we have a DELETE API route for contacts.
-      // Yes! Let's write the delete contact message API under `/api/contact-delete` or similar. Let's do that!
-      const res = await fetch("/api/contact-delete", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename })
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        showToast("Submission deleted permanently!");
-        closeInboxDrawer();
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
-      } else {
-        showToast("Error: " + data.error);
+        if (data.success) {
+          showToast("Submission deleted permanently!");
+          closeInboxDrawer();
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        } else {
+          showToast("Error: " + data.error);
+        }
+      } catch (e) {
+        showToast("Network Error: Could not delete message record.");
       }
-    } catch (e) {
-      showToast("Network Error: Could not delete message record.");
-    }
+    });
   }
 
   // Toast banner utility

@@ -5,11 +5,13 @@ interface Props {
 
 const { content } = Astro.props;
 ---
-<section class="block-custom-html">
-  <div class="container">
-    <Fragment set:html={content} />
-  </div>
-</section>
+{content && (
+  <section class="block-custom-html">
+    <div class="container">
+      <Fragment set:html={content} />
+    </div>
+  </section>
+)}
 
 <style>
   .block-custom-html {

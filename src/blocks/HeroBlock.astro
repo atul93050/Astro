@@ -16,8 +16,8 @@ const { badge, title, description, image, bullets = [] } = Astro.props;
   <div class="container hero-grid">
     <div class="hero-text-area">
       {badge && <span class="eyebrow">{badge}</span>}
-      <h1 set:html={title}></h1>
-      <p class="hero-desc">{description}</p>
+      {title && <h1 set:html={title}></h1>}
+      {description && <p class="hero-desc">{description}</p>}
       
       {bullets.length > 0 && (
         <div class="hero-bullets">

@@ -1,0 +1,733 @@
+---
+import AdminLayout from "../../layouts/admin/AdminLayout.astro";
+import fs from "node:fs";
+import path from "node:path";
+import { parse } from "yaml";
+
+export const prerender = false;
+
+// Gather all pages
+const pagesDir = path.resolve("src/content/pages");
+if (!fs.existsSync(pagesDir)) {
+  fs.mkdirSync(pagesDir, { recursive: true });
+}
+
+const files = fs.readdirSync(pagesDir).filter(f => f.endsWith(".md"));
+const allPages = files.map(file => {
+  const filePath = path.join(pagesDir, file);
+  const content = fs.readFileSync(filePath, "utf-8");
+  
+  // Parse frontmatter
+  const parts = content.split(/^---$/m);
+  let data: any = {};
+  if (parts.length >= 3) {
+    try {
+      data = parse(parts[1]);
+    } catch (e) {
+      console.error(`Error parsing YAML in ${file}:`, e);
+    }
+  }
+
+  const title = data.title || "Untitled Page";
+  const slug = data.slug || path.basename(file, ".md");
+  const status = data.status || "draft";
+  const seo = data.seo || {};
+  const lastUpdated = data.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : fs.statSync(filePath).mtime.toLocaleString();
+
+  // SEO Health check scoring
+  let seoScore = 0;
+  const seoChecks = [];
+  
+  if (seo.metaTitle) {
+    const len = seo.metaTitle.length;
+    if (len >= 30 && len <= 60) {
+      seoScore += 30;
+      seoChecks.push({ name: "Title length optimal", passed: true });
+    } else {
+      seoChecks.push({ name: "Title length sub-optimal (30-60 chars recommended)", passed: false });
+    }
+  } else {
+    seoChecks.push({ name: "Meta Title is missing", passed: false });
+  }
+
+  if (seo.metaDescription) {
+    const len = seo.metaDescription.length;
+    if (len >= 120 && len <= 160) {
+      seoScore += 30;
+      seoChecks.push({ name: "Description length optimal", passed: true });
+    } else {
+      seoChecks.push({ name: "Description length sub-optimal (120-160 chars recommended)", passed: false });
+    }
+  } else {
+    seoChecks.push({ name: "Meta Description is missing", passed: false });
+  }
+
+  if (seo.focusKeyword && seo.focusKeyword.trim()) {
+    seoScore += 20;
+    seoChecks.push({ name: "Focus Keyword provided", passed: true });
+  } else {
+    seoChecks.push({ name: "Focus Keyword is missing", passed: false });
+  }
+
+  if (seo.schemaType && seo.schemaType !== "none") {
+    seoScore += 20;
+    seoChecks.push({ name: "JSON-LD Schema structured data present", passed: true });
+  } else {
+    seoChecks.push({ name: "JSON-LD Schema is omitted", passed: false });
+  }
+
+  let seoLabel = "Bad";
+  let seoColor = "var(--color-error)";
+  if (seoScore >= 80) {
+    seoLabel = "Excellent";
+    seoColor = "var(--color-success)";
+  } else if (seoScore >= 50) {
+    seoLabel = "Medium";
+    seoColor = "var(--color-warning)";
+  }
+
+  return {
+    title,
+    slug,
+    status,
+    lastUpdated,
+    seoScore,
+    seoLabel,
+    seoColor,
+    seoChecks,
+  };
+});
+---
+
+<AdminLayout title="Pages Management">
+  
+  <div class="dashboard-header">
+    <div class="header-text">
+      <p class="subtitle">Create, delete, duplicate, and configure structural landing pages builder templates.</p>
+    </div>
+    <div class="header-actions">
+      <a href="/admin/editor" class="btn btn-primary">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Create New Page</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="section-title-wrap">
+    <h3>CMS Website Pages ({allPages.length})</h3>
+  </div>
+
+  <!-- Filter & Search Controls bar -->
+  <div class="controls-bar">
+    <div class="search-input-wrap">
+      <svg class="search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" id="pages-search" placeholder="Search by page name, slug..." />
+    </div>
+
+    <div class="filter-controls">
+      <select id="status-filter">
+        <option value="all">All Statuses</option>
+        <option value="published">Published</option>
+        <option value="draft">Drafts</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Dynamic Pages Table -->
+  <div class="admin-table-wrapper">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Page Name</th>
+          <th>Slug / Link</th>
+          <th>Status</th>
+          <th>SEO Score</th>
+          <th>Last Updated</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="pages-tbody">
+        {allPages.length === 0 ? (
+          <tr id="empty-row">
+            <td colspan="6" style="text-align: center; padding: 3rem; color: var(--text-dim);">
+              <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem; opacity: 0.5;">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="8" y1="12" x2="16" y2="12"></line>
+              </svg>
+              <p style="font-weight: 600; font-size: 1.1rem; margin-bottom: 0.25rem;">No dynamic pages yet</p>
+              <p style="font-size: 0.85rem;">Click "Create New Page" above to add your first Page Builder landing page.</p>
+            </td>
+          </tr>
+        ) : (
+          allPages.map(page => (
+            <tr class="page-row" data-title={page.title.toLowerCase()} data-slug={page.slug.toLowerCase()} data-status={page.status}>
+              <td style="font-weight: 600;">
+                <div class="title-cell" style="display: flex; align-items: center; gap: 0.5rem;">
+                  <a href={`/admin/editor?slug=${page.slug}`} class="page-title-link">{page.title}</a>
+                  {["index", "about-us", "contact"].includes(page.slug) && (
+                    <span class="status-badge core-tag">Core</span>
+                  )}
+                </div>
+              </td>
+              <td>
+                <a href={page.slug === 'index' ? '/' : `/${page.slug}`} target="_blank" class="slug-link">
+                  <span>{page.slug === 'index' ? '/' : `/${page.slug}`}</span>
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:4px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                </a>
+              </td>
+              <td>
+                <span class={`status-badge ${page.status}`}>{page.status}</span>
+              </td>
+              <td>
+                <div class="seo-badge-wrap" title={page.seoChecks.map(c => `${c.passed ? '✓' : '✗'} ${c.name}`).join('\n')}>
+                  <span class="seo-color-dot" style={`background-color: ${page.seoColor};`}></span>
+                  <span style="font-weight: 600; font-size:0.85rem;">{page.seoScore}%</span>
+                  <span class="seo-health-label">{page.seoLabel}</span>
+                </div>
+              </td>
+              <td style="color: var(--text-muted); font-size: 0.85rem;">{page.lastUpdated}</td>
+              <td style="text-align: right;">
+                <div class="actions-cell">
+                  <a href={`/admin/editor?slug=${page.slug}`} class="btn-action edit-btn" title="Edit Page Content">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"></path></svg>
+                  </a>
+                  <button class="btn-action duplicate-btn" data-slug={page.slug} title="Duplicate Page Structure">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  </button>
+                  {["index", "about-us", "contact"].includes(page.slug) ? (
+                    <button class="btn-action delete-btn" disabled style="opacity: 0.35; cursor: not-allowed;" title="Core pages cannot be deleted">
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                  ) : (
+                    <button class="btn-action delete-btn" data-slug={page.slug} data-title={page.title} title="Delete Page permanently">
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                    </button>
+                  )}
+                </div>
+              </td>
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div class="confirm-modal-overlay" id="delete-modal-overlay">
+    <div class="confirm-modal">
+      <div class="confirm-modal-header">
+        <h4>Delete Page Permanently</h4>
+        <button class="close-modal-btn" id="cancel-delete-x">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="confirm-modal-body">
+        <p>Are you absolutely sure you want to delete <strong id="delete-page-title">"Our Services"</strong>?</p>
+        <p class="warning-text">This will physically delete the Markdown configuration file <code>src/content/pages/<span id="delete-page-slug">our-services</span>.md</code> and all associated revision backup history. This action cannot be undone.</p>
+      </div>
+      <div class="confirm-modal-footer">
+        <button class="btn btn-outline" id="cancel-delete-btn">Cancel</button>
+        <button class="btn btn-danger" id="confirm-delete-btn">
+          <span id="delete-btn-text">Yes, Delete Page</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Banner -->
+  <div class="toast-notification" id="toast-notify">
+    <div class="toast-content">
+      <span class="toast-message" id="toast-message">Action processed successfully!</span>
+    </div>
+  </div>
+
+</AdminLayout>
+
+<style>
+  .dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-top: 0.25rem;
+  }
+  
+  .section-title-wrap {
+    margin-bottom: 1rem;
+    border-left: 3px solid var(--primary);
+    padding-left: 0.75rem;
+  }
+  .section-title-wrap h3 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+
+  .core-tag {
+    font-size: 0.65rem;
+    padding: 0.1rem 0.4rem !important;
+    font-weight: 700;
+    text-transform: uppercase;
+    background-color: rgba(99, 102, 241, 0.15) !important;
+    color: var(--primary) !important;
+    border: 1px solid rgba(99, 102, 241, 0.2) !important;
+  }
+
+  /* Table styling */
+  .controls-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .search-input-wrap {
+    position: relative;
+    flex: 1;
+    max-width: 400px;
+    min-width: 250px;
+  }
+  .search-icon {
+    position: absolute;
+    left: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-dim);
+    pointer-events: none;
+  }
+  .search-input-wrap input {
+    padding-left: 2.5rem !important;
+  }
+
+  .filter-controls select {
+    padding: 0.6rem 2.5rem 0.6rem 1rem;
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-main);
+    border-radius: var(--radius-sm);
+    outline: none;
+    font-size: 0.88rem;
+    font-weight: 500;
+  }
+
+  .admin-table-wrapper {
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: 0 4px 20px var(--color-shadow);
+    backdrop-filter: blur(10px);
+    margin-bottom: 3rem;
+  }
+  .admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+  }
+  .admin-table th, .admin-table td {
+    padding: 1.15rem 1.5rem;
+    border-bottom: 1px solid var(--bg-surface-border);
+  }
+  .admin-table th {
+    background-color: rgba(156, 163, 175, 0.015);
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+  }
+  .admin-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+  .admin-table tbody tr {
+    transition: var(--transition);
+  }
+  .admin-table tbody tr:hover {
+    background-color: rgba(156, 163, 175, 0.01);
+  }
+
+  .slug-link {
+    display: inline-flex;
+    align-items: center;
+    color: var(--primary);
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: var(--transition);
+  }
+  .slug-link:hover {
+    color: var(--primary-hover);
+  }
+
+  .status-badge {
+    display: inline-flex;
+    padding: 0.25rem 0.65rem;
+    border-radius: 50px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: capitalize;
+  }
+  .status-badge.published {
+    background-color: rgba(16, 185, 129, 0.12);
+    color: var(--accent);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+  }
+  .status-badge.draft {
+    background-color: rgba(245, 158, 11, 0.12);
+    color: var(--color-warning);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+  }
+
+  .seo-badge-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    background: rgba(156, 163, 175, 0.03);
+    padding: 0.25rem 0.65rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+  }
+  .seo-color-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: block;
+  }
+  .seo-health-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .actions-cell {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+  .btn-action {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .btn-action:hover:not(:disabled) {
+    color: var(--text-main);
+    background-color: rgba(156, 163, 175, 0.08);
+  }
+  .delete-btn:hover:not(:disabled) {
+    color: var(--color-error);
+    border-color: rgba(239, 68, 68, 0.2);
+    background-color: rgba(239, 68, 68, 0.05);
+  }
+
+  /* Modals and Toasts */
+  .confirm-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(8, 12, 20, 0.75);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  .confirm-modal-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .confirm-modal {
+    background: var(--bg-surface-solid);
+    border: 1px solid var(--bg-surface-border);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 500px;
+    padding: 1.75rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    transform: scale(0.9);
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .confirm-modal-overlay.active .confirm-modal {
+    transform: scale(1);
+  }
+  .confirm-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+  }
+  .confirm-modal-header h4 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+  .close-modal-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .close-modal-btn:hover {
+    color: var(--text-main);
+  }
+  .confirm-modal-body p {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin-bottom: 0.75rem;
+    color: var(--text-muted);
+  }
+  .warning-text {
+    background: rgba(239, 68, 68, 0.05);
+    padding: 0.75rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(239, 68, 68, 0.15);
+    color: var(--color-error) !important;
+    font-size: 0.85rem !important;
+  }
+  .confirm-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+  }
+  .btn-danger {
+    background-color: var(--color-error);
+    color: white;
+  }
+  .btn-danger:hover {
+    background-color: #DC2626;
+  }
+
+  .toast-notification {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--bg-surface-solid);
+    border-left: 4px solid var(--primary);
+    border-top: 1px solid var(--bg-surface-border);
+    border-bottom: 1px solid var(--bg-surface-border);
+    border-right: 1px solid var(--bg-surface-border);
+    padding: 1rem 1.5rem;
+    border-radius: var(--radius-sm);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+    z-index: 1100;
+    transform: translateY(150%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    backdrop-filter: blur(8px);
+  }
+  .toast-notification.active {
+    transform: translateY(0);
+  }
+  .toast-content {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-main);
+  }
+</style>
+
+<script is:inline>
+  let activeDeleteSlug = "";
+
+  function initPagesList() {
+    const searchInput = document.getElementById("pages-search");
+    if (!searchInput || searchInput.dataset.listenerBound) return;
+    searchInput.dataset.listenerBound = "true";
+
+    // 1. Search Query logic
+    searchInput.addEventListener("input", filterPages);
+
+    // 2. Status drop-downs
+    const statusFilter = document.getElementById("status-filter");
+    if (statusFilter) statusFilter.addEventListener("change", filterPages);
+
+    function filterPages() {
+      const q = searchInput.value.trim().toLowerCase();
+      const status = statusFilter ? statusFilter.value : "all";
+      const rows = document.querySelectorAll(".page-row");
+      let count = 0;
+
+      rows.forEach(row => {
+        const title = row.getAttribute("data-title") || "";
+        const slug = row.getAttribute("data-slug") || "";
+        const rowStatus = row.getAttribute("data-status") || "";
+
+        const matchQ = !q || title.includes(q) || slug.includes(q);
+        const matchStatus = status === "all" || rowStatus === status;
+
+        if (matchQ && matchStatus) {
+          row.style.display = "table-row";
+          count++;
+        } else {
+          row.style.display = "none";
+        }
+      });
+
+      const emptyRow = document.getElementById("empty-row");
+      if (emptyRow) {
+        emptyRow.style.display = count === 0 ? "table-row" : "none";
+      }
+    }
+
+    // 3. Delete Confirmation Overlay binds
+    const cancelX = document.getElementById("cancel-delete-x");
+    const cancelBtn = document.getElementById("cancel-delete-btn");
+    if (cancelX) cancelX.addEventListener("click", hideDeleteModal);
+    if (cancelBtn) cancelBtn.addEventListener("click", hideDeleteModal);
+
+    const confirmBtn = document.getElementById("confirm-delete-btn");
+    if (confirmBtn) confirmBtn.addEventListener("click", executeDeletePage);
+
+    // Bind dynamic events delegation
+    document.addEventListener("click", (e) => {
+      const deleteTrigger = e.target.closest(".delete-btn");
+      if (deleteTrigger && !deleteTrigger.disabled) {
+        const slug = deleteTrigger.getAttribute("data-slug");
+        const title = deleteTrigger.getAttribute("data-title");
+        openDeleteModal(slug, title);
+      }
+
+      const duplicateTrigger = e.target.closest(".duplicate-btn");
+      if (duplicateTrigger) {
+        const slug = duplicateTrigger.getAttribute("data-slug");
+        duplicatePage(slug);
+      }
+    });
+  }
+
+  function openDeleteModal(slug, title) {
+    activeDeleteSlug = slug;
+    const titleEl = document.getElementById("delete-page-title");
+    const slugEl = document.getElementById("delete-page-slug");
+    const overlay = document.getElementById("delete-modal-overlay");
+
+    if (titleEl) titleEl.innerText = `"${title}"`;
+    if (slugEl) slugEl.innerText = slug;
+    if (overlay) overlay.classList.add("active");
+  }
+
+  function hideDeleteModal() {
+    activeDeleteSlug = "";
+    const overlay = document.getElementById("delete-modal-overlay");
+    if (overlay) overlay.classList.remove("active");
+  }
+
+  async function executeDeletePage() {
+    if (!activeDeleteSlug) return;
+    
+    const confirmBtn = document.getElementById("confirm-delete-btn");
+    const btnText = document.getElementById("delete-btn-text");
+    
+    confirmBtn.disabled = true;
+    btnText.innerText = "Deleting...";
+
+    try {
+      const res = await fetch("/api/pages-crud", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: activeDeleteSlug })
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        showToast("Page deleted successfully!");
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        showToast("Error: " + (data.error || "Could not delete page file."));
+        confirmBtn.disabled = false;
+        btnText.innerText = "Yes, Delete Page";
+        hideDeleteModal();
+      }
+    } catch(e) {
+      showToast("Network connection error.");
+      confirmBtn.disabled = false;
+      btnText.innerText = "Yes, Delete Page";
+      hideDeleteModal();
+    }
+  }
+
+  function duplicatePage(slug) {
+    window.customConfirm("Do you want to duplicate this page structure?", async () => {
+      try {
+        // 1. Fetch source page contents
+        const getRes = await fetch(`/api/pages-crud?action=get&slug=${slug}`);
+        const getData = await getRes.json();
+        
+        if (!getData.success) {
+          showToast("Error loading source page content");
+          return;
+        }
+        
+        const newSlug = `${slug}-copy-${Math.floor(Math.random() * 1000)}`;
+        const payload = {
+          ...getData.page,
+          title: `${getData.page.title} (Copy)`,
+          slug: newSlug,
+          status: "draft",
+          body: getData.body || ""
+        };
+        
+        // 2. Submit new page creation
+        const postRes = await fetch("/api/pages-crud", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const postData = await postRes.json();
+        
+        if (postData.success) {
+          showToast("Page duplicated successfully!");
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        } else {
+          showToast("Error: " + (postData.error || "Could not create duplicate page record"));
+        }
+      } catch (e) {
+        showToast("Network Error during duplication process");
+      }
+    });
+  }
+
+  function showToast(message) {
+    const notify = document.getElementById("toast-notify");
+    const msgSpan = document.getElementById("toast-message");
+    if (notify && msgSpan) {
+      msgSpan.innerText = message;
+      notify.classList.add("active");
+      setTimeout(() => {
+        notify.classList.remove("active");
+      }, 3000);
+    }
+  }
+
+  // Bind list initialization
+  document.addEventListener("DOMContentLoaded", initPagesList);
+  document.addEventListener("astro:page-load", initPagesList);
+  if (document.readyState === "interactive" || document.readyState === "complete") {
+    initPagesList();
+  }
+</script>

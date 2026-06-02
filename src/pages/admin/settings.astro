@@ -51,7 +51,7 @@ if (fs.existsSync(SETTINGS_FILE)) {
   
   <div class="settings-header">
     <div class="header-text">
-      <p class="subtitle">Inject tracking scripts, manage logos and social links, configure nested navigation, and map 301/302 redirects loop-free.</p>
+      <p class="subtitle">Inject tracking scripts, manage brand logos, social page links, support contact details, corporate Noida/Mumbai addresses, and target cities coverage.</p>
     </div>
   </div>
 
@@ -59,39 +59,11 @@ if (fs.existsSync(SETTINGS_FILE)) {
     
     <div class="settings-grid">
       
-      <!-- Left Column: Scripts and Redirects -->
+      <!-- Left Column: Brand Assets & Social Links -->
       <div class="settings-col-left">
         
-        <!-- Header / Footer / Body script Injections -->
-        <div class="form-card">
-          <div class="card-header">
-            <h3>Global Script & Pixel Injection</h3>
-          </div>
-          <div class="card-body" style="display:flex; flex-direction:column; gap:1.25rem;">
-            <div class="form-group">
-              <label for="header-scripts">Header Scripts (Injects before <code>&lt;/head&gt;</code>)</label>
-              <textarea id="header-scripts" rows="4" placeholder="<!-- Place custom meta tags, GTM head script, Google Analytics here -->">{settings.headerScripts}</textarea>
-            </div>
-
-            <div class="form-group">
-              <label for="body-start-scripts">Body Start Scripts (Injects right after <code>&lt;body&gt;</code>)</label>
-              <textarea id="body-start-scripts" rows="3" placeholder="<!-- Place GTM Noscript iframe or Facebook Pixel Noscript image here -->">{settings.bodyStartScripts || ""}</textarea>
-            </div>
-
-            <div class="form-group">
-              <label for="body-end-scripts">Body End Scripts (Injects right before <code>&lt;/body&gt;</code>)</label>
-              <textarea id="body-end-scripts" rows="3" placeholder="<!-- Place generic tracking body triggers or fallback analytics here -->">{settings.bodyEndScripts || ""}</textarea>
-            </div>
-            
-            <div class="form-group">
-              <label for="footer-scripts">Footer Scripts (Injects at the very end of page)</label>
-              <textarea id="footer-scripts" rows="4" placeholder="<!-- Place custom chatbots, widgets, or heatmaps here -->">{settings.footerScripts}</textarea>
-            </div>
-          </div>
-        </div>
-
         <!-- Brand Asset Settings -->
-        <div class="form-card" style="margin-top: 1.5rem;">
+        <div class="form-card">
           <div class="card-header">
             <h3>Brand Assets & Social Links</h3>
           </div>
@@ -165,45 +137,35 @@ if (fs.existsSync(SETTINGS_FILE)) {
           </div>
         </div>
 
-        <!-- 301/302 Redirects Manager -->
-        <div class="form-card" style="margin-top: 1.5rem;">
-          <div class="card-header block-header-flex">
-            <h3>SEO Redirects Manager</h3>
-            <button type="button" class="btn btn-outline btn-sm" id="add-redirect-btn">+ Add Mapping</button>
-          </div>
-          <div class="card-body">
-            <p class="section-desc">Create 301 (Permanent) or 302 (Temporary) redirect maps with cyclical loop prevention and duplicate path warnings.</p>
-            
-            <div class="repeater-items-wrap" id="redirects-container" style="margin-top:1rem;">
-              <!-- JS dynamic mapping -->
-            </div>
-            
-            <div class="repeater-empty" id="redirects-empty-msg" style="display:none;">
-              <p>No redirects currently mapped. Click Add Mapping above to configure.</p>
-            </div>
-          </div>
-        </div>
-
       </div>
 
-      <!-- Right Column: Navigation Menus -->
+      <!-- Right Column: Scripts and Pixels -->
       <div class="settings-col-right">
         
-        <!-- Site Navigation Menu Configurator -->
+        <!-- Header / Footer / Body script Injections -->
         <div class="form-card">
-          <div class="card-header block-header-flex">
-            <h3>Header Navigation Menu (Supports Dropdowns)</h3>
-            <button type="button" class="btn btn-outline btn-sm" id="add-nav-btn">+ Add Main Item</button>
+          <div class="card-header">
+            <h3>Global Script & Pixel Injection</h3>
           </div>
-          <div class="card-body">
-            <p class="section-desc">Create navigation items and submenus. Reorder with arrow keys cleanly.</p>
-            
-            <div class="repeater-items-wrap" id="navigation-container" style="margin-top:1rem; gap: 1rem;">
-              <!-- JS dynamic links -->
+          <div class="card-body" style="display:flex; flex-direction:column; gap:1.25rem;">
+            <div class="form-group">
+              <label for="header-scripts">Header Scripts (Injects before <code>&lt;/head&gt;</code>)</label>
+              <textarea id="header-scripts" rows="4" placeholder="<!-- Place custom meta tags, GTM head script, Google Analytics here -->">{settings.headerScripts}</textarea>
             </div>
 
-            <div class="repeater-empty" id="nav-empty-msg" style="display:none;">
-              <p>Navigation list is empty. Click Add Main Item above to populate menu.</p>
+            <div class="form-group">
+              <label for="body-start-scripts">Body Start Scripts (Injects right after <code>&lt;body&gt;</code>)</label>
+              <textarea id="body-start-scripts" rows="3" placeholder="<!-- Place GTM Noscript iframe or Facebook Pixel Noscript image here -->">{settings.bodyStartScripts || ""}</textarea>
+            </div>
+
+            <div class="form-group">
+              <label for="body-end-scripts">Body End Scripts (Injects right before <code>&lt;/body&gt;</code>)</label>
+              <textarea id="body-end-scripts" rows="3" placeholder="<!-- Place generic tracking body triggers or fallback analytics here -->">{settings.bodyEndScripts || ""}</textarea>
+            </div>
+            
+            <div class="form-group">
+              <label for="footer-scripts">Footer Scripts (Injects at the very end of page)</label>
+              <textarea id="footer-scripts" rows="4" placeholder="<!-- Place custom chatbots, widgets, or heatmaps here -->">{settings.footerScripts}</textarea>
             </div>
           </div>
         </div>
@@ -242,7 +204,7 @@ if (fs.existsSync(SETTINGS_FILE)) {
           </button>
         </form>
       </div>
-      <div class="media-picker-grid" id="media-picker-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(110px,1fr)); gap:0.75rem; max-height:280px; overflow-y:auto; padding:0.5rem; border:1px solid var(--border-color); border-radius:var(--radius-sm); background:var(--bg-base);">
+      <div class="media-picker-grid" id="media-picker-grid" style="max-height:280px; overflow-y:auto; overflow-x:hidden;">
         <p class="media-empty">No catalog images. Upload a new asset.</p>
       </div>
       <div class="confirm-modal-footer">
@@ -297,12 +259,6 @@ if (fs.existsSync(SETTINGS_FILE)) {
   .card-header h3 {
     font-size: 1.05rem;
     font-weight: 700;
-  }
-  .block-header-flex {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
   }
   .card-body {
     padding: 1.5rem;
@@ -363,15 +319,6 @@ if (fs.existsSync(SETTINGS_FILE)) {
   }
   .repeater-item-row:hover {
     border-color: var(--primary);
-  }
-  .repeater-empty {
-    text-align: center;
-    padding: 2.5rem 1rem;
-    color: var(--text-dim);
-    font-size: 0.82rem;
-    border: 1px dashed var(--border-color);
-    border-radius: var(--radius-sm);
-    margin-top: 1rem;
   }
   .btn-icon-sm {
     width: 28px;
@@ -538,8 +485,6 @@ if (fs.existsSync(SETTINGS_FILE)) {
 </style>
 
 <script is:inline define:vars={{ settings }}>
-  let navigation = settings.navigation || [];
-  let redirects = settings.redirects || [];
   let offices = settings.contactInfo?.offices || [];
   let cities = settings.contactInfo?.cities || [];
   let activeMediaPickerTarget = "";
@@ -549,38 +494,16 @@ if (fs.existsSync(SETTINGS_FILE)) {
     if (!form || form.dataset.listenerBound) return;
     form.dataset.listenerBound = "true";
 
-    renderNavigation();
-    renderRedirects();
     renderOffices();
     renderCities();
     setupControls();
   }
 
   const ICONS = {
-    arrowUp: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"></polyline></svg>`,
-    arrowDown: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>`,
     delete: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`
   };
 
   function setupControls() {
-    // Add Nav click
-    const addNavBtn = document.getElementById("add-nav-btn");
-    if (addNavBtn) {
-      addNavBtn.addEventListener("click", () => {
-        navigation.push({ text: "", link: "", children: [] });
-        renderNavigation();
-      });
-    }
-
-    // Add Redirect click
-    const addRedirectBtn = document.getElementById("add-redirect-btn");
-    if (addRedirectBtn) {
-      addRedirectBtn.addEventListener("click", () => {
-        redirects.push({ from: "", to: "", type: "301", active: true });
-        renderRedirects();
-      });
-    }
-
     // Add Office click
     const addOfficeBtn = document.getElementById("add-office-btn");
     if (addOfficeBtn) {
@@ -638,152 +561,8 @@ if (fs.existsSync(SETTINGS_FILE)) {
     if (uploadBtn) {
       uploadBtn.addEventListener("click", uploadMediaFile);
     }
-  }
 
-  // --- NAVIGATION LINK FUNCTIONS ---
-  window.syncNavField = function(index, field, value) {
-    navigation[index][field] = value;
-  };
 
-  window.moveNavItem = function(index, direction) {
-    const targetIdx = index + direction;
-    if (targetIdx < 0 || targetIdx >= navigation.length) return;
-    const temp = navigation[index];
-    navigation[index] = navigation[targetIdx];
-    navigation[targetIdx] = temp;
-    renderNavigation();
-  };
-
-  window.deleteNavItem = function(index) {
-    navigation.splice(index, 1);
-    renderNavigation();
-  };
-
-  window.addSublink = function(parentIndex) {
-    if (!navigation[parentIndex].children) {
-      navigation[parentIndex].children = [];
-    }
-    navigation[parentIndex].children.push({ text: "", link: "" });
-    renderNavigation();
-  };
-
-  window.syncSublinkField = function(parentIndex, childIndex, field, value) {
-    navigation[parentIndex].children[childIndex][field] = value;
-  };
-
-  window.deleteSublink = function(parentIndex, childIndex) {
-    navigation[parentIndex].children.splice(childIndex, 1);
-    renderNavigation();
-  };
-
-  function renderNavigation() {
-    const container = document.getElementById("navigation-container");
-    const emptyMsg = document.getElementById("nav-empty-msg");
-    if (!container) return;
-    
-    container.innerHTML = "";
-    
-    if (navigation.length === 0) {
-      if (emptyMsg) emptyMsg.style.display = "block";
-      return;
-    }
-    if (emptyMsg) emptyMsg.style.display = "none";
-
-    navigation.forEach((item, idx) => {
-      const row = document.createElement("div");
-      row.className = "navigation-item-card";
-      row.style = "background:var(--bg-surface-solid); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:0.85rem; display:flex; flex-direction:column; gap:0.65rem; transition:var(--transition);";
-      
-      let sublinksHTML = "";
-      const children = item.children || [];
-      if (children.length > 0) {
-        sublinksHTML += `<div class="sublinks-container" style="margin-left: 1.5rem; display:flex; flex-direction:column; gap:0.5rem; border-left: 2px dashed var(--border-color); padding-left: 0.75rem; margin-top: 0.4rem;">`;
-        children.forEach((child, cIdx) => {
-          sublinksHTML += `
-            <div class="repeater-item-row sublink-row" style="padding: 0.4rem 0.6rem; background: rgba(156,163,175,0.02); display:flex; gap:0.5rem; align-items:center;">
-              <span style="color:var(--text-dim); font-size:0.75rem;">↳</span>
-              <div class="form-group" style="flex:1;">
-                <input type="text" value="${child.text || ''}" oninput="syncSublinkField(${idx}, ${cIdx}, 'text', this.value)" placeholder="Sub-link Label" style="padding: 0.4rem 0.6rem; font-size: 0.82rem;" />
-              </div>
-              <div class="form-group" style="flex:1.2;">
-                <input type="text" value="${child.link || ''}" oninput="syncSublinkField(${idx}, ${cIdx}, 'link', this.value)" placeholder="Sub Path" style="padding: 0.4rem 0.6rem; font-size: 0.82rem;" />
-              </div>
-              <button type="button" class="btn-icon-sm" onclick="deleteSublink(${idx}, ${cIdx})" style="width:24px; height:24px;">${ICONS.delete}</button>
-            </div>
-          `;
-        });
-        sublinksHTML += `</div>`;
-      }
-
-      row.innerHTML = `
-        <div class="repeater-item-row" style="border:none; padding:0; background:transparent; display:flex; gap:0.5rem; align-items:center; width:100%;">
-          <div class="form-group" style="flex:1;">
-            <input type="text" value="${item.text || ''}" oninput="syncNavField(${idx}, 'text', this.value)" placeholder="Menu Label" />
-          </div>
-          <div class="form-group" style="flex:1.2;">
-            <input type="text" value="${item.link || ''}" oninput="syncNavField(${idx}, 'link', this.value)" placeholder="Destination Path" />
-          </div>
-          <button type="button" class="btn-icon-sm" onclick="moveNavItem(${idx}, -1)">${ICONS.arrowUp}</button>
-          <button type="button" class="btn-icon-sm" onclick="moveNavItem(${idx}, 1)">${ICONS.arrowDown}</button>
-          <button type="button" class="btn-icon-sm btn-delete-row" onclick="deleteNavItem(${idx})">${ICONS.delete}</button>
-        </div>
-        <div style="display:flex; justify-content:flex-end;">
-          <button type="button" class="btn btn-outline btn-sm" onclick="addSublink(${idx})" style="padding: 0.2rem 0.5rem; font-size: 0.72rem;">+ Add Sub-link</button>
-        </div>
-        ${sublinksHTML}
-      `;
-      container.appendChild(row);
-    });
-  }
-
-  // --- REDIRECTS FUNCTIONS ---
-  window.syncRedirectField = function(index, field, value) {
-    redirects[index][field] = value;
-  };
-
-  window.deleteRedirectItem = function(index) {
-    redirects.splice(index, 1);
-    renderRedirects();
-  };
-
-  function renderRedirects() {
-    const container = document.getElementById("redirects-container");
-    const emptyMsg = document.getElementById("redirects-empty-msg");
-    if (!container) return;
-
-    container.innerHTML = "";
-
-    if (redirects.length === 0) {
-      if (emptyMsg) emptyMsg.style.display = "block";
-      return;
-    }
-    if (emptyMsg) emptyMsg.style.display = "none";
-
-    redirects.forEach((item, idx) => {
-      const row = document.createElement("div");
-      row.className = "repeater-item-row";
-      row.style = "display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;";
-      row.innerHTML = `
-        <div class="form-group" style="flex:1; min-width: 140px;">
-          <input type="text" value="${item.from || ''}" oninput="syncRedirectField(${idx}, 'from', this.value)" placeholder="Old Path (e.g. /about)" />
-        </div>
-        <span style="color:var(--text-dim); font-weight:700;">→</span>
-        <div class="form-group" style="flex:1.2; min-width: 140px;">
-          <input type="text" value="${item.to || ''}" oninput="syncRedirectField(${idx}, 'to', this.value)" placeholder="New Path (e.g. /about-us)" />
-        </div>
-        <div style="display:flex; gap:0.5rem; align-items:center; flex-shrink:0;">
-          <select onchange="syncRedirectField(${idx}, 'type', this.value)" style="padding:0.4rem 0.6rem; font-size:0.82rem; min-width:80px; background:var(--input-bg); border:1px solid var(--input-border); color:var(--text-main); border-radius:4px; outline:none;">
-            <option value="301" ${item.type === '301' || !item.type ? 'selected' : ''}>301 (Perm)</option>
-            <option value="302" ${item.type === '302' ? 'selected' : ''}>302 (Temp)</option>
-          </select>
-          <label style="display:inline-flex; align-items:center; gap:0.25rem; font-size:0.75rem; color:var(--text-muted); cursor:pointer;">
-            <input type="checkbox" ${item.active !== false ? 'checked' : ''} onchange="syncRedirectField(${idx}, 'active', this.checked)" /> Active
-          </label>
-        </div>
-        <button type="button" class="btn-icon-sm btn-delete-row" onclick="deleteRedirectItem(${idx})">${ICONS.delete}</button>
-      `;
-      container.appendChild(row);
-    });
   }
 
   // --- OFFICES REPEATER ---
@@ -839,36 +618,6 @@ if (fs.existsSync(SETTINGS_FILE)) {
       `;
       container.appendChild(row);
     });
-  }
-
-  // --- LOOP & CONFLICTS DETECTOR ---
-  function hasRedirectLoop(list) {
-    const adj = new Map();
-    for (const r of list) {
-      const from = String(r.from || "").trim();
-      const to = String(r.to || "").trim();
-      if (!from || !to) continue;
-      if (from === to) {
-        return `Cyclical loop: "${from}" redirects to itself.`;
-      }
-      if (adj.has(from)) {
-        return `Conflict: Multiple redirect targets mapped for "${from}".`;
-      }
-      adj.set(from, to);
-    }
-    
-    for (const [start] of adj.entries()) {
-      const visited = new Set();
-      let curr = start;
-      while (curr) {
-        if (visited.has(curr)) {
-          return `Cyclical redirect loop detected: ${start} → ... → ${curr} → ${adj.get(curr)}`;
-        }
-        visited.add(curr);
-        curr = adj.get(curr) || "";
-      }
-    }
-    return null;
   }
 
   // --- MEDIA PICKER INTERACTION ---
@@ -959,6 +708,8 @@ if (fs.existsSync(SETTINGS_FILE)) {
     }
   }
 
+
+
   // --- SAVE settings TO SERVER ---
   async function saveSettingsSubmit() {
     const headerScripts = document.getElementById("header-scripts").value;
@@ -986,31 +737,34 @@ if (fs.existsSync(SETTINGS_FILE)) {
       cities
     };
 
-    // Client-side conflict detection and loop validation!
-    const loopError = hasRedirectLoop(redirects);
-    if (loopError) {
-      showToast("⚠️ Redirect Error: " + loopError);
-      return;
-    }
-
-    const payload = {
-      headerScripts,
-      footerScripts,
-      bodyStartScripts,
-      bodyEndScripts,
-      navigation,
-      redirects,
-      logo,
-      socialLinks,
-      contactInfo
-    };
-
     const saveBtn = document.getElementById("save-settings-btn");
     const saveLabel = document.getElementById("save-btn-label");
     saveBtn.disabled = true;
     saveLabel.innerText = "Saving Configuration...";
 
     try {
+      // 1. Fetch current settings payload first to preserve menus and redirects
+      const getRes = await fetch("/api/settings-update");
+      const getData = await getRes.json();
+      
+      if (!getData.success) {
+        showToast("Error loading settings configuration.");
+        saveBtn.disabled = false;
+        saveLabel.innerText = "Save Global Configurations";
+        return;
+      }
+
+      const payload = {
+        ...getData.settings, // preserves navigation, footerNavigation, redirects
+        headerScripts,
+        footerScripts,
+        bodyStartScripts,
+        bodyEndScripts,
+        logo,
+        socialLinks,
+        contactInfo
+      };
+
       const res = await fetch("/api/settings-update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -77,11 +77,12 @@ export const POST: APIRoute = async ({ request }) => {
     
     try {
       // Look for environment variables, with explicit user production defaults
-      const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
+      const smtpHost = process.env.SMTP_HOST || "";
       const smtpPort = parseInt(process.env.SMTP_PORT || "465");
-      const smtpUser = process.env.SMTP_USER || "techtangence@gmail.com";
-      const smtpPass = process.env.SMTP_PASS || "kmubqgrrkaooqkvq";
-      const fromEmail = "atul.verma@tangence.com";
+      const smtpUser = process.env.SMTP_USER || "";
+      const smtpPass = process.env.SMTP_PASS || "";
+      const toEmail = process.env.SMTP_TO || smtpUser;
+      const fromEmail = process.env.SMTP_FROM || smtpUser;
 
       if (smtpHost && smtpUser && smtpPass) {
         const transporter = nodemailer.createTransport({
@@ -94,10 +95,10 @@ export const POST: APIRoute = async ({ request }) => {
           }
         });
 
-        // Send alert to admin (Atul Verma)
+        // Send alert to admin
         await transporter.sendMail({
           from: `"Enquiry" <${fromEmail}>`,
-          to: fromEmail,
+          to: toEmail,
           replyTo: email,
           subject: `New Contact Submission: ${subject}`,
           html: `
@@ -116,6 +117,7 @@ export const POST: APIRoute = async ({ request }) => {
         await transporter.sendMail({
           from: `"Tangence Support" <${fromEmail}>`,
           to: email,
+          replyTo: fromEmail,
           subject: `Message Received: ${subject}`,
           html: `
             <p>Dear ${name},</p>

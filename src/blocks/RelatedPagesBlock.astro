@@ -10,26 +10,31 @@ interface Props {
 }
 
 const { eyebrow, title, pages = [] } = Astro.props;
+const validPages = (pages || []).filter(item => item && (item.label || item.link));
 ---
 <section class="block-related-pages">
   <div class="container">
-    <div class="section-head">
-      {eyebrow && <span class="eyebrow">{eyebrow}</span>}
-      <h2>{title}</h2>
-    </div>
+    {(eyebrow || title) && (
+      <div class="section-head">
+        {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+        {title && <h2>{title}</h2>}
+      </div>
+    )}
 
-    <div class="related-grid">
-      {pages.map((item) => (
-        <a href={item.link} class="related-card">
-          <div class="card-glow"></div>
-          <div class="card-content">
-            <span class="arrow-indicator">↗</span>
-            <h3>{item.label}</h3>
-            {item.description && <p>{item.description}</p>}
-          </div>
-        </a>
-      ))}
-    </div>
+    {validPages.length > 0 && (
+      <div class="related-grid">
+        {validPages.map((item) => (
+          <a href={item.link || "#"} class="related-card">
+            <div class="card-glow"></div>
+            <div class="card-content">
+              <span class="arrow-indicator">↗</span>
+              {item.label && <h3>{item.label}</h3>}
+              {item.description && <p>{item.description}</p>}
+            </div>
+          </a>
+        ))}
+      </div>
+    )}
   </div>
 </section>
 

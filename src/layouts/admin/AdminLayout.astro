@@ -133,55 +133,494 @@ if (session !== "authenticated-admin-session-2026") {
       font-family: inherit;
     }
 
-    /* Common layout styling */
-    .btn {
-      display: inline-flex;
+    input[type="text"],
+    input[type="number"],
+    input[type="email"],
+    input[type="password"],
+    input[type="url"],
+    input[type="search"],
+    select,
+    textarea {
+      padding: 0.65rem 0.85rem !important;
+      border-radius: var(--radius-sm) !important;
+      background-color: var(--input-bg) !important;
+      border: 1px solid var(--input-border) !important;
+      color: var(--text-main) !important;
+      font-size: 0.9rem !important;
+      outline: none !important;
+      transition: var(--transition) !important;
+      box-sizing: border-box !important;
+      height: 38px !important;
+    }
+    textarea {
+      height: auto !important;
+    }
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    input[type="email"]:focus,
+    input[type="password"]:focus,
+    input[type="url"]:focus,
+    input[type="search"]:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--primary) !important;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+    }
+    select {
+      appearance: none !important;
+      -webkit-appearance: none !important;
+      -moz-appearance: none !important;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+      background-repeat: no-repeat !important;
+      background-position: right 0.85rem center !important;
+      background-size: 0.85em !important;
+      padding-right: 2.25rem !important;
+      cursor: pointer;
+    }
+    input[type="checkbox"] {
+      appearance: none !important;
+      -webkit-appearance: none !important;
+      -moz-appearance: none !important;
+      width: 18px !important;
+      height: 18px !important;
+      border: 1.5px solid var(--input-border) !important;
+      border-radius: 4px !important;
+      background-color: var(--input-bg) !important;
+      cursor: pointer;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      transition: var(--transition) !important;
+      position: relative;
+      vertical-align: middle;
+    }
+    input[type="checkbox"]:checked {
+      background-color: var(--primary) !important;
+      border-color: var(--primary) !important;
+    }
+    input[type="checkbox"]:checked::after {
+      content: "" !important;
+      width: 4px !important;
+      height: 8px !important;
+      border: solid white !important;
+      border-width: 0 2px 2px 0 !important;
+      transform: rotate(45deg) !important;
+      margin-bottom: 2px !important;
+    }
+    input[type="checkbox"]:focus {
+      outline: none !important;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2) !important;
+    }
+
+    /* Form labels, validation errors, and helper texts */
+    label {
+      font-size: 0.825rem !important;
+      font-weight: 600 !important;
+      color: var(--text-muted) !important;
+      margin-bottom: 0.35rem !important;
+      display: inline-block !important;
+    }
+    .field-help {
+      font-size: 0.72rem !important;
+      color: var(--text-dim) !important;
+      margin-top: 0.25rem !important;
+      display: block !important;
+    }
+    .field-error, .field-err {
+      font-size: 0.74rem !important;
+      color: var(--color-error) !important;
+      margin-top: 0.25rem !important;
+      display: block !important;
+      min-height: 1.1em !important;
+    }
+
+     /* Unified Media Catalog Selector Modal Grid styling */
+    .media-picker-grid {
+      display: grid !important;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)) !important;
+      gap: 0.75rem !important;
+      padding: 0.5rem !important;
+      background: var(--bg-base) !important;
+      border: 1px solid var(--border-color) !important;
+      border-radius: var(--radius-sm) !important;
+      overflow-x: hidden !important;
+    }
+    .media-picker-item {
+      aspect-ratio: 1 !important;
+      height: 100px !important;
+      border-radius: 6px !important;
+      overflow: hidden !important;
+      border: 2px solid transparent !important;
+      cursor: pointer !important;
+      position: relative !important;
+      background: rgba(156, 163, 175, 0.03) !important;
+      transition: var(--transition) !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+    }
+    .media-picker-item:hover {
+      transform: scale(1.03) !important;
+      border-color: var(--primary) !important;
+    }
+    .media-picker-item.selected {
+      border-color: var(--accent) !important;
+    }
+    .media-picker-item img {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover !important;
+    }
+    .media-empty {
+      grid-column: span 12 !important;
+      text-align: center !important;
+      padding: 2.5rem !important;
+      color: var(--text-dim) !important;
+      font-size: 0.85rem !important;
+    }
+
+    /* Global Modal Overlay styling */
+    .confirm-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(8, 12, 20, 0.75);
+      backdrop-filter: blur(8px);
+      display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0.5rem;
-      padding: 0.65rem 1.25rem;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .confirm-modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .confirm-modal {
+      background: var(--bg-surface-solid);
+      border: 1px solid var(--bg-surface-border);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 500px;
+      padding: 1.75rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      transform: scale(0.9);
+      transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .confirm-modal-overlay.active .confirm-modal {
+      transform: scale(1);
+    }
+    .confirm-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+    }
+    .confirm-modal-header h4 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .confirm-modal-body {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 1.5rem;
+    }
+    .confirm-modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      border-top: 1px solid var(--bg-surface-border);
+      padding-top: 1.15rem;
+    }
+    .close-modal-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 0.25rem;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+    }
+    .close-modal-btn:hover {
+      color: var(--text-main);
+      background: rgba(156, 163, 175, 0.08);
+    }
+    .warning-text {
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      border-radius: 6px;
+      padding: 0.85rem;
+      margin-top: 1rem;
+      font-size: 0.85rem;
+    }
+    .warning-text strong {
+      color: #F59E0B;
+    }
+    /* Preview device simulation wrappers */
+    .preview-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(8, 12, 20, 0.8);
+      backdrop-filter: blur(10px);
+      z-index: 3000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease;
+    }
+    .preview-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .preview-modal-wrap {
+      width: 90vw;
+      height: 90vh;
+      background: var(--bg-surface-solid);
+      border: 1px solid var(--bg-surface-border);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 15px 40px rgba(0,0,0,0.5);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .preview-modal-top {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--bg-surface-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(156,163,175,0.015);
+    }
+    .preview-modal-title h4 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .preview-device-selectors {
+      display: flex;
+      gap: 0.25rem;
+      background: var(--bg-base);
+      padding: 0.25rem;
       border-radius: var(--radius-sm);
-      font-size: 0.9rem;
+      border: 1px solid var(--border-color);
+    }
+    .device-btn {
+      padding: 0.35rem 0.85rem;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.8rem;
       font-weight: 600;
+      border-radius: 4px;
       cursor: pointer;
       transition: var(--transition);
+    }
+    .device-btn.active {
+      background: var(--bg-surface);
+      color: var(--primary);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .preview-modal-body-frame {
+      flex: 1;
+      background: #05080E;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      overflow: hidden;
+    }
+    .device-viewport {
+      height: 100%;
+      transition: width 0.3s ease;
+      border-radius: 12px;
+      border: 8px solid #1C2333;
+      background: white;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .device-viewport.desktop {
+      width: 100%;
+      max-width: 1200px;
+    }
+    .device-viewport.tablet {
+      width: 768px;
+    }
+    .device-viewport.mobile {
+      width: 375px;
+    }
+    .device-viewport iframe {
+      width: 100%;
+      height: 100%;
       border: none;
+      background: white;
+    }
+    /* Unified Button Styles */
+    .btn {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 0.5rem !important;
+      padding: 0 1.25rem !important;
+      height: 38px !important;
+      border-radius: var(--radius-sm) !important;
+      font-size: 0.875rem !important;
+      font-weight: 600 !important;
+      cursor: pointer !important;
+      transition: var(--transition) !important;
+      border: 1px solid transparent !important;
+      text-align: center !important;
+      white-space: nowrap !important;
+      user-select: none !important;
+      vertical-align: middle !important;
+      box-sizing: border-box !important;
+      outline: none !important;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px) !important;
+    }
+
+    .btn:active {
+      transform: translateY(0) !important;
+    }
+
+    .btn:focus-visible {
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4) !important;
+    }
+
+    .btn:disabled {
+      opacity: 0.6 !important;
+      cursor: not-allowed !important;
+      pointer-events: none !important;
+      box-shadow: none !important;
+      transform: none !important;
+    }
+
+    .btn svg {
+      width: 16px !important;
+      height: 16px !important;
+      flex-shrink: 0 !important;
+      display: inline-block !important;
+      vertical-align: middle !important;
+      pointer-events: none !important;
     }
 
     .btn-primary {
-      background: linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%);
-      color: white;
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+      background: linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%) !important;
+      color: white !important;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2) !important;
     }
 
     .btn-primary:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
+      box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35) !important;
     }
 
     .btn-outline {
-      background: transparent;
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
+      background: transparent !important;
+      border: 1px solid var(--border-color) !important;
+      color: var(--text-main) !important;
     }
 
     .btn-outline:hover {
-      background: rgba(156, 163, 175, 0.08);
-      border-color: var(--text-muted);
+      background: rgba(156, 163, 175, 0.08) !important;
+      border-color: var(--text-muted) !important;
     }
 
     .btn-danger {
-      background-color: var(--color-error);
-      color: white;
+      background-color: var(--color-error) !important;
+      color: white !important;
     }
 
     .btn-danger:hover {
-      background-color: #DC2626;
+      background-color: #DC2626 !important;
     }
 
     .btn-sm {
-      padding: 0.4rem 0.85rem;
-      font-size: 0.8rem;
+      height: 30px !important;
+      padding: 0 0.85rem !important;
+      font-size: 0.8rem !important;
+    }
+
+    /* Standardized Action Icon Buttons */
+    .btn-action,
+    .btn-action-sm {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      border-radius: var(--radius-sm) !important;
+      background: transparent !important;
+      border: 1px solid var(--border-color) !important;
+      color: var(--text-muted) !important;
+      cursor: pointer !important;
+      transition: var(--transition) !important;
+      box-sizing: border-box !important;
+      flex-shrink: 0 !important;
+    }
+    .btn-action {
+      width: 32px !important;
+      height: 32px !important;
+    }
+    .btn-action-sm {
+      width: 28px !important;
+      height: 28px !important;
+      border-radius: 4px !important;
+    }
+    .btn-action:hover,
+    .btn-action-sm:hover {
+      color: var(--text-main) !important;
+      background: rgba(156, 163, 175, 0.08) !important;
+      border-color: var(--text-muted) !important;
+    }
+    .btn-action:focus-visible,
+    .btn-action-sm:focus-visible {
+      outline: none !important;
+      box-shadow: 0 0 0 2px var(--primary) !important;
+    }
+    .btn-action:disabled,
+    .btn-action-sm:disabled {
+      opacity: 0.35 !important;
+      cursor: not-allowed !important;
+      pointer-events: none !important;
+    }
+    .btn-action svg,
+    .btn-action-sm svg {
+      width: 15px !important;
+      height: 15px !important;
+      pointer-events: none !important;
+    }
+    .btn-action-sm svg {
+      width: 13px !important;
+      height: 13px !important;
+    }
+    
+    /* Specific overrides for actions */
+    .btn-action.delete-btn:hover,
+    .btn-action-sm.btn-delete-node:hover,
+    .btn-delete-block:hover {
+      color: var(--color-error) !important;
+      background: rgba(239, 68, 68, 0.08) !important;
+      border-color: var(--color-error) !important;
+    }
+    .btn-action.edit-btn:hover {
+      color: var(--primary) !important;
+      background: var(--primary-light) !important;
+      border-color: var(--primary) !important;
     }
 
     /* Dynamic listing table styles */
@@ -250,6 +689,36 @@ if (session !== "authenticated-admin-session-2026") {
       background-color: rgba(245, 158, 11, 0.12);
       color: #F59E0B;
       border: 1px solid rgba(245, 158, 11, 0.15);
+    }
+
+    /* Global Toast Notification styling */
+    .toast-notification {
+      position: fixed !important;
+      bottom: 2rem !important;
+      right: 2rem !important;
+      background: var(--bg-surface-solid) !important;
+      border-left: 4px solid var(--primary) !important;
+      border-top: 1px solid var(--bg-surface-border) !important;
+      border-bottom: 1px solid var(--bg-surface-border) !important;
+      border-right: 1px solid var(--bg-surface-border) !important;
+      padding: 1rem 1.5rem !important;
+      border-radius: var(--radius-sm) !important;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35) !important;
+      z-index: 1100 !important;
+      transform: translateY(150%) !important;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+      backdrop-filter: blur(8px) !important;
+      opacity: 0 !important;
+    }
+    .toast-notification.active,
+    .toast-notification.visible {
+      transform: translateY(0) !important;
+      opacity: 1 !important;
+    }
+    .toast-content {
+      font-size: 0.9rem !important;
+      font-weight: 500 !important;
+      color: var(--text-main) !important;
     }
   </style>
 
@@ -574,11 +1043,29 @@ if (session !== "authenticated-admin-session-2026") {
       </div>
 
       <nav class="sidebar-nav">
-        <span class="nav-section-title">Manage Content</span>
+        <span class="nav-section-title">Core</span>
         
-        <a href="/admin" class="nav-item" id="nav-pages">
+        <a href="/admin" class="nav-item" id="nav-dashboard">
+          <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+          <span>Dashboard</span>
+          <div class="active-indicator" style="display:none;"></div>
+        </a>
+
+        <a href="/admin/pages" class="nav-item" id="nav-pages">
           <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-          <span>All Pages</span>
+          <span>Pages</span>
+          <div class="active-indicator" style="display:none;"></div>
+        </a>
+
+        <a href="/admin/sections" class="nav-item" id="nav-sections">
+          <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+          <span>Sections</span>
+          <div class="active-indicator" style="display:none;"></div>
+        </a>
+
+        <a href="/admin/section-definitions" class="nav-item" id="nav-section-defs">
+          <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+          <span>Definitions</span>
           <div class="active-indicator" style="display:none;"></div>
         </a>
 
@@ -588,17 +1075,41 @@ if (session !== "authenticated-admin-session-2026") {
           <div class="active-indicator" style="display:none;"></div>
         </a>
 
-        <a href="/admin/contacts" class="nav-item" id="nav-contacts">
-          <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-          <span>Contacts Inbox</span>
+        <a href="/admin/menus" class="nav-item" id="nav-menus">
+          <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+          <span>Menus</span>
           <div class="active-indicator" style="display:none;"></div>
         </a>
 
-        <span class="nav-section-title">Settings</span>
+        <a href="/admin/seo" class="nav-item" id="nav-seo">
+          <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+          <span>SEO</span>
+          <div class="active-indicator" style="display:none;"></div>
+        </a>
+
+        <a href="/admin/redirects" class="nav-item" id="nav-redirects">
+          <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+          <span>Redirects</span>
+          <div class="active-indicator" style="display:none;"></div>
+        </a>
+
+        <span class="nav-section-title">System</span>
 
         <a href="/admin/settings" class="nav-item" id="nav-settings">
           <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-          <span>Global Settings</span>
+          <span>Settings</span>
+          <div class="active-indicator" style="display:none;"></div>
+        </a>
+
+        <a href="/admin/accounts" class="nav-item" id="nav-accounts">
+          <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <span>Admins</span>
+          <div class="active-indicator" style="display:none;"></div>
+        </a>
+
+        <a href="/admin/contacts" class="nav-item" id="nav-contacts">
+          <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+          <span>Leads Inbox</span>
           <div class="active-indicator" style="display:none;"></div>
         </a>
 
@@ -644,7 +1155,12 @@ if (session !== "authenticated-admin-session-2026") {
             </svg>
           </button>
           
-          <div class="user-avatar" style="width:36px;height:36px;">AV</div>
+          <div style="display:flex; align-items:center; gap:0.75rem;">
+            <div class="user-avatar" style="width:36px;height:36px;">AV</div>
+            <button type="button" id="top-logout-btn" title="Sign Out" style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.25); color:#ef4444; width:34px; height:34px; border-radius:6px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:var(--transition); outline:none;" onmouseover="this.style.background='rgba(239,68,68,0.2)'" onmouseout="this.style.background='rgba(239,68,68,0.1)'">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -662,24 +1178,42 @@ if (session !== "authenticated-admin-session-2026") {
       const pathName = window.location.pathname;
       document.querySelectorAll(".sidebar-nav .nav-item").forEach(item => {
         item.classList.remove("active");
-        item.querySelector(".active-indicator").style.display = "none";
+        const ind = item.querySelector(".active-indicator");
+        if (ind) ind.style.display = "none";
       });
 
-      let activeId = "nav-pages";
-      if (pathName.includes("/admin/media")) {
+      let activeId = "nav-dashboard";
+      if (pathName === "/admin" || pathName === "/admin/") {
+        activeId = "nav-dashboard";
+      } else if (pathName.includes("/admin/pages")) {
+        activeId = "nav-pages";
+      } else if (pathName.includes("/admin/section-definitions")) {
+        activeId = "nav-section-defs";
+      } else if (pathName.includes("/admin/sections")) {
+        activeId = "nav-sections";
+      } else if (pathName.includes("/admin/media")) {
         activeId = "nav-media";
-      } else if (pathName.includes("/admin/contacts")) {
-        activeId = "nav-contacts";
+      } else if (pathName.includes("/admin/menus")) {
+        activeId = "nav-menus";
+      } else if (pathName.includes("/admin/seo")) {
+        activeId = "nav-seo";
+      } else if (pathName.includes("/admin/redirects")) {
+        activeId = "nav-redirects";
       } else if (pathName.includes("/admin/settings")) {
         activeId = "nav-settings";
-      } else if (pathName !== "/admin" && pathName.startsWith("/admin/")) {
-        activeId = "nav-pages"; // Page Editor belongs to Pages section
+      } else if (pathName.includes("/admin/accounts")) {
+        activeId = "nav-accounts";
+      } else if (pathName.includes("/admin/contacts")) {
+        activeId = "nav-contacts";
+      } else if (pathName.includes("/admin/editor")) {
+        activeId = "nav-pages";
       }
       
       const activeLink = document.getElementById(activeId);
       if (activeLink) {
         activeLink.classList.add("active");
-        activeLink.querySelector(".active-indicator").style.display = "block";
+        const ind = activeLink.querySelector(".active-indicator");
+        if (ind) ind.style.display = "block";
       }
 
       // 2. Mobile Sidebar Toggle Handler
@@ -714,23 +1248,101 @@ if (session !== "authenticated-admin-session-2026") {
       }
 
       // 4. Admin Session Logout Trigger
-      const logoutBtn = document.getElementById("logout-btn");
-      if (logoutBtn) {
-        logoutBtn.addEventListener("click", async () => {
-          if (confirm("Are you absolutely sure you want to sign out?")) {
-            try {
-              const res = await fetch("/api/logout", { method: "POST" });
-              const result = await res.json();
-              if (result.success) {
-                window.location.href = "/admin/login";
-              }
-            } catch (err) {
-              alert("Network Error: Failed to logout");
+      const handleLogout = async () => {
+        window.customConfirm("Are you absolutely sure you want to sign out?", async () => {
+          try {
+            const res = await fetch("/api/logout", { method: "POST" });
+            const result = await res.json();
+            if (result.success) {
+              window.location.href = "/admin/login";
             }
+          } catch (err) {
+            window.alert("Network Error: Failed to logout");
           }
         });
+      };
+
+      const logoutBtn = document.getElementById("logout-btn");
+      if (logoutBtn) {
+        logoutBtn.addEventListener("click", handleLogout);
+      }
+
+      const topLogoutBtn = document.getElementById("top-logout-btn");
+      if (topLogoutBtn) {
+        topLogoutBtn.addEventListener("click", handleLogout);
       }
     }
+
+    // Intercept native browser alert with custom modal
+    window.alert = function(message) {
+      const overlay = document.getElementById("global-alert-overlay");
+      const msgEl = document.getElementById("global-alert-message");
+      const panel = overlay ? overlay.querySelector(".confirm-modal") : null;
+      if (overlay && msgEl) {
+        msgEl.innerText = message;
+        overlay.style.opacity = "1";
+        overlay.style.pointerEvents = "auto";
+        if (panel) panel.style.transform = "scale(1)";
+      } else {
+        console.warn("Global alert: " + message);
+      }
+    };
+
+    // Asynchronous custom confirm helper using Promise & custom Modal
+    let activeConfirmCallback = null;
+    window.customConfirm = function(message, callback) {
+      const overlay = document.getElementById("global-confirm-overlay");
+      const msgEl = document.getElementById("global-confirm-message");
+      const panel = overlay ? overlay.querySelector(".confirm-modal") : null;
+      if (overlay && msgEl) {
+        msgEl.innerText = message;
+        activeConfirmCallback = callback;
+        overlay.style.opacity = "1";
+        overlay.style.pointerEvents = "auto";
+        if (panel) panel.style.transform = "scale(1)";
+      } else {
+        // Fallback to native confirm if elements missing (should never happen)
+        if (confirm(message) && callback) callback();
+      }
+    };
+
+    // Close Modals events
+    document.addEventListener("DOMContentLoaded", () => {
+      // Alert Modal close
+      const alertOk = document.getElementById("global-alert-ok-btn");
+      const alertOverlay = document.getElementById("global-alert-overlay");
+      if (alertOk && alertOverlay) {
+        alertOk.addEventListener("click", () => {
+          alertOverlay.style.opacity = "0";
+          alertOverlay.style.pointerEvents = "none";
+          const panel = alertOverlay.querySelector(".confirm-modal");
+          if (panel) panel.style.transform = "scale(0.9)";
+        });
+      }
+
+      // Confirm Modal close / confirm
+      const confirmCancel = document.getElementById("global-confirm-cancel-btn");
+      const confirmOk = document.getElementById("global-confirm-ok-btn");
+      const confirmOverlay = document.getElementById("global-confirm-overlay");
+      
+      const hideConfirm = () => {
+        if (confirmOverlay) {
+          confirmOverlay.style.opacity = "0";
+          confirmOverlay.style.pointerEvents = "none";
+          const panel = confirmOverlay.querySelector(".confirm-modal");
+          if (panel) panel.style.transform = "scale(0.9)";
+        }
+        activeConfirmCallback = null;
+      };
+
+      if (confirmCancel) confirmCancel.addEventListener("click", hideConfirm);
+      if (confirmOk) {
+        confirmOk.addEventListener("click", () => {
+          if (activeConfirmCallback) activeConfirmCallback();
+          hideConfirm();
+        });
+      }
+    });
 
     // Initialize layout scripts onDOM ready & page-load transitions
     document.addEventListener("DOMContentLoaded", initLayout);
@@ -739,5 +1351,32 @@ if (session !== "authenticated-admin-session-2026") {
       initLayout();
     }
   </script>
+
+  <!-- Global Custom Alert Modal -->
+  <div class="confirm-modal-overlay" id="global-alert-overlay" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(8,12,20,0.8); backdrop-filter:blur(6px); z-index:99999; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity 0.2s ease;">
+    <div class="confirm-modal" style="background:var(--bg-surface-solid, #111827); border:1px solid var(--border-color, rgba(255,255,255,0.08)); border-radius:12px; padding:2rem; width:90%; max-width:440px; box-shadow:0 20px 50px rgba(0,0,0,0.5); text-align:center; transform:scale(0.9); transition:transform 0.2s ease;">
+      <div style="width:48px; height:48px; background:rgba(99,102,241,0.1); color:var(--primary, #6366F1); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1.25rem auto;">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+      </div>
+      <h4 style="margin:0 0 0.75rem 0; font-family:'Outfit', sans-serif; font-size:1.15rem; font-weight:700; color:#fff;">Message</h4>
+      <p id="global-alert-message" style="margin:0 0 1.5rem 0; font-size:0.875rem; color:#9ca3af; line-height:1.6; word-break:break-word; text-align:center;"></p>
+      <button type="button" class="btn btn-primary" id="global-alert-ok-btn" style="width:100%; justify-content:center; padding:0.65rem 1.5rem; font-size:0.9rem; font-weight:600; border-radius:8px; background:linear-gradient(135deg, #6366F1 0%, #4F46E5 100%); color:#fff; border:none; cursor:pointer;">OK</button>
+    </div>
+  </div>
+
+  <!-- Global Custom Confirm Modal -->
+  <div class="confirm-modal-overlay" id="global-confirm-overlay" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(8,12,20,0.8); backdrop-filter:blur(6px); z-index:99998; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity 0.2s ease;">
+    <div class="confirm-modal" style="background:var(--bg-surface-solid, #111827); border:1px solid var(--border-color, rgba(255,255,255,0.08)); border-radius:12px; padding:2rem; width:90%; max-width:440px; box-shadow:0 20px 50px rgba(0,0,0,0.5); text-align:center; transform:scale(0.9); transition:transform 0.2s ease;">
+      <div style="width:48px; height:48px; background:rgba(239,68,68,0.1); color:#ef4444; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1.25rem auto;">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+      </div>
+      <h4 style="margin:0 0 0.75rem 0; font-family:'Outfit', sans-serif; font-size:1.15rem; font-weight:700; color:#fff;">Confirm Action</h4>
+      <p id="global-confirm-message" style="margin:0 0 1.5rem 0; font-size:0.875rem; color:#9ca3af; line-height:1.6; word-break:break-word; text-align:center;"></p>
+      <div style="display:flex; gap:0.75rem; justify-content:center; width:100%;">
+        <button type="button" class="btn btn-outline" id="global-confirm-cancel-btn" style="flex:1; padding:0.65rem 1.5rem; font-size:0.9rem; font-weight:600; border-radius:8px; cursor:pointer;">Cancel</button>
+        <button type="button" class="btn btn-primary" id="global-confirm-ok-btn" style="flex:1; padding:0.65rem 1.5rem; font-size:0.9rem; font-weight:600; border-radius:8px; background:linear-gradient(135deg, #6366F1 0%, #4F46E5 100%); color:#fff; border:none; cursor:pointer;">Confirm</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

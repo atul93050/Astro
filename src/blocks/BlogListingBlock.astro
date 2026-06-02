@@ -47,10 +47,12 @@ const articlesToShow = mockArticles.slice(0, limit);
 ---
 <section class="block-blog-listing">
   <div class="container">
-    <div class="section-head">
-      {eyebrow && <span class="eyebrow">{eyebrow}</span>}
-      <h2>{title}</h2>
-    </div>
+    {(eyebrow || title) && (
+      <div class="section-head">
+        {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+        {title && <h2>{title}</h2>}
+      </div>
+    )}
 
     <div class="blog-grid">
       {articlesToShow.map((article) => (

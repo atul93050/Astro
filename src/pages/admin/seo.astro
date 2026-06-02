@@ -1,0 +1,316 @@
+---
+import AdminLayout from "../../layouts/admin/AdminLayout.astro";
+import fs from "node:fs";
+import path from "node:path";
+import { parse } from "yaml";
+
+export const prerender = false;
+
+// Gather all pages for SEO Auditing
+const pagesDir = path.resolve("src/content/pages");
+let pagesAuditList: any[] = [];
+let overallAverageScore = 0;
+
+if (fs.existsSync(pagesDir)) {
+  const files = fs.readdirSync(pagesDir).filter(f => f.endsWith(".md"));
+  
+  files.forEach(file => {
+    try {
+      const filePath = path.join(pagesDir, file);
+      const content = fs.readFileSync(filePath, "utf-8");
+      const parts = content.split(/^---$/m);
+      if (parts.length >= 3) {
+        const data = parse(parts[1]) || {};
+        const seo = data.seo || {};
+        
+        let score = 0;
+        const issues = [];
+        const checks = [];
+        
+        const titleVal = seo.metaTitle || "";
+        const descVal = seo.metaDescription || "";
+        const keywordVal = seo.focusKeyword || "";
+        const canonicalVal = seo.canonicalUrl || "";
+        const ogImageVal = seo.ogImage || "";
+        const schemaType = seo.schemaType || "none";
+        
+        // 1. Meta Title checks
+        if (titleVal) {
+          const len = titleVal.length;
+          if (len >= 30 && len <= 60) {
+            score += 30;
+            checks.push("Meta Title length is perfect (30-60 characters)");
+          } else {
+            score += 15;
+            issues.push(`Meta Title length is sub-optimal (currently ${len} chars; 30-60 chars recommended)`);
+          }
+        } else {
+          issues.push("Meta Title is completely missing");
+        }
+        
+        // 2. Meta Description checks
+        if (descVal) {
+          const len = descVal.length;
+          if (len >= 120 && len <= 160) {
+            score += 30;
+            checks.push("Meta Description length is perfect (120-160 characters)");
+          } else {
+            score += 15;
+            issues.push(`Meta Description length is sub-optimal (currently ${len} chars; 120-160 chars recommended)`);
+          }
+        } else {
+          issues.push("Meta Description is completely missing");
+        }
+        
+        // 3. Focus Keyword checks
+        if (keywordVal && keywordVal.trim()) {
+          score += 20;
+          checks.push("Focus Keyword provided");
+          
+          const matchTitle = titleVal.toLowerCase().includes(keywordVal.toLowerCase());
+          const matchDesc = descVal.toLowerCase().includes(keywordVal.toLowerCase());
+          
+          if (matchTitle) checks.push("Focus keyword matches in Meta Title");
+          else issues.push("Focus keyword not found in Meta Title");
+          
+          if (matchDesc) checks.push("Focus keyword matches in Meta Description");
+          else issues.push("Focus keyword not found in Meta Description");
+        } else {
+          issues.push("Focus Keyword is missing (recommended for intent targeting)");
+        }
+        
+        // 4. Canonical URL
+        if (canonicalVal && canonicalVal.trim()) {
+          score += 10;
+          checks.push("Canonical URL provided");
+        } else {
+          issues.push("Canonical Link Tag is missing");
+        }
+        
+        // 5. OG Image
+        if (ogImageVal && ogImageVal.trim()) {
+          score += 10;
+          checks.push("Open Graph (OG) Image provided");
+        } else {
+          issues.push("Open Graph (OG) Image is missing");
+        }
+        
+        pagesAuditList.push({
+          title: data.title || "Untitled Page",
+          slug: data.slug || path.basename(file, ".md"),
+          score,
+          checks,
+          issues,
+          focusKeyword: keywordVal,
+          schemaType
+        });
+      }
+    } catch(e) {}
+  });
+  
+  if (pagesAuditList.length > 0) {
+    const totalScore = pagesAuditList.reduce((acc, p) => acc + p.score, 0);
+    overallAverageScore = Math.round(totalScore / pagesAuditList.length);
+  }
+}
+---
+
+<AdminLayout title="SEO Audit & Health Manager">
+  
+  <div class="seo-dashboard-intro" style="margin-bottom:2rem; display:flex; align-items:center; gap:2rem; background:var(--bg-surface); padding:1.5rem; border-radius:var(--radius-lg); border:1px solid var(--border-color); backdrop-filter:blur(10px); box-shadow: 0 4px 15px var(--color-shadow);">
+    <div style="width: 80px; height: 80px; flex-shrink:0;">
+      <svg viewBox="0 0 36 36" class="circular-chart">
+        <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" style="fill:none; stroke:rgba(156,163,175,0.08); stroke-width:3;"></path>
+        <path class="circle" stroke-dasharray={`${overallAverageScore}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" style={`fill:none; stroke-width:3; stroke-linecap:round; stroke: ${overallAverageScore >= 80 ? 'var(--accent)' : (overallAverageScore >= 50 ? 'var(--color-warning)' : 'var(--color-error)')};`}></path>
+        <text x="18" y="20.35" class="percentage" style="fill:var(--text-main); font-weight:700; font-size:8px; text-anchor:middle;">{overallAverageScore}%</text>
+      </svg>
+    </div>
+    <div class="seo-intro-text">
+      <h3 style="font-size:1.25rem; font-weight:800; color:var(--text-main); margin-bottom:0.25rem;">Overall Website SEO Health</h3>
+      <p style="color:var(--text-muted); font-size:0.9rem; line-height:1.45;">Your average SEO score is compiled by auditing core titles, description lengths, canonical linkages, and search intent keyword density. Pages with less than 80% score require revision fixes.</p>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <div class="card-header">
+      <h3>Active Page Audits ({pagesAuditList.length})</h3>
+    </div>
+    <div class="card-body padding-zero">
+      <div class="seo-audit-accordion-stack">
+        {pagesAuditList.map((page, idx) => (
+          <details class="seo-audit-details-row" style="border-bottom:1px solid var(--bg-surface-border); padding:1.25rem 1.5rem; outline:none; cursor:pointer;">
+            <summary style="display:flex; justify-content:space-between; align-items:center; list-style:none; outline:none;">
+              <div style="display:flex; align-items:center; gap:0.75rem;">
+                <span class="seo-score-badge" style={`background-color: ${page.score >= 80 ? 'rgba(16, 185, 129, 0.12)' : (page.score >= 50 ? 'rgba(245, 158, 11, 0.12)' : 'rgba(239, 68, 68, 0.12)')}; color: ${page.score >= 80 ? 'var(--accent)' : (page.score >= 50 ? 'var(--color-warning)' : 'var(--color-error)')}; border: 1px solid ${page.score >= 80 ? 'rgba(16, 185, 129, 0.2)' : (page.score >= 50 ? 'rgba(245, 158, 11, 0.2)' : 'rgba(239, 68, 68, 0.2)')}; font-weight:700; font-size:0.85rem; padding:0.2rem 0.5rem; border-radius:4px;`}>
+                  {page.score}%
+                </span>
+                <strong style="color:var(--text-main); font-size:1.02rem;">{page.title}</strong>
+                <span style="color:var(--text-dim); font-size:0.85rem;">(/{page.slug})</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:1rem;">
+                {page.issues.length > 0 ? (
+                  <span style="color:var(--color-error); font-size:0.8rem; font-weight:600;">{page.issues.length} warnings</span>
+                ) : (
+                  <span style="color:var(--accent); font-size:0.8rem; font-weight:600;">Optimal SEO</span>
+                )}
+                <span style="font-size:0.75rem; color:var(--text-dim);">▼</span>
+              </div>
+            </summary>
+            
+            <div class="seo-audit-expanded-body" style="margin-top:1.25rem; display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; cursor:default;" onclick="event.stopPropagation();">
+              
+              <!-- Check / Success Points -->
+              <div class="seo-audit-col-passed" style="background:rgba(16,185,129,0.01); border:1px solid rgba(16,185,129,0.08); padding:1rem; border-radius:var(--radius-sm);">
+                <h5 style="color:var(--accent); font-size:0.85rem; font-weight:700; text-transform:uppercase; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.35rem;">
+                  <span>✓</span> Passed Checks (${page.checks.length})
+                </h5>
+                {page.checks.length === 0 ? (
+                  <p style="color:var(--text-dim); font-size:0.8rem;">No passed checks.</p>
+                ) : (
+                  <ul style="list-style:none; display:flex; flex-direction:column; gap:0.4rem;">
+                    {page.checks.map(c => (
+                      <li style="font-size:0.82rem; color:var(--text-muted); display:flex; align-items:flex-start; gap:0.4rem;">
+                        <span style="color:var(--accent); font-weight:700;">✓</span>
+                        <span>{c}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <!-- Issue / Warning Points -->
+              <div class="seo-audit-col-warnings" style="background:rgba(239,68,68,0.01); border:1px solid rgba(239,68,68,0.08); padding:1rem; border-radius:var(--radius-sm);">
+                <h5 style="color:var(--color-error); font-size:0.85rem; font-weight:700; text-transform:uppercase; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.35rem;">
+                  <span>✗</span> Warning Fixes (${page.issues.length})
+                </h5>
+                {page.issues.length === 0 ? (
+                  <p style="color:var(--accent); font-size:0.82rem; font-weight:600;">Excellent! Zero issues detected.</p>
+                ) : (
+                  <ul style="list-style:none; display:flex; flex-direction:column; gap:0.4rem;">
+                    {page.issues.map(i => (
+                      <li style="font-size:0.82rem; color:var(--text-muted); display:flex; align-items:flex-start; gap:0.4rem;">
+                        <span style="color:var(--color-error); font-weight:700;">✗</span>
+                        <span>{i}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+            </div>
+
+            <!-- Page actions -->
+            <div style="margin-top:1.25rem; border-top:1px solid var(--bg-surface-border); padding-top:0.75rem; display:flex; justify-content:flex-end; gap:0.5rem;" onclick="event.stopPropagation();">
+              <a href={`/admin/editor?slug=${page.slug}`} class="btn btn-outline btn-sm" style="font-size:0.78rem; padding:0.4rem 0.85rem;">
+                Edit Meta Tags inside Page Builder
+              </a>
+            </div>
+
+          </details>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  <!-- robots.txt Manager Card -->
+  <div class="form-card" style="margin-top: 2rem; margin-bottom: 5rem;">
+    <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+      <h3>Robots.txt Configuration</h3>
+      <button type="button" class="btn btn-primary btn-sm" id="save-robots-btn" style="padding:0.5rem 1.25rem;">
+        Save Robots.txt
+      </button>
+    </div>
+    <div class="card-body">
+      <p class="section-desc" style="margin-bottom: 1rem;">Direct crawler bots (like Googlebot) with customized Allow/Disallow rules. Saving this updates the physical <code>public/robots.txt</code> file instantly.</p>
+      <div class="form-group">
+        <textarea id="robots-content" rows="8" placeholder="User-agent: *&#10;Allow: /&#10;&#10;Sitemap: https://www.tangence.in/sitemap.xml" style="font-family: monospace; font-size: 0.9rem; padding: 0.75rem; background-color: var(--input-bg); border: 1px solid var(--input-border); color: var(--text-main); border-radius: var(--radius-sm); width: 100%; box-sizing: border-box;"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast notification banner -->
+  <div class="toast-notification" id="toast-notify">
+    <div class="toast-content">
+      <span class="toast-message" id="toast-message">robots.txt saved!</span>
+    </div>
+  </div>
+
+</AdminLayout>
+
+<script is:inline>
+  async function initRobots() {
+    const robotsArea = document.getElementById("robots-content");
+    const saveBtn = document.getElementById("save-robots-btn");
+    if (!robotsArea || !saveBtn) return;
+
+    // Load initial content
+    try {
+      const res = await fetch("/api/robots-update");
+      const data = await res.json();
+      if (data.success) {
+        robotsArea.value = data.content;
+      }
+    } catch (e) {
+      console.error("Failed to load robots.txt content:", e);
+    }
+
+    // Save handler
+    saveBtn.addEventListener("click", async () => {
+      saveBtn.disabled = true;
+      saveBtn.innerText = "Saving...";
+      try {
+        const res = await fetch("/api/robots-update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: robotsArea.value })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast("robots.txt updated successfully!");
+        } else {
+          showToast("Failed to save: " + data.error);
+        }
+      } catch (err) {
+        showToast("Network connection error");
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerText = "Save Robots.txt";
+      }
+    });
+  }
+
+  function showToast(message) {
+    const notify = document.getElementById("toast-notify");
+    const msgSpan = document.getElementById("toast-message");
+    if (notify && msgSpan) {
+      msgSpan.innerText = message;
+      notify.classList.add("visible");
+      setTimeout(() => {
+        notify.classList.remove("visible");
+      }, 3000);
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", initRobots);
+  document.addEventListener("astro:page-load", initRobots);
+  if (document.readyState === "interactive" || document.readyState === "complete") {
+    initRobots();
+  }
+</script>
+
+<style is:global>
+  /* Toast Notification styling */
+  .toast-notification {
+    position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999;
+    background: var(--bg-surface-solid); border: 1px solid var(--border-color);
+    border-radius: 8px; padding: 0.85rem 1.25rem;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+    transform: translateY(100px); opacity: 0;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+    pointer-events: none;
+  }
+  .toast-notification.visible { transform: translateY(0); opacity: 1; }
+  .toast-content { display: flex; align-items: center; gap: 0.5rem; }
+  .toast-message { font-size: 0.88rem; color: var(--text-main); font-weight: 500; }
+</style>
+

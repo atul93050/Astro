@@ -34,6 +34,11 @@ function getInitialSettings() {
       { text: "About Us", link: "/about-us" },
       { text: "Contact", link: "/contact" }
     ],
+    footerNavigation: [
+      { text: "Home", link: "/" },
+      { text: "About Us", link: "/about-us" },
+      { text: "Contact", link: "/contact" }
+    ],
     redirects: [] as Array<{ from: string; to: string; type?: string; active?: boolean }>
   };
 }
@@ -129,6 +134,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       })).filter((child: any) => child.text && child.link)
     })).filter((item: any) => item.text && item.link);
 
+    // Process and sanitize footer navigation list
+    const rawFooterNavigation = data.footerNavigation || [];
+    const footerNavigation = rawFooterNavigation.map((item: any) => ({
+      text: String(item.text || "").trim(),
+      link: String(item.link || "").trim(),
+      newTab: item.newTab === true
+    })).filter((item: any) => item.text && item.link);
+
     // Process and sanitize redirects mapping
     const rawRedirects = data.redirects || [];
     const redirects = rawRedirects.map((item: any) => ({
@@ -180,6 +193,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       socialLinks,
       contactInfo,
       navigation,
+      footerNavigation,
       redirects
     };
 

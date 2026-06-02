@@ -51,11 +51,13 @@ function parseMarkdown(md: string) {
 
 const parsedContent = parseMarkdown(content);
 ---
-<section class="block-rich-text">
-  <div class="container">
-    <article class="prose" set:html={parsedContent}></article>
-  </div>
-</section>
+{content && (
+  <section class="block-rich-text">
+    <div class="container">
+      <article class="prose" set:html={parsedContent}></article>
+    </div>
+  </section>
+)}
 
 <style>
   .block-rich-text {

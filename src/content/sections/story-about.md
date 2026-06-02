@@ -1,0 +1,3 @@
+---
+type: rich_text
+---

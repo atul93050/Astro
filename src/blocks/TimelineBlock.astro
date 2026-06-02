@@ -10,26 +10,29 @@ interface Props {
 }
 
 const { eyebrow, title, items = [] } = Astro.props;
+const validItems = (items || []).filter(item => item && (item.title || item.date || item.description));
 ---
 <section class="block-timeline">
   <div class="container">
-    <div class="section-head">
-      {eyebrow && <span class="eyebrow">{eyebrow}</span>}
-      <h2>{title}</h2>
-    </div>
+    {(eyebrow || title) && (
+      <div class="section-head">
+        {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+        {title && <h2>{title}</h2>}
+      </div>
+    )}
 
-    {items.length > 0 && (
+    {validItems.length > 0 && (
       <div class="timeline-container">
         <div class="timeline-line"></div>
         
         <div class="timeline-list">
-          {items.map((item, idx) => (
+          {validItems.map((item, idx) => (
             <div class={`timeline-item ${idx % 2 === 0 ? "left" : "right"}`}>
               <div class="timeline-dot"></div>
               <div class="timeline-card">
-                <span class="timeline-date">{item.date}</span>
-                <h3>{item.title}</h3>
-                <p>{item.description}</p>
+                {item.date && <span class="timeline-date">{item.date}</span>}
+                {item.title && <h3>{item.title}</h3>}
+                {item.description && <p>{item.description}</p>}
               </div>
             </div>
           ))}

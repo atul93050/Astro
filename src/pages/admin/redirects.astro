@@ -1,0 +1,318 @@
+---
+import AdminLayout from "../../layouts/admin/AdminLayout.astro";
+import fs from "node:fs";
+import path from "node:path";
+
+export const prerender = false;
+
+// 1. Fetch current settings
+const SETTINGS_FILE = path.resolve("src/data/global-settings.json");
+let settings = {
+  redirects: [] as Array<{ from: string; to: string; type?: string; active?: boolean }>
+};
+
+if (fs.existsSync(SETTINGS_FILE)) {
+  try {
+    const data = fs.readFileSync(SETTINGS_FILE, "utf-8");
+    const parsed = JSON.parse(data);
+    settings.redirects = parsed.redirects || [];
+  } catch (e) {
+    console.error("Error reading settings in redirects.astro:", e);
+  }
+}
+---
+
+<AdminLayout title="Redirect Manager">
+  
+  <div class="redirects-header">
+    <div class="header-text">
+      <p class="subtitle">Set up HTTP 301 Permanent or 302 Temporary redirects map with real-time loop detection and path validation.</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-primary" id="save-redirects-btn">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+        <span>Save Redirects</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <div class="card-header block-header-flex">
+      <h3>Active Path Maps</h3>
+      <button type="button" class="btn btn-outline btn-sm" id="add-redirect-btn">
+        <span>+ Add Redirect Row</span>
+      </button>
+    </div>
+    <div class="card-body padding-zero">
+      <div class="admin-table-wrapper" style="box-shadow:none; border:none; border-radius:0; margin-bottom:0;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th style="width: 40%;">Source Path (From)</th>
+              <th style="width: 40%;">Target URL / Link (To)</th>
+              <th style="width: 10%;">Type</th>
+              <th style="width: 5%; text-align: center;">Active</th>
+              <th style="width: 5%; text-align: right;">Delete</th>
+            </tr>
+          </thead>
+          <tbody id="redirects-tbody">
+            <!-- JS Injected dynamic redirect rows -->
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="menu-empty-state" id="redirects-empty" style="display:none; border:none; border-radius:0;">
+        <p>No redirects mapped yet. Click "+ Add Redirect Row" to configure path aliases.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Real-time Validation Warning Banner -->
+  <div class="alert-banner error" id="loop-alert-banner" style="display:none; margin-top:1.5rem; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.15); color:#F87171; display:flex; gap:0.85rem; padding:1rem 1.25rem; border-radius:8px;">
+    <div class="alert-icon" style="width:20px; height:20px; background:rgba(239,68,68,0.12); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700;">✗</div>
+    <div class="alert-msg">
+      <strong>Redirect Loop / Conflict Detected</strong>
+      <p id="loop-alert-text" style="font-size:0.8rem; margin-top:0.15rem; opacity:0.9;"></p>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast-notification" id="toast-notify">
+    <div class="toast-content">
+      <span class="toast-message" id="toast-message">Redirects saved successfully!</span>
+    </div>
+  </div>
+
+</AdminLayout>
+
+<style is:global>
+  .redirects-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    gap: 1.5rem;
+  }
+  .redirect-row-input {
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-main);
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm);
+    width: 100%;
+    outline: none;
+    font-size: 0.88rem;
+    box-sizing: border-box;
+  }
+  .redirect-row-input:focus {
+    border-color: var(--primary);
+  }
+  .redirect-row-select {
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-main);
+    padding: 0.45rem 0.5rem;
+    border-radius: var(--radius-sm);
+    outline: none;
+    font-size: 0.88rem;
+  }
+</style>
+
+<script is:inline define:vars={{ settings }}>
+  let redirects = settings.redirects || [];
+
+  const ICONS = {
+    delete: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`
+  };
+
+  function initRedirects() {
+    const saveBtn = document.getElementById("save-redirects-btn");
+    if (!saveBtn || saveBtn.dataset.listenerBound) return;
+    saveBtn.dataset.listenerBound = "true";
+
+    renderRedirectRows();
+    validateRedirectLoops();
+
+    // Bind triggers
+    saveBtn.addEventListener("click", submitRedirectsForm);
+    document.getElementById("add-redirect-btn").addEventListener("click", addRedirectRow);
+  }
+
+  function renderRedirectRows() {
+    const tbody = document.getElementById("redirects-tbody");
+    const emptyState = document.getElementById("redirects-empty");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    if (redirects.length === 0) {
+      emptyState.style.display = "block";
+      return;
+    }
+    emptyState.style.display = "none";
+
+    redirects.forEach((r, idx) => {
+      const tr = document.createElement("tr");
+      
+      tr.innerHTML = `
+        <td>
+          <input type="text" class="redirect-row-input" value="${r.from}" placeholder="e.g. /old-services-path" oninput="syncRedirectField(${idx}, 'from', this.value)" />
+        </td>
+        <td>
+          <input type="text" class="redirect-row-input" value="${r.to}" placeholder="e.g. /services" oninput="syncRedirectField(${idx}, 'to', this.value)" />
+        </td>
+        <td>
+          <select class="redirect-row-select" onchange="syncRedirectField(${idx}, 'type', this.value)">
+            <option value="301" ${r.type === '301' ? 'selected' : ''}>301 Perm</option>
+            <option value="302" ${r.type === '302' ? 'selected' : ''}>302 Temp</option>
+          </select>
+        </td>
+        <td style="text-align:center;">
+          <input type="checkbox" ${r.active !== false ? 'checked' : ''} onchange="syncRedirectField(${idx}, 'active', this.checked)" style="cursor:pointer;" />
+        </td>
+        <td style="text-align:right;">
+          <button type="button" class="btn-action-sm btn-delete-node" onclick="deleteRedirectRow(${idx})" title="Delete Map">${ICONS.delete}</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  window.syncRedirectField = function(idx, field, val) {
+    redirects[idx][field] = val;
+    validateRedirectLoops();
+  };
+
+  window.deleteRedirectRow = function(idx) {
+    redirects.splice(idx, 1);
+    renderRedirectRows();
+    validateRedirectLoops();
+  };
+
+  function addRedirectRow() {
+    redirects.push({ from: "", to: "", type: "301", active: true });
+    renderRedirectRows();
+    validateRedirectLoops();
+  }
+
+  // Real-time loop checker client-side
+  function validateRedirectLoops() {
+    const alertBanner = document.getElementById("loop-alert-banner");
+    const alertText = document.getElementById("loop-alert-text");
+    if (!alertBanner || !alertText) return;
+
+    alertBanner.style.display = "none";
+    
+    const adj = new Map();
+    for (const r of redirects) {
+      const from = String(r.from || "").trim();
+      const to = String(r.to || "").trim();
+      if (!from || !to) continue;
+      
+      if (from === to) {
+        showLoopAlert(`Cyclical redirect: Path "${from}" redirects to itself.`);
+        return;
+      }
+      
+      if (adj.has(from)) {
+        showLoopAlert(`Conflict: Multiple redirect rules mapped from the same path "${from}".`);
+        return;
+      }
+      
+      adj.set(from, to);
+    }
+
+    // DFS checks
+    for (const [start] of adj.entries()) {
+      const visited = new Set();
+      let curr = start;
+      while (curr) {
+        if (visited.has(curr)) {
+          showLoopAlert(`Redirect Loop detected: ${start} → ... → ${curr} → ${adj.get(curr)}`);
+          return;
+        }
+        visited.add(curr);
+        curr = adj.get(curr);
+      }
+    }
+  }
+
+  function showLoopAlert(message) {
+    const alertBanner = document.getElementById("loop-alert-banner");
+    const alertText = document.getElementById("loop-alert-text");
+    if (alertBanner && alertText) {
+      alertText.innerText = message;
+      alertBanner.style.display = "flex";
+    }
+  }
+
+  // SUBMIT FORM
+  async function submitRedirectsForm() {
+    // Perform loop checks before posting
+    const alertBanner = document.getElementById("loop-alert-banner");
+    if (alertBanner && alertBanner.style.display === "flex") {
+      showToast("Error: Resolve loops and conflicts before saving.");
+      return;
+    }
+
+    const saveBtn = document.getElementById("save-redirects-btn");
+    const saveLabel = saveBtn.querySelector("span");
+    saveBtn.disabled = true;
+    saveLabel.innerText = "Saving...";
+
+    try {
+      // 1. Fetch current settings payload first
+      const getRes = await fetch("/api/settings-update");
+      const getData = await getRes.json();
+      
+      if (!getData.success) {
+        showToast("Error loading settings configuration.");
+        saveBtn.disabled = false;
+        saveLabel.innerText = "Save Redirects";
+        return;
+      }
+
+      // 2. Merge modified redirect mappings
+      const payload = {
+        ...getData.settings,
+        redirects: redirects
+      };
+
+      // 3. POST back to update endpoint
+      const postRes = await fetch("/api/settings-update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const postData = await postRes.json();
+
+      if (postData.success) {
+        showToast("Redirect rules updated successfully!");
+      } else {
+        showToast("Error: " + (postData.error || "Failed to update redirects list."));
+      }
+    } catch(e) {
+      showToast("Network Error during save operation.");
+    } finally {
+      saveBtn.disabled = false;
+      saveLabel.innerText = "Save Redirects";
+    }
+  }
+
+  function showToast(message) {
+    const notify = document.getElementById("toast-notify");
+    const msgSpan = document.getElementById("toast-message");
+    if (notify && msgSpan) {
+      msgSpan.innerText = message;
+      notify.classList.add("active");
+      setTimeout(() => {
+        notify.classList.remove("active");
+      }, 3000);
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", initRedirects);
+  document.addEventListener("astro:page-load", initRedirects);
+  if (document.readyState === "interactive" || document.readyState === "complete") {
+    initRedirects();
+  }
+</script>

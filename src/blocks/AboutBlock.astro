@@ -25,8 +25,8 @@ const { eyebrow, title, description, image, highlights = [] } = Astro.props;
       )}
       <div class="about-right">
         {eyebrow && <span class="eyebrow">{eyebrow}</span>}
-        <h2>{title}</h2>
-        <p class="description">{description}</p>
+        {title && <h2>{title}</h2>}
+        {description && <p class="description">{description}</p>}
         
         {highlights.length > 0 && (
           <ul class="highlights-list">

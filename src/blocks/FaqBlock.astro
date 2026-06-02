@@ -9,26 +9,35 @@ interface Props {
 }
 
 const { eyebrow, title, items = [] } = Astro.props;
+const validItems = (items || []).filter(item => item && (item.question || item.answer));
 ---
 <section class="block-faq">
   <div class="container">
-    <div class="section-head">
-      {eyebrow && <span class="eyebrow">{eyebrow}</span>}
-      <h2>{title}</h2>
-    </div>
+    {(eyebrow || title) && (
+      <div class="section-head">
+        {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+        {title && <h2>{title}</h2>}
+      </div>
+    )}
 
-    <div class="faq-accordion">
-      {items.map((item, index) => (
-        <details class="faq-item" open={index === 0}>
-          <summary class="faq-q">
-            {item.question}
-          </summary>
-          <div class="faq-a">
-            {item.answer}
-          </div>
-        </details>
-      ))}
-    </div>
+    {validItems.length > 0 && (
+      <div class="faq-accordion">
+        {validItems.map((item, index) => (
+          <details class="faq-item" open={index === 0}>
+            {item.question && (
+              <summary class="faq-q">
+                {item.question}
+              </summary>
+            )}
+            {item.answer && (
+              <div class="faq-a">
+                {item.answer}
+              </div>
+            )}
+          </details>
+        ))}
+      </div>
+    )}
   </div>
 </section>
 

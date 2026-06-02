@@ -1,72 +1,52 @@
 [
   {
-    "url": "/uploads/about-hero.png",
-    "title": "about-hero.png",
-    "alt": "about hero",
+    "url": "/uploads/bathroom_repairs-1780383420569.png",
+    "title": "Bathroom Repairs.png",
+    "alt": "Bathroom Repairs",
     "caption": "",
-    "uploadedAt": "2026-06-01T07:50:40.325Z",
-    "size": 41065,
-    "type": "image",
-    "folder": ""
+    "folder": "",
+    "uploadedAt": "2026-06-02T06:57:00.578Z",
+    "size": 2204418,
+    "type": "image"
   },
   {
-    "url": "/uploads/mission.png",
-    "title": "mission.png",
-    "alt": "mission",
+    "url": "/uploads/shower_and_tub_upgrades-1780383421008.png",
+    "title": "Shower and Tub Upgrades.png",
+    "alt": "Shower and Tub Upgrades",
     "caption": "",
-    "uploadedAt": "2026-06-01T07:50:40.325Z",
-    "size": 41065,
-    "type": "image",
-    "folder": ""
+    "folder": "",
+    "uploadedAt": "2026-06-02T06:57:01.014Z",
+    "size": 2359137,
+    "type": "image"
   },
   {
-    "url": "/uploads/team-atul.png",
-    "title": "team-atul.png",
-    "alt": "Chalir",
+    "url": "/uploads/full_bathroom_remodeling-1780383421298.png",
+    "title": "Full Bathroom Remodeling.png",
+    "alt": "Full Bathroom Remodeling",
     "caption": "",
-    "uploadedAt": "2026-06-01T07:50:40.325Z",
-    "size": 41065,
-    "type": "image",
-    "folder": ""
+    "folder": "",
+    "uploadedAt": "2026-06-02T06:57:01.303Z",
+    "size": 2176203,
+    "type": "image"
   },
   {
-    "url": "/uploads/team-placeholder.png",
-    "title": "team-placeholder.png",
-    "alt": "team placeholder",
+    "url": "/uploads/design_and_build_planning-1780383421419.png",
+    "title": "Design and Build Planning.png",
+    "alt": "Design and Build Planning",
     "caption": "",
-    "uploadedAt": "2026-06-01T07:50:40.325Z",
-    "size": 41065,
-    "type": "image",
-    "folder": ""
+    "folder": "",
+    "uploadedAt": "2026-06-02T06:57:01.447Z",
+    "size": 2464807,
+    "type": "image"
   },
   {
-    "url": "/uploads/team-sarah.png",
-    "title": "team-sarah.png",
-    "alt": "team sarah",
+    "url": "/uploads/plumbing_and_fixture_updates-1780383421607.png",
+    "title": "Plumbing and Fixture Updates.png",
+    "alt": "Plumbing and Fixture Updates",
     "caption": "",
-    "uploadedAt": "2026-06-01T07:50:40.325Z",
-    "size": 41065,
-    "type": "image",
-    "folder": ""
-  },
-  {
-    "url": "/uploads/upload-1780304629240-sypyx2.svg",
-    "title": "upload-1780304629240-sypyx2.svg",
-    "alt": "upload 1780304629240 sypyx2",
-    "caption": "",
-    "uploadedAt": "2026-06-01T09:03:49.242Z",
-    "size": 6821,
-    "type": "svg",
-    "folder": ""
-  },
-  {
-    "url": "/uploads/vision.png",
-    "title": "vision.png",
-    "alt": "vision",
-    "caption": "",
-    "uploadedAt": "2026-06-01T07:50:40.325Z",
-    "size": 41065,
-    "type": "image",
-    "folder": ""
+    "folder": "",
+    "uploadedAt": "2026-06-02T06:57:01.612Z",
+    "size": 1715171,
+    "type": "image"
   }
 ]

@@ -42,9 +42,16 @@ function stringifyMarkdown(data: any, body: string = "") {
   return `---\n${yamlStr}---\n\n${body}`;
 }
 
-import { BLOCK_REGISTRY } from "../../block-registry/blocks";
+// Load section definitions dynamically (replaces BLOCK_REGISTRY)
+function loadDefinitions(): any[] {
+  try {
+    const p = path.resolve("src/data/section-definitions.json");
+    if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, "utf-8"));
+  } catch (e) {}
+  return [];
+}
 
-// Backend validation for page builder fields (Dynamically driven by BLOCK_REGISTRY)
+// Backend validation for page builder fields (Dynamically driven by definitions)
 function validatePageData(data: any): Record<string, string> {
   const errors: Record<string, string> = {};
 
@@ -83,51 +90,78 @@ function validatePageData(data: any): Record<string, string> {
         return;
       }
 
-      const config = BLOCK_REGISTRY.find(b => b.type === block.type);
+      const definitions = loadDefinitions();
+      const config = definitions.find((d: any) => d.key === block.type);
       if (!config) {
-        errors[`${prefix}.type`] = `Block #${idx + 1} has an unsupported block type '${block.type}'`;
+        // Don't block save for unknown types — definitions may have been deleted
+        // errors[`${prefix}.type`] = `Block #${idx + 1} has an unsupported block type '${block.type}'`;
         return;
       }
 
-      // Loop through registry field schema
-      config.fields.forEach(field => {
-        const val = block[field.name];
-
-        if (field.required) {
-          if (val === undefined || val === null || (typeof val === "string" && !val.trim())) {
-            errors[`${prefix}.${field.name}`] = `${config.name} #${idx + 1} ${field.label} is required`;
-          }
-        }
-
-        // Nested lists validation
-        if (field.type === "list" && field.required) {
-          if (!Array.isArray(val) || val.length === 0 || val.every(v => typeof v === "string" && !v.trim())) {
-            errors[`${prefix}.${field.name}`] = `${config.name} #${idx + 1} ${field.label} list cannot be empty`;
-          }
-        }
-
-        // Repeaters validation
-        if (field.type === "repeater" && Array.isArray(val)) {
-          if (field.required && val.length === 0) {
-            errors[`${prefix}.${field.name}`] = `${config.name} #${idx + 1} ${field.label} requires at least one item`;
-          } else {
-            val.forEach((item: any, itemIdx: number) => {
-              field.repeaterFields?.forEach(subField => {
-                const subVal = item[subField.name];
-                if (subField.required) {
-                  if (subVal === undefined || subVal === null || (typeof subVal === "string" && !subVal.trim())) {
-                    errors[`${prefix}.${field.name}.${itemIdx}.${subField.name}`] = `${config.name} #${idx + 1} Item #${itemIdx + 1} ${subField.label} is required`;
-                  }
-                }
-              });
-            });
-          }
-        }
-      });
+      // Skip field-level required validations to allow partial data saves.
+      // If data exists, the frontend component will render it, else it will skip gracefully.
     });
   }
 
   return errors;
+}
+
+// Decompose block content and save it to sections files
+function splitBlocksToSections(data: any) {
+  if (data.blocks && Array.isArray(data.blocks)) {
+    const pageSlug = data.slug || "index";
+    const compiledBlocks = [] as any[];
+    const sectionsDir = path.resolve("src/content/sections");
+    if (!fs.existsSync(sectionsDir)) {
+      fs.mkdirSync(sectionsDir, { recursive: true });
+    }
+
+    for (let idx = 0; idx < data.blocks.length; idx++) {
+      const block = data.blocks[idx];
+      let sectionId = block.sectionId;
+
+      if (!sectionId) {
+        sectionId = `${block.type}-${pageSlug}`;
+        let count = 1;
+        let testId = sectionId;
+        while (
+          compiledBlocks.some(b => b.sectionId === testId) ||
+          fs.existsSync(path.join(sectionsDir, `${testId}.md`))
+        ) {
+          testId = `${sectionId}-${count}`;
+          count++;
+        }
+        sectionId = testId;
+      }
+
+      // Compile block content properties based on definitions fields
+      const definitions = loadDefinitions();
+      const blockConfig = definitions.find((d: any) => d.key === block.type);
+      const sectionContentData = {
+        type: block.type
+      } as any;
+
+      if (blockConfig) {
+        blockConfig.fields.forEach(field => {
+          if (block[field.name] !== undefined) {
+            sectionContentData[field.name] = block[field.name];
+          }
+        });
+      }
+
+      // Write section file
+      const sectionFilePath = path.join(sectionsDir, `${sectionId}.md`);
+      const sectionFileContent = `---\n${stringify(sectionContentData)}---\n`;
+      fs.writeFileSync(sectionFilePath, sectionFileContent, "utf-8");
+
+      compiledBlocks.push({
+        type: block.type,
+        sectionId: sectionId
+      });
+    }
+
+    data.blocks = compiledBlocks;
+  }
 }
 
 // API Routes
@@ -175,14 +209,10 @@ export const GET: APIRoute = async ({ url, cookies }) => {
           headers: { "Content-Type": "application/json" },
         });
       }
-      let filePath = "";
-      if (slug === "home") {
-        filePath = path.resolve("src/content/home/home.md");
-      } else if (slug === "about") {
-        filePath = path.resolve("src/content/about/about.md");
-      } else {
-        filePath = path.join(pagesDir, `${slug}.md`);
-      }
+      let targetSlug = slug;
+      if (slug === "home") targetSlug = "index";
+      if (slug === "about") targetSlug = "about-us";
+      const filePath = path.join(pagesDir, `${targetSlug}.md`);
       
       if (!fs.existsSync(filePath)) {
         return new Response(JSON.stringify({ success: false, error: "Page not found" }), {
@@ -192,6 +222,36 @@ export const GET: APIRoute = async ({ url, cookies }) => {
       }
       const content = fs.readFileSync(filePath, "utf-8");
       const { data, body } = parseMarkdown(content);
+
+      // Resolve section blocks content for the editor client
+      if (data && Array.isArray(data.blocks)) {
+        data.blocks = data.blocks.map((block: any) => {
+          if (block.sectionId) {
+            const secPath = path.resolve("src/content/sections", `${block.sectionId}.md`);
+            if (fs.existsSync(secPath)) {
+              const secContent = fs.readFileSync(secPath, "utf-8");
+              const { data: secData } = parseMarkdown(secContent);
+              return {
+                ...block,
+                ...secData
+              };
+            } else {
+              // Merge default values from definitions registry
+              const definitions = loadDefinitions();
+              const config = definitions.find((d: any) => d.key === block.type);
+              const defaultValues = config ? Object.fromEntries(
+                (config.fields || []).map((f: any) => [f.name, f.default !== undefined ? f.default : ""])
+              ) : {};
+              return {
+                ...block,
+                ...defaultValues
+              };
+            }
+          }
+          return block;
+        });
+      }
+
       return new Response(JSON.stringify({ success: true, page: data, body }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -298,6 +358,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       );
     }
 
+    // Split page builder blocks into separate sections contents
+    splitBlocksToSections(data);
+
     const fileContent = stringifyMarkdown(data, data.body || "");
     fs.writeFileSync(filePath, fileContent, "utf-8");
 
@@ -348,7 +411,7 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    // Backup revision
+    // Backup revision of original page structure
     const existingContent = fs.readFileSync(originalFilePath, "utf-8");
     const pageRevDir = path.join(revisionsDir, originalSlug);
     if (!fs.existsSync(pageRevDir)) {
@@ -359,6 +422,9 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
 
     // Clean up data to avoid storing originalSlug
     const { originalSlug: _, ...cleanedData } = data;
+
+    // Split page builder blocks into separate sections contents
+    splitBlocksToSections(cleanedData);
 
     const fileContent = stringifyMarkdown(cleanedData, data.body || "");
 
@@ -415,7 +481,47 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    // Delete main file
+    // Read page to find associated blocks and delete their sections
+    const pageContent = fs.readFileSync(filePath, "utf-8");
+    const { data } = parseMarkdown(pageContent);
+
+    // Helper to check if sectionId is referenced in any other page
+    const isSectionUsedElsewhere = (sectionId: string, currentSlug: string) => {
+      if (!fs.existsSync(pagesDir)) return false;
+      const files = fs.readdirSync(pagesDir).filter(f => f.endsWith(".md"));
+      for (const file of files) {
+        const fileSlug = path.basename(file, ".md");
+        if (fileSlug === currentSlug) continue; // skip page currently being deleted
+        try {
+          const pagePath = path.join(pagesDir, file);
+          const pageContentCheck = fs.readFileSync(pagePath, "utf-8");
+          const { data: pageData } = parseMarkdown(pageContentCheck);
+          if (pageData && Array.isArray(pageData.blocks)) {
+            if (pageData.blocks.some((b: any) => b.sectionId === sectionId)) {
+              return true;
+            }
+          }
+        } catch (e) {
+          console.error("Error checking section usage in file:", file, e);
+        }
+      }
+      return false;
+    };
+
+    if (data && Array.isArray(data.blocks)) {
+      data.blocks.forEach((block: any) => {
+        if (block.sectionId) {
+          if (!isSectionUsedElsewhere(block.sectionId, slug)) {
+            const secFilePath = path.resolve("src/content/sections", `${block.sectionId}.md`);
+            if (fs.existsSync(secFilePath)) {
+              fs.unlinkSync(secFilePath);
+            }
+          }
+        }
+      });
+    }
+
+    // Delete main page file
     fs.unlinkSync(filePath);
 
     // Clean up revision folder if exists

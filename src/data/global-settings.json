@@ -37,10 +37,27 @@
       "children": []
     }
   ],
+  "footerNavigation": [
+    {
+      "text": "Home",
+      "link": "/",
+      "newTab": false
+    },
+    {
+      "text": "About Us",
+      "link": "/about-us",
+      "newTab": false
+    },
+    {
+      "text": "Contact",
+      "link": "/contact",
+      "newTab": false
+    }
+  ],
   "redirects": [
     {
-      "from": "aboutus",
-      "to": "about-us",
+      "from": "/aboutus",
+      "to": "/about-us",
       "type": "301",
       "active": true
     }

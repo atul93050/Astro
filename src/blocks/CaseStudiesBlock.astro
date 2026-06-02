@@ -13,37 +13,44 @@ interface Props {
 }
 
 const { eyebrow, title, items = [] } = Astro.props;
+const validItems = (items || []).filter(item => item && (item.title || item.image || item.client));
 ---
 <section class="block-case-studies">
   <div class="container">
-    <div class="section-head">
-      {eyebrow && <span class="eyebrow">{eyebrow}</span>}
-      <h2>{title}</h2>
-    </div>
+    {(eyebrow || title) && (
+      <div class="section-head">
+        {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+        {title && <h2>{title}</h2>}
+      </div>
+    )}
 
-    <div class="cases-grid">
-      {items.map((item) => (
-        <div class="case-card">
-          <div class="case-image-box">
-            <img src={item.image} alt={item.title} class="case-img" />
-            {item.category && <span class="category-badge">{item.category}</span>}
-          </div>
-          <div class="case-content">
-            <span class="client-name">{item.client}</span>
-            <h3>{item.title}</h3>
-            <p class="excerpt">{item.excerpt}</p>
-            {item.link && (
-              <a href={item.link} class="btn-link">
-                <span>View Full Study</span>
-                <svg class="arrow-svg" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
-                </svg>
-              </a>
+    {validItems.length > 0 && (
+      <div class="cases-grid">
+        {validItems.map((item) => (
+          <div class="case-card">
+            {item.image && (
+              <div class="case-image-box">
+                <img src={item.image} alt={item.title || "Case Study Image"} class="case-img" />
+                {item.category && <span class="category-badge">{item.category}</span>}
+              </div>
             )}
+            <div class="case-content">
+              {item.client && <span class="client-name">{item.client}</span>}
+              {item.title && <h3>{item.title}</h3>}
+              {item.excerpt && <p class="excerpt">{item.excerpt}</p>}
+              {item.link && (
+                <a href={item.link} class="btn-link">
+                  <span>View Full Study</span>
+                  <svg class="arrow-svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                  </svg>
+                </a>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+    )}
   </div>
 </section>
 

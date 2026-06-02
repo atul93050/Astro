@@ -1,0 +1,960 @@
+---
+import AdminLayout from "../../../layouts/admin/AdminLayout.astro";
+import fs from "node:fs";
+import path from "node:path";
+import { parse } from "yaml";
+
+export const prerender = false;
+
+// 1. Load section definitions registry
+const definitionsPath = path.resolve("src/data/section-definitions.json");
+let allDefinitions: any[] = [];
+try {
+  if (fs.existsSync(definitionsPath)) {
+    allDefinitions = JSON.parse(fs.readFileSync(definitionsPath, "utf-8"));
+  }
+} catch (e) {
+  console.error("Failed to load section definitions:", e);
+}
+
+// 2. Fetch section instance data
+const id = Astro.url.searchParams.get("id") || "";
+let sectionData: any = null;
+let blockConfig: any = null;
+
+if (!id) {
+  return Astro.redirect("/admin/sections");
+}
+
+const filePath = path.resolve("src/content/sections", `${id}.md`);
+if (fs.existsSync(filePath)) {
+  const content = fs.readFileSync(filePath, "utf-8");
+  const parts = content.split(/^---$/m);
+  if (parts.length >= 3) {
+    try {
+      sectionData = parse(parts[1]);
+      // Resolve schema from dynamic definitions registry (not BLOCK_REGISTRY)
+      blockConfig = allDefinitions.find((d: any) => d.key === sectionData.type) || null;
+    } catch (e) {
+      console.error("YAML Parse error in section editor:", e);
+    }
+  }
+}
+
+if (!sectionData) {
+  return new Response("Section Not Found", { status: 404 });
+}
+---
+
+<AdminLayout title={`Edit Section: ${sectionData.name || id}`}>
+
+  <div class="editor-header-bar">
+    <div class="header-back-wrap">
+      <a href="/admin/sections" class="back-link">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        <span>Back to Sections</span>
+      </a>
+      <h2>Edit Section Content: {sectionData.name || id}</h2>
+    </div>
+    
+    <div class="editor-action-buttons">
+      <button class="btn btn-outline btn-sm" id="preview-section-btn">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        <span>Live Preview</span>
+      </button>
+      <button class="btn btn-primary" id="save-section-btn">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+        <span id="save-btn-label">Save Changes</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="editor-layout-single">
+    
+    <form id="section-editor-form" onsubmit="return false;">
+      
+      <!-- Basic Config Card -->
+      <div class="form-card">
+        <div class="card-header">
+          <h3>Section Global Details</h3>
+        </div>
+        <div class="card-body">
+          <div class="details-flex-container">
+            <!-- Fields Column -->
+            <div class="details-fields-col">
+              <div class="form-grid">
+                <div class="form-group col-6">
+                  <label for="section-name">Section Display Name <span class="required">*</span></label>
+                  <input type="text" id="section-name" value={sectionData.name || id} required />
+                </div>
+                
+                <div class="form-group col-6">
+                  <label for="section-status">Status</label>
+                  <select id="section-status">
+                    <option value="published" selected={sectionData.status === 'published'}>Published</option>
+                    <option value="draft" selected={sectionData.status === 'draft'}>Draft</option>
+                    <option value="archived" selected={sectionData.status === 'archived'}>Archived</option>
+                  </select>
+                </div>
+                
+                <div class="form-group col-6">
+                  <label>Block Component Template</label>
+                  <input type="text" value={blockConfig ? blockConfig.name : sectionData.type} disabled style="opacity: 0.65; cursor: not-allowed;" />
+                </div>
+
+                <div class="form-group col-6">
+                  <label for="section-preview-image">Section Preview Image</label>
+                  <div class="input-picker-wrap">
+                    <input type="text" id="section-preview-image" value={sectionData.previewImage || ""} placeholder="e.g. /images/previews/hero.png" oninput="syncPreviewImage(this.value)" />
+                    <button type="button" class="btn btn-outline btn-sm media-picker-trigger" data-target="section-preview-image">Pick</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Thumbnail Preview Column -->
+            <div class="details-thumbnail-col">
+              <label>Visual Representation Thumbnail</label>
+              <div id="section-thumbnail-container" style="width: 100%; aspect-ratio: 16/10; border-radius: 8px; border: 1px dashed var(--border-color); background: var(--bg-base); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;">
+                {sectionData.previewImage ? (
+                  <img id="section-thumbnail-img" src={sectionData.previewImage} alt="Section Preview" style="width: 100%; height: 100%; object-fit: contain;" />
+                ) : (
+                  <div id="section-thumbnail-placeholder" style="color: var(--text-dim); text-align: center; padding: 1rem; font-size: 0.8rem;">
+                    <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 0.5rem; opacity: 0.5; display: inline-block;">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                      <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                    <div>No preview image assigned.</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Decoupled fields card -->
+      <div class="form-card" style="margin-top:1.5rem;">
+        <div class="card-header">
+          <h3>Field Properties</h3>
+        </div>
+        <div class="card-body">
+          <div class="form-grid" id="fields-container">
+            <!-- Dynamic fields HTML forms loaded via client JS script -->
+          </div>
+        </div>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- Reusable Media Library Selector Modal Dialog -->
+  <div class="confirm-modal-overlay" id="media-picker-overlay">
+    <div class="confirm-modal media-modal" style="max-width:650px;">
+      <div class="confirm-modal-header">
+        <h4>Select Asset from Media Catalog</h4>
+        <button class="close-modal-btn" id="close-media-modal">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="media-modal-actions">
+        <form id="media-upload-form" onsubmit="return false;" style="display:flex; gap:0.5rem; width:100%;">
+          <input type="file" id="media-upload-file" accept="image/*" style="display:none;" />
+          <button type="button" class="btn btn-outline btn-sm" id="trigger-file-select" style="flex:1;">
+            Choose Upload File
+          </button>
+          <button type="button" class="btn btn-primary btn-sm" id="upload-media-btn" disabled>
+            Upload
+          </button>
+        </form>
+      </div>
+      <div class="media-picker-grid" id="media-picker-grid" style="max-height:280px; overflow-y:auto; overflow-x:hidden;">
+        <p class="media-empty">No catalog images. Upload a new asset.</p>
+      </div>
+      <div class="confirm-modal-footer">
+        <button class="btn btn-outline" id="close-media-picker-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live Previews Dialog Viewports -->
+  <div class="preview-overlay" id="preview-overlay">
+    <div class="preview-modal-wrap">
+      <div class="preview-modal-top">
+        <div class="preview-modal-title">
+          <h4>Preview Section: {sectionData.name || id}</h4>
+        </div>
+        <div class="preview-device-selectors">
+          <button type="button" class="device-btn active" data-device="desktop">Desktop</button>
+          <button type="button" class="device-btn" data-device="tablet">Tablet</button>
+          <button type="button" class="device-btn" data-device="mobile">Mobile</button>
+        </div>
+        <button class="close-modal-btn" id="close-preview-overlay">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="preview-modal-body-frame">
+        <div class="device-viewport desktop" id="preview-device-viewport">
+          <iframe id="preview-iframe" src="about:blank"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Banner -->
+  <div class="toast-notification" id="toast-notify">
+    <div class="toast-content">
+      <span class="toast-message" id="toast-message">Section saved successfully!</span>
+    </div>
+  </div>
+
+</AdminLayout>
+
+<style is:global>
+  .editor-header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    gap: 1.5rem;
+  }
+  .header-back-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  .back-link:hover {
+    color: var(--primary);
+  }
+  .editor-header-bar h2 {
+    font-size: 1.35rem;
+    font-weight: 700;
+  }
+  .editor-action-buttons {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .editor-layout-single {
+    margin-bottom: 5rem;
+  }
+
+  .form-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 15px var(--color-shadow);
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 1.15rem 1.5rem;
+    border-bottom: 1px solid var(--bg-surface-border);
+    background: rgba(156, 163, 175, 0.02);
+  }
+  .card-header h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+  .card-body {
+    padding: 1.5rem;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 1.25rem;
+  }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .col-12 {
+    grid-column: span 12;
+  }
+  .col-6 {
+    grid-column: span 6;
+  }
+  .col-4 {
+    grid-column: span 4;
+  }
+
+  label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+  .required {
+    color: var(--color-error);
+    margin-left: 2px;
+  }
+  input[type="text"], input[type="number"], select, textarea {
+    padding: 0.65rem 0.85rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-main);
+    font-size: 0.9rem;
+    outline: none;
+    transition: var(--transition);
+    width: 100%;
+    box-sizing: border-box;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  }
+
+  .input-picker-wrap {
+    display: flex;
+    gap: 0.4rem;
+  }
+  .input-picker-wrap input {
+    flex: 1;
+  }
+
+  /* Repeaters sections styles */
+  .repeater-section {
+    grid-column: span 12;
+    margin-top: 0.5rem;
+    background: rgba(156, 163, 175, 0.015);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+  }
+  .repeater-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+  }
+  .repeater-header h5 {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .repeater-items-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .repeater-item-row {
+    background: var(--bg-surface-solid);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.85rem;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+  .repeater-item-actions {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+  }
+
+  .btn-icon-sm {
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+  }
+  .btn-icon-sm:hover {
+    color: var(--text-main);
+    background: rgba(156, 163, 175, 0.08);
+  }
+  .btn-delete-block:hover {
+    color: var(--color-error);
+    background: rgba(239, 68, 68, 0.08);
+    border-color: var(--color-error);
+  }
+
+  /* Responsive pre-views screen wraps */
+  .preview-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(8, 12, 20, 0.8);
+    backdrop-filter: blur(10px);
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s ease;
+  }
+  .preview-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .preview-modal-wrap {
+    width: 90vw;
+    height: 90vh;
+    background: var(--bg-surface-solid);
+    border: 1px solid var(--bg-surface-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .preview-modal-top {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--bg-surface-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(156,163,175,0.015);
+  }
+  .preview-device-selectors {
+    display: flex;
+    gap: 0.25rem;
+    background: var(--bg-base);
+    padding: 0.25rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+  }
+  .device-btn {
+    padding: 0.35rem 0.85rem;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .device-btn.active {
+    background: var(--bg-surface);
+    color: var(--primary);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .preview-modal-body-frame {
+    flex: 1;
+    background: #05080E;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    overflow: hidden;
+  }
+  .device-viewport {
+    height: 100%;
+    transition: width 0.3s ease;
+    border-radius: 12px;
+    border: 8px solid #1C2333;
+    background: white;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+  .device-viewport.desktop { width: 100%; max-width: 1200px; }
+  .device-viewport.tablet { width: 768px; }
+  .device-viewport.mobile { width: 375px; }
+  .device-viewport iframe { width: 100%; height: 100%; border: none; background: white; }
+
+  /* Two column global details card styling */
+  .details-flex-container {
+    display: flex;
+    gap: 2rem;
+  }
+  .details-fields-col {
+    flex: 2;
+    min-width: 320px;
+  }
+  .details-thumbnail-col {
+    flex: 1;
+    min-width: 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    justify-content: center;
+    border-left: 1px solid var(--border-color);
+    padding-left: 2rem;
+  }
+  @media (max-width: 768px) {
+    .details-flex-container {
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .details-thumbnail-col {
+      border-left: none;
+      padding-left: 0;
+      border-top: 1px solid var(--border-color);
+      padding-top: 1.5rem;
+    }
+  }
+</style>
+
+<script is:inline define:vars={{ sectionData, id, blockConfig }}>
+  let block = sectionData || {};
+  let activeMediaPickerTarget = "";
+
+  const ICONS = {
+    delete: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`
+  };
+
+  function initSectionEditor() {
+    renderFields();
+    setupEventListeners();
+  }
+
+  function renderFields() {
+    const container = document.getElementById("fields-container");
+    if (!container || !blockConfig) return;
+    container.innerHTML = "";
+
+    blockConfig.fields.forEach(field => {
+      const val = block[field.name] !== undefined ? block[field.name] : (field.default !== undefined ? field.default : "");
+      const isRequired = field.required ? '<span class="required">*</span>' : '';
+      
+      let inputFieldHtml = "";
+      
+      if (field.type === "text") {
+        inputFieldHtml = `<input type="text" value="${val}" oninput="syncField('${field.name}', this.value)" placeholder="${field.label}" ${field.required ? 'required' : ''} />`;
+      } else if (field.type === "number") {
+        inputFieldHtml = `<input type="number" value="${val}" oninput="syncField('${field.name}', parseFloat(this.value) || 0)" placeholder="${field.label}" ${field.required ? 'required' : ''} />`;
+      } else if (field.type === "textarea") {
+        inputFieldHtml = `<textarea rows="4" oninput="syncField('${field.name}', this.value)" placeholder="${field.label}" ${field.required ? 'required' : ''}>${val}</textarea>`;
+      } else if (field.type === "boolean") {
+        inputFieldHtml = `
+          <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.25rem;">
+            <input type="checkbox" id="field-${field.name}" ${val ? 'checked' : ''} onchange="syncField('${field.name}', this.checked)" style="width:auto;" />
+            <label for="field-${field.name}" style="font-weight:500; cursor:pointer;">${field.label}</label>
+          </div>
+        `;
+      } else if (field.type === "select") {
+        const options = (field.options || []).map(opt => `
+          <option value="${opt}" ${val === opt ? 'selected' : ''}>${opt.charAt(0).toUpperCase() + opt.slice(1)}</option>
+        `).join('');
+        inputFieldHtml = `<select onchange="syncField('${field.name}', this.value)">${options}</select>`;
+      } else if (field.type === "image") {
+        inputFieldHtml = `
+          <div class="input-picker-wrap">
+            <input type="text" id="field-${field.name}" value="${val}" oninput="syncField('${field.name}', this.value)" placeholder="Image relative path" />
+            <button type="button" class="btn btn-outline btn-sm media-picker-trigger" data-target="field-${field.name}">Pick</button>
+          </div>
+        `;
+      } else if (field.type === "list") {
+        const items = Array.isArray(val) ? val : [];
+        inputFieldHtml = `
+          <div class="repeater-section">
+            <div class="repeater-header">
+              <h5>${field.label}</h5>
+              <button type="button" class="btn btn-outline btn-sm" onclick="addListStringItem('${field.name}')">+ Add Item</button>
+            </div>
+            <div class="repeater-items-wrap">
+              ${items.map((item, itemIdx) => `
+                <div style="display:flex; gap:0.5rem;">
+                  <input type="text" value="${item}" oninput="syncListStringField('${field.name}', ${itemIdx}, this.value)" style="flex:1;" />
+                  <button type="button" class="btn-icon-sm btn-delete-block" onclick="removeListStringItem('${field.name}', ${itemIdx})">${ICONS.delete}</button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      } else if (field.type === "repeater") {
+        const items = Array.isArray(val) ? val : [];
+        const fieldsSchemaString = JSON.stringify(field.repeaterFields || []).replace(/"/g, '&quot;');
+        
+        inputFieldHtml = `
+          <div class="repeater-section">
+            <div class="repeater-header">
+              <h5>${field.label}</h5>
+              <button type="button" class="btn btn-outline btn-sm" onclick='addRegistryRepeaterItem("${field.name}", ${fieldsSchemaString})'>+ Add Item</button>
+            </div>
+            <div class="repeater-items-wrap">
+              ${items.map((item, itemIdx) => {
+                let subFieldsHtml = "";
+                
+                if (field.repeaterFields) {
+                  field.repeaterFields.forEach(subField => {
+                    const subVal = item[subField.name] !== undefined ? item[subField.name] : "";
+                    const isSubRequired = subField.required ? '<span class="required">*</span>' : '';
+                    
+                    let subInputHtml = "";
+                    const subId = `field-${field.name}-${itemIdx}-${subField.name}`;
+                    
+                    if (subField.type === "text") {
+                      subInputHtml = `<input type="text" value="${subVal}" oninput="syncRepeaterRegistryField('${field.name}', ${itemIdx}, '${subField.name}', this.value)" ${subField.required ? 'required' : ''} />`;
+                    } else if (subField.type === "number") {
+                      subInputHtml = `<input type="number" value="${subVal}" oninput="syncRepeaterRegistryField('${field.name}', ${itemIdx}, '${subField.name}', parseFloat(this.value) || 0)" ${subField.required ? 'required' : ''} />`;
+                    } else if (subField.type === "textarea") {
+                      subInputHtml = `<textarea rows="2" oninput="syncRepeaterRegistryField('${field.name}', ${itemIdx}, '${subField.name}', this.value)" ${subField.required ? 'required' : ''}>${subVal}</textarea>`;
+                    } else if (subField.type === "boolean") {
+                      subInputHtml = `
+                        <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.25rem;">
+                          <input type="checkbox" id="${subId}" ${subVal ? 'checked' : ''} onchange="syncRepeaterRegistryField('${field.name}', ${itemIdx}, '${subField.name}', this.checked)" style="width:auto;" />
+                          <label for="${subId}" style="font-weight:500; cursor:pointer;">${subField.label}</label>
+                        </div>
+                      `;
+                    } else if (subField.type === "select") {
+                      const subOpts = (subField.options || []).map(opt => `
+                        <option value="${opt}" ${subVal === opt ? 'selected' : ''}>${opt.charAt(0).toUpperCase() + opt.slice(1)}</option>
+                      `).join('');
+                      subInputHtml = `<select onchange="syncRepeaterRegistryField('${field.name}', ${itemIdx}, '${subField.name}', this.value)">${subOpts}</select>`;
+                    } else if (subField.type === "image") {
+                      subInputHtml = `
+                        <div class="input-picker-wrap">
+                          <input type="text" id="${subId}" value="${subVal}" oninput="syncRepeaterRegistryField('${field.name}', ${itemIdx}, '${subField.name}', this.value)" />
+                          <button type="button" class="btn btn-outline btn-sm media-picker-trigger" data-target="${subId}">Pick</button>
+                        </div>
+                      `;
+                    } else if (subField.type === "list") {
+                      const subItems = Array.isArray(subVal) ? subVal : [];
+                      subInputHtml = `
+                        <div class="repeater-section">
+                          <div class="repeater-header">
+                            <h5>${subField.label}</h5>
+                            <button type="button" class="btn btn-outline btn-sm" onclick="addNestedListStringItem('${field.name}', ${itemIdx}, '${subField.name}')">+ Add Sub-Item</button>
+                          </div>
+                          <div class="repeater-items-wrap">
+                            ${subItems.map((sItem, sItemIdx) => `
+                              <div style="display:flex; gap:0.5rem;">
+                                <input type="text" value="${sItem}" oninput="syncNestedListStringField('${field.name}', ${itemIdx}, '${subField.name}', ${sItemIdx}, this.value)" style="flex:1;" />
+                                <button type="button" class="btn-icon-sm btn-delete-block" onclick="removeNestedListStringItem('${field.name}', ${itemIdx}, '${subField.name}', ${sItemIdx})">${ICONS.delete}</button>
+                              </div>
+                            `).join('')}
+                          </div>
+                        </div>
+                      `;
+                    }
+                    
+                    subFieldsHtml += `
+                      <div class="form-group col-12" style="margin-top:0.4rem;">
+                        <label>${subField.label} ${isSubRequired}</label>
+                        ${subInputHtml}
+                      </div>
+                    `;
+                  });
+                }
+                
+                return `
+                  <div class="repeater-item-row">
+                    <div class="repeater-item-actions">
+                      <button type="button" class="btn-icon-sm btn-delete-block" onclick="removeRepeaterRegistryItem('${field.name}', ${itemIdx})">${ICONS.delete}</button>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:0.5rem; width:100%; padding-right:2rem;">
+                      ${subFieldsHtml}
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }
+      
+      const formGroup = document.createElement("div");
+      formGroup.className = `form-group ${field.type === 'repeater' || field.type === 'list' || field.type === 'textarea' ? 'col-12' : 'col-6'}`;
+      formGroup.innerHTML = `
+        <label>${field.label} ${isRequired}</label>
+        ${inputFieldHtml}
+      `;
+      container.appendChild(formGroup);
+    });
+  }
+
+  // Value syncer functions
+  window.syncField = function(name, value) {
+    block[name] = value;
+  };
+
+  window.syncPreviewImage = function(value) {
+    block.previewImage = value;
+    const thumbnailContainer = document.getElementById("section-thumbnail-container");
+    if (!thumbnailContainer) return;
+    
+    if (value) {
+      thumbnailContainer.innerHTML = `<img id="section-thumbnail-img" src="${value}" alt="Section Preview" style="width: 100%; height: 100%; object-fit: contain;" />`;
+    } else {
+      thumbnailContainer.innerHTML = `
+        <div id="section-thumbnail-placeholder" style="color: var(--text-dim); text-align: center; padding: 1rem; font-size: 0.8rem;">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 0.5rem; opacity: 0.5; display: inline-block;">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+          </svg>
+          <div>No preview image assigned.</div>
+        </div>
+      `;
+    }
+  };
+
+  window.syncListStringField = function(fieldName, index, val) {
+    if (!block[fieldName]) block[fieldName] = [];
+    block[fieldName][index] = val;
+  };
+  window.addListStringItem = function(fieldName) {
+    if (!block[fieldName]) block[fieldName] = [];
+    block[fieldName].push("");
+    renderFields();
+  };
+  window.removeListStringItem = function(fieldName, index) {
+    block[fieldName].splice(index, 1);
+    renderFields();
+  };
+
+  window.syncRepeaterRegistryField = function(fieldName, itemIdx, subName, val) {
+    block[fieldName][itemIdx][subName] = val;
+  };
+  window.addRegistryRepeaterItem = function(fieldName, fieldsSchema) {
+    if (!block[fieldName]) block[fieldName] = [];
+    const item = {};
+    fieldsSchema.forEach(f => {
+      item[f.name] = f.default !== undefined ? f.default : "";
+    });
+    block[fieldName].push(item);
+    renderFields();
+  };
+  window.removeRepeaterRegistryItem = function(fieldName, index) {
+    block[fieldName].splice(index, 1);
+    renderFields();
+  };
+
+  window.syncNestedListStringField = function(fieldName, itemIdx, subFieldName, subItemIdx, val) {
+    block[fieldName][itemIdx][subFieldName][subItemIdx] = val;
+  };
+  window.addNestedListStringItem = function(fieldName, itemIdx, subFieldName) {
+    if (!block[fieldName][itemIdx][subFieldName]) block[fieldName][itemIdx][subFieldName] = [];
+    block[fieldName][itemIdx][subFieldName].push("");
+    renderFields();
+  };
+  window.removeNestedListStringItem = function(fieldName, itemIdx, subFieldName, subItemIdx) {
+    block[fieldName][itemIdx][subFieldName].splice(subItemIdx, 1);
+    renderFields();
+  };
+
+  // Event handler setups
+  function setupEventListeners() {
+    const saveBtn = document.getElementById("save-section-btn");
+    if (saveBtn) {
+      saveBtn.addEventListener("click", submitSectionForm);
+    }
+
+    const previewBtn = document.getElementById("preview-section-btn");
+    if (previewBtn) {
+      previewBtn.addEventListener("click", () => {
+        document.getElementById("preview-iframe").src = `/admin/sections/preview?id=${id}`;
+        document.getElementById("preview-overlay").classList.add("active");
+      });
+    }
+
+    const closePreviewBtn = document.getElementById("close-preview-overlay");
+    if (closePreviewBtn) {
+      closePreviewBtn.addEventListener("click", () => {
+        document.getElementById("preview-overlay").classList.remove("active");
+        document.getElementById("preview-iframe").src = "about:blank";
+      });
+    }
+
+    const deviceButtons = document.querySelectorAll(".device-btn");
+    const iframeWrapper = document.getElementById("preview-device-viewport");
+    deviceButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        deviceButtons.forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        
+        const device = btn.getAttribute("data-device");
+        iframeWrapper.className = `device-viewport ${device}`;
+      });
+    });
+
+    // Media library overlays
+    const closePickerX = document.getElementById("close-media-modal");
+    const closePickerBtn = document.getElementById("close-media-picker-btn");
+    if (closePickerX) closePickerX.addEventListener("click", hideMediaModal);
+    if (closePickerBtn) closePickerBtn.addEventListener("click", hideMediaModal);
+
+    const fileSelectBtn = document.getElementById("trigger-file-select");
+    const fileInput = document.getElementById("media-upload-file");
+    const uploadBtn = document.getElementById("upload-media-btn");
+
+    if (fileSelectBtn && fileInput) {
+      fileSelectBtn.addEventListener("click", () => fileInput.click());
+      fileInput.addEventListener("change", () => {
+        if (fileInput.files.length > 0) {
+          fileSelectBtn.innerText = fileInput.files[0].name;
+          if (uploadBtn) uploadBtn.disabled = false;
+        } else {
+          fileSelectBtn.innerText = "Choose Upload File";
+          if (uploadBtn) uploadBtn.disabled = true;
+        }
+      });
+    }
+
+    if (uploadBtn) uploadBtn.addEventListener("click", uploadMediaFile);
+
+    document.addEventListener("click", (e) => {
+      if (e.target && e.target.classList.contains("media-picker-trigger")) {
+        const targetId = e.target.getAttribute("data-target");
+        openMediaModal(targetId);
+      }
+    });
+  }
+
+  // Media Library helpers
+  function openMediaModal(targetId) {
+    activeMediaPickerTarget = targetId;
+    document.getElementById("media-picker-overlay").classList.add("active");
+    loadMediaCatalogGrid();
+  }
+  function hideMediaModal() {
+    document.getElementById("media-picker-overlay").classList.remove("active");
+    activeMediaPickerTarget = "";
+  }
+  async function loadMediaCatalogGrid() {
+    const grid = document.getElementById("media-picker-grid");
+    if (!grid) return;
+    try {
+      const res = await fetch("/api/media-crud");
+      const data = await res.json();
+      if (data.success && data.media.length > 0) {
+        grid.innerHTML = data.media.map(item => `
+          <div class="media-picker-item" onclick="selectMediaAsset('${item.url}')">
+            <img src="${item.url}" alt="${item.alt || ''}" />
+          </div>
+        `).join('');
+      } else {
+        grid.innerHTML = `<p class="media-empty">No catalog images. Upload a new asset.</p>`;
+      }
+    } catch(e) {
+      grid.innerHTML = `<p class="media-empty" style="color:var(--color-error);">Error loading catalog.</p>`;
+    }
+  }
+  window.selectMediaAsset = function(url) {
+    if (activeMediaPickerTarget) {
+      const targetInput = document.getElementById(activeMediaPickerTarget);
+      if (targetInput) {
+        targetInput.value = url;
+        const changeEvent = new Event('input', { bubbles: true });
+        targetInput.dispatchEvent(changeEvent);
+        if (activeMediaPickerTarget === "section-preview-image") {
+          window.syncPreviewImage(url);
+        }
+      }
+      hideMediaModal();
+    }
+  };
+  async function uploadMediaFile() {
+    const fileInput = document.getElementById("media-upload-file");
+    const uploadBtn = document.getElementById("upload-media-btn");
+    const fileSelectBtn = document.getElementById("trigger-file-select");
+    if (!fileInput || fileInput.files.length === 0) return;
+    
+    const file = fileInput.files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("alt", file.name.split(".")[0]);
+
+    uploadBtn.disabled = true;
+    uploadBtn.innerText = "Uploading...";
+
+    try {
+      const res = await fetch("/api/media-crud", {
+        method: "POST",
+        body: formData
+      });
+      const result = await res.json();
+      if (result.success) {
+        showToast("Uploaded successfully!");
+        fileInput.value = "";
+        fileSelectBtn.innerText = "Choose Upload File";
+        uploadBtn.innerText = "Upload";
+        selectMediaAsset(result.media.url);
+      } else {
+        alert("Upload error: " + result.error);
+        uploadBtn.disabled = false;
+        uploadBtn.innerText = "Upload";
+      }
+    } catch(e) {
+      alert("Network Error");
+      uploadBtn.disabled = false;
+      uploadBtn.innerText = "Upload";
+    }
+  }
+
+  // Form submission handler
+  async function submitSectionForm() {
+    const nameInput = document.getElementById("section-name");
+    const secName = nameInput.value.trim();
+    if (!secName) {
+      alert("Display Name is required!");
+      return;
+    }
+
+    const statusInput = document.getElementById("section-status");
+    const secStatus = statusInput ? statusInput.value : "published";
+
+    const saveBtn = document.getElementById("save-section-btn");
+    const saveLabel = document.getElementById("save-btn-label");
+    saveBtn.disabled = true;
+    saveLabel.innerText = "Saving changes...";
+
+    const payload = {
+      ...block,
+      id,
+      name: secName,
+      status: secStatus
+    };
+
+    try {
+      const res = await fetch("/api/sections-crud", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast("Section changes saved successfully!");
+      } else {
+        alert("Error saving: " + (data.error || "failed"));
+      }
+    } catch(e) {
+      alert("Network Error occurred.");
+    } finally {
+      saveBtn.disabled = false;
+      saveLabel.innerText = "Save Changes";
+    }
+  }
+
+  function showToast(message) {
+    const notify = document.getElementById("toast-notify");
+    const msgSpan = document.getElementById("toast-message");
+    if (notify && msgSpan) {
+      msgSpan.innerText = message;
+      notify.classList.add("active");
+      setTimeout(() => {
+        notify.classList.remove("active");
+      }, 3000);
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", initSectionEditor);
+  document.addEventListener("astro:page-load", initSectionEditor);
+  if (document.readyState === "interactive" || document.readyState === "complete") {
+    initSectionEditor();
+  }
+</script>

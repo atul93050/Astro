@@ -1,0 +1,40 @@
+---
+import { getEntry } from "astro:content";
+import MainLayout from "../../../layouts/MainLayout.astro";
+
+// Import block components
+import BlockRenderer from "../../../components/BlockRenderer.astro";
+
+// Server-side Authentication gate check
+const session = Astro.cookies.get("cms_session")?.value;
+if (session !== "authenticated-admin-session-2026") {
+  return Astro.redirect("/admin/login");
+}
+
+export const prerender = false;
+
+const id = Astro.url.searchParams.get("id") || "";
+if (!id) {
+  return new Response("Missing section ID", { status: 400 });
+}
+
+const sectionEntry = await getEntry("sections", id);
+if (!sectionEntry) {
+  return new Response("Section not found", { status: 404 });
+}
+
+const block = {
+  ...sectionEntry.data,
+  sectionId: id
+};
+---
+
+<MainLayout
+  title={`Preview Section: ${id}`}
+  description="Admin Live Section Preview"
+  robots="noindex, nofollow"
+>
+  <div style="padding: 3rem 0; background: var(--bg-base); min-height: 50vh;">
+    <BlockRenderer block={block} />
+  </div>
+</MainLayout>

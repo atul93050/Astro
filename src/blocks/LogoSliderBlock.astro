@@ -9,19 +9,22 @@ interface Props {
 }
 
 const { eyebrow, title, logos = [] } = Astro.props;
+const validLogos = (logos || []).filter(l => l && l.image);
 ---
 <section class="block-logo-slider">
   <div class="container">
-    <div class="section-head">
-      {eyebrow && <span class="eyebrow">{eyebrow}</span>}
-      <h2>{title}</h2>
-    </div>
+    {(eyebrow || title) && (
+      <div class="section-head">
+        {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+        {title && <h2>{title}</h2>}
+      </div>
+    )}
 
-    {logos.length > 0 && (
+    {validLogos.length > 0 && (
       <div class="slider-wrapper">
         <div class="slider-track">
           {/* Output logos twice for smooth infinite loop */}
-          {[...logos, ...logos, ...logos].map((logo) => (
+          {[...validLogos, ...validLogos, ...validLogos].map((logo) => (
             <div class="slide">
               <img src={logo.image} alt={logo.alt || "Partner logo"} class="partner-logo" />
             </div>

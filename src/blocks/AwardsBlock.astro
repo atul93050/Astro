@@ -11,28 +11,35 @@ interface Props {
 }
 
 const { eyebrow, title, items = [] } = Astro.props;
+const validItems = (items || []).filter(item => item && (item.title || item.logo || item.organization));
 ---
 <section class="block-awards">
   <div class="container">
-    <div class="section-head">
-      {eyebrow && <span class="eyebrow">{eyebrow}</span>}
-      <h2>{title}</h2>
-    </div>
+    {(eyebrow || title) && (
+      <div class="section-head">
+        {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+        {title && <h2>{title}</h2>}
+      </div>
+    )}
 
-    <div class="awards-grid">
-      {items.map((award) => (
-        <div class="award-tile">
-          <div class="award-logo-box">
-            <img src={award.logo} alt={award.title} class="award-logo" />
+    {validItems.length > 0 && (
+      <div class="awards-grid">
+        {validItems.map((award) => (
+          <div class="award-tile">
+            {award.logo && (
+              <div class="award-logo-box">
+                <img src={award.logo} alt={award.title || "Award Logo"} class="award-logo" />
+              </div>
+            )}
+            <div class="award-info">
+              {award.year && <span class="award-year">{award.year}</span>}
+              {award.title && <h3>{award.title}</h3>}
+              {award.organization && <p class="organization">{award.organization}</p>}
+            </div>
           </div>
-          <div class="award-info">
-            <span class="award-year">{award.year || "2026"}</span>
-            <h3>{award.title}</h3>
-            <p class="organization">{award.organization}</p>
-          </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+    )}
   </div>
 </section>
 

@@ -11,30 +11,37 @@ interface Props {
 }
 
 const { eyebrow, title, members = [] } = Astro.props;
+const validMembers = (members || []).filter(m => m && (m.name || m.image));
 ---
 <section class="block-team">
   <div class="container">
-    <div class="section-header">
-      {eyebrow && <span class="eyebrow">{eyebrow}</span>}
-      <h2>{title}</h2>
-    </div>
+    {(eyebrow || title) && (
+      <div class="section-header">
+        {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+        {title && <h2>{title}</h2>}
+      </div>
+    )}
 
-    <div class="team-grid">
-      {members.map((member) => (
-        <div class="team-card">
-          <div class="team-image-box">
-            <img src={member.image || "/uploads/team-placeholder.png"} alt={member.name} />
-            <div class="hover-overlay">
-              <p class="member-bio">{member.bio}</p>
+    {validMembers.length > 0 && (
+      <div class="team-grid">
+        {validMembers.map((member) => (
+          <div class="team-card">
+            <div class="team-image-box">
+              <img src={member.image || "/uploads/team-placeholder.png"} alt={member.name || "Team Member"} />
+              {member.bio && (
+                <div class="hover-overlay">
+                  <p class="member-bio">{member.bio}</p>
+                </div>
+              )}
+            </div>
+            <div class="team-details">
+              {member.name && <h3>{member.name}</h3>}
+              {member.role && <span class="member-role">{member.role}</span>}
             </div>
           </div>
-          <div class="team-details">
-            <h3>{member.name}</h3>
-            <span class="member-role">{member.role}</span>
-          </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+    )}
   </div>
 </section>
 

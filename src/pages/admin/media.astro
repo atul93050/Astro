@@ -33,7 +33,8 @@ export const prerender = false;
     <!-- Main Media Grid display -->
     <div class="media-grid-container">
       <div class="media-filters-row" style="flex-wrap:wrap; gap:1rem;">
-        <div>
+        <div style="display:inline-flex; align-items:center; gap:0.65rem;">
+          <input type="checkbox" id="select-all-media" title="Select All Assets" style="width:18px; height:18px; cursor:pointer; margin:0;" />
           <h3>Media Library Assets</h3>
           <span class="assets-count-badge" id="assets-count">0 items</span>
         </div>
@@ -674,6 +675,7 @@ export const prerender = false;
             bulkCheckedUrls.delete(item.url);
           }
           updateBulkActionBar();
+          syncSelectAllCheckboxState();
         });
       }
 
@@ -685,6 +687,7 @@ export const prerender = false;
     });
 
     updateBulkActionBar();
+    syncSelectAllCheckboxState();
   }
 
   function updateBulkActionBar() {
@@ -698,6 +701,25 @@ export const prerender = false;
     } else {
       bar.style.display = "none";
     }
+  }
+
+  function syncSelectAllCheckboxState() {
+    const selectAllCheckbox = document.getElementById("select-all-media");
+    if (!selectAllCheckbox) return;
+
+    const visibleCheckboxes = document.querySelectorAll(".media-bulk-checkbox");
+    if (visibleCheckboxes.length === 0) {
+      selectAllCheckbox.checked = false;
+      selectAllCheckbox.disabled = true;
+      return;
+    }
+
+    selectAllCheckbox.disabled = false;
+    let allChecked = true;
+    visibleCheckboxes.forEach(cb => {
+      if (!cb.checked) allChecked = false;
+    });
+    selectAllCheckbox.checked = allChecked;
   }
 
   // Active Asset Selection in sidebar
@@ -830,9 +852,9 @@ export const prerender = false;
     // Asset Delete Click
     const deleteBtn = document.getElementById("delete-asset-btn");
     if (deleteBtn) {
-      deleteBtn.addEventListener("click", async () => {
+      deleteBtn.addEventListener("click", () => {
         if (!selectedAsset) return;
-        if (confirm("Are you sure you want to permanently delete this media asset? This will delete the physical file on disk and cannot be undone.")) {
+        window.customConfirm("Are you sure you want to permanently delete this media asset? This will delete the physical file on disk and cannot be undone.", async () => {
           deleteBtn.disabled = true;
           deleteBtn.innerText = "Deleting...";
 
@@ -858,7 +880,7 @@ export const prerender = false;
             deleteBtn.disabled = false;
             deleteBtn.innerText = "Delete Permanently";
           }
-        }
+        });
       });
     }
 
@@ -912,9 +934,9 @@ export const prerender = false;
 
     const bulkDeleteBtn = document.getElementById("bulk-delete-btn");
     if (bulkDeleteBtn) {
-      bulkDeleteBtn.addEventListener("click", async () => {
+      bulkDeleteBtn.addEventListener("click", () => {
         if (bulkCheckedUrls.size === 0) return;
-        if (confirm(`Are you sure you want to permanently delete these ${bulkCheckedUrls.size} selected items?`)) {
+        window.customConfirm(`Are you sure you want to permanently delete these ${bulkCheckedUrls.size} selected items?`, async () => {
           bulkDeleteBtn.disabled = true;
           try {
             const res = await fetch("/api/media-crud", {
@@ -937,7 +959,26 @@ export const prerender = false;
           } finally {
             bulkDeleteBtn.disabled = false;
           }
-        }
+        });
+      });
+    }
+
+    // Select All Checkbox Handler
+    const selectAllCheckbox = document.getElementById("select-all-media");
+    if (selectAllCheckbox) {
+      selectAllCheckbox.addEventListener("change", (e) => {
+        const isChecked = e.target.checked;
+        const visibleCheckboxes = document.querySelectorAll(".media-bulk-checkbox");
+        visibleCheckboxes.forEach(cb => {
+          cb.checked = isChecked;
+          const url = cb.getAttribute("data-url");
+          if (isChecked) {
+            bulkCheckedUrls.add(url);
+          } else {
+            bulkCheckedUrls.delete(url);
+          }
+        });
+        updateBulkActionBar();
       });
     }
   }

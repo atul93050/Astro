@@ -25,13 +25,13 @@ const {
       {image && (
         <div class="image-area">
           <div class="glow-sphere"></div>
-          <img src={image} alt={title} class="featured-img" />
+          <img src={image} alt={title || "Featured Image"} class="featured-img" />
         </div>
       )}
       <div class="content-area">
         {eyebrow && <span class="eyebrow">{eyebrow}</span>}
-        <h2>{title}</h2>
-        <p class="desc">{description}</p>
+        {title && <h2>{title}</h2>}
+        {description && <p class="desc">{description}</p>}
         {buttonText && buttonLink && (
           <a href={buttonLink} class="btn btn-primary">{buttonText}</a>
         )}

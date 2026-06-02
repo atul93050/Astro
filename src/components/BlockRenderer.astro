@@ -1,0 +1,42 @@
+---
+import fs from "node:fs";
+import path from "node:path";
+
+interface Props {
+  block: any;
+}
+
+const { block } = Astro.props;
+
+// 1. Load section definitions
+let allDefinitions: any[] = [];
+try {
+  const definitionsPath = path.resolve("src/data/section-definitions.json");
+  if (fs.existsSync(definitionsPath)) {
+    allDefinitions = JSON.parse(fs.readFileSync(definitionsPath, "utf-8"));
+  }
+} catch (e) {
+  console.error("Failed to load section definitions inside BlockRenderer:", e);
+}
+
+// 2. Find matching definition for the block type
+const definition = allDefinitions.find((d) => d.key === block.type);
+const componentPath = definition?.componentPath || `src/blocks/${block.type}.astro`; // fallback convention
+
+// Normalize the path for import.meta.glob
+// e.g. "src/blocks/HeroBlock.astro" -> "/src/blocks/HeroBlock.astro"
+const normalizedPath = componentPath.startsWith("/") ? componentPath : "/" + componentPath;
+
+// 3. Eager load all Astro block components in src/blocks
+// Using import.meta.glob with Vite is safe and standard in Astro.
+const blocks = import.meta.glob("/src/blocks/**/*.astro", { eager: true });
+const Component = (blocks[normalizedPath] as any)?.default;
+---
+
+{Component ? (
+  <Component {...block} />
+) : (
+  <div style="padding: 2rem; border: 1px dashed var(--color-error, #ef4444); color: var(--color-error, #ef4444); text-align: center; font-family: monospace; border-radius: 8px; margin: 1rem 0;">
+    <strong>Error rendering block:</strong> Component not found for type "{block.type}" at path "{componentPath}"
+  </div>
+)}
