@@ -6,7 +6,7 @@ export const prerender = false;
 
 // Custom Helper to process uploaded file or return the existing path
 async function saveUploadedFile(file: any, existingPath: string): Promise<string> {
-  if (!file || !(file instanceof File) || file.size === 0) {
+  if (!file || typeof file !== "object" || !("size" in file) || !("name" in file) || (file as any).size === 0) {
     return existingPath;
   }
 

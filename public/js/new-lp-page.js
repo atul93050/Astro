@@ -25,6 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener("DOMContentLoaded", () => {
 
   const logoRow = document.querySelector(".logo-row");
+  if (!logoRow) return;
 
   // Duplicate logos
   logoRow.innerHTML += logoRow.innerHTML;
@@ -114,6 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener("DOMContentLoaded", () => {
 
   const form = document.getElementById("lead-form");
+  if (!form) return;
 
   const name = document.getElementById("name");
   const email = document.getElementById("email");

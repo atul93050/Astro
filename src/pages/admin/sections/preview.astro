@@ -1,6 +1,8 @@
 ---
-import { getEntry } from "astro:content";
 import MainLayout from "../../../layouts/MainLayout.astro";
+import fs from "node:fs";
+import path from "node:path";
+import { parse } from "yaml";
 
 // Import block components
 import BlockRenderer from "../../../components/BlockRenderer.astro";
@@ -18,13 +20,25 @@ if (!id) {
   return new Response("Missing section ID", { status: 400 });
 }
 
-const sectionEntry = await getEntry("sections", id);
-if (!sectionEntry) {
+const sectionPath = path.resolve("src/content/sections", `${id}.md`);
+if (!fs.existsSync(sectionPath)) {
   return new Response("Section not found", { status: 404 });
 }
 
+let sectionData: any = {};
+try {
+  const content = fs.readFileSync(sectionPath, "utf-8");
+  const parts = content.split(/^---$/m);
+  if (parts.length >= 3) {
+    sectionData = parse(parts[1]);
+  }
+} catch (e) {
+  console.error("Error reading section preview:", e);
+  return new Response("Error loading section", { status: 500 });
+}
+
 const block = {
-  ...sectionEntry.data,
+  ...sectionData,
   sectionId: id
 };
 ---

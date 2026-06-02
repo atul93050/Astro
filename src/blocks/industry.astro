@@ -1,0 +1,288 @@
+---
+console.log("Astro Props:", Astro.props);
+
+const {
+  Title,
+  SubHeading,
+  Bg,
+  btn = {},
+  industries = []
+} = Astro.props;
+
+// Map user parameters for convenience or backwards compatibility
+const heading = Title || "";
+const subheading = SubHeading || "";
+const backgroundImage = Bg || "";
+const buttonText = btn?.text || "";
+const buttonLink = btn?.url || "";
+const buttonTarget = btn?.newTab ? "_blank" : "_self";
+const buttonRel = [
+  btn?.newTab ? "noopener noreferrer" : "",
+  btn?.nofollow ? "nofollow" : "",
+  btn?.sponsored ? "sponsored" : "",
+  btn?.ugc ? "ugc" : ""
+].filter(Boolean).join(" ");
+
+console.log("Resolved props in industry block:", {
+  heading,
+  subheading,
+  backgroundImage,
+  buttonText,
+  buttonLink,
+  industries
+});
+---
+
+<section class="block-industry" style={backgroundImage ? `background-image: linear-gradient(rgba(5, 8, 17, 0.9), rgba(5, 8, 17, 0.95)), url(${backgroundImage});` : ''}>
+  <div class="container">
+    <div class="section-header">
+      {subheading && <span class="subheading">{subheading}</span>}
+      {heading && <h2>{heading}</h2>}
+      <div class="header-line"></div>
+    </div>
+
+    {industries.length > 0 && (
+      <div class="industries-grid">
+        {industries.map((item, idx) => {
+          const itemTitle = item["title "] || item.title || "";
+          const itemIcon = item.icon || "";
+          const itemDesc = item.description || "";
+          return (
+            <div class="industry-card glow-card">
+              <div class="card-glow-element"></div>
+              {itemIcon && (
+                <div class="industry-icon-wrap">
+                  <img src={itemIcon} alt={itemTitle} class="industry-icon" />
+                </div>
+              )}
+              <h3 class="industry-title">{itemTitle}</h3>
+              <p class="industry-desc">{itemDesc}</p>
+            </div>
+          );
+        })}
+      </div>
+    )}
+
+    {buttonLink && buttonText && (
+      <div class="cta-wrap">
+        <a href={buttonLink} target={buttonTarget} rel={buttonRel || undefined} class="btn-premium">
+          <span>{buttonText}</span>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" class="arrow-icon"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </a>
+      </div>
+    )}
+  </div>
+</section>
+
+<style>
+  .block-industry {
+    padding: 7rem 0;
+    background-color: #050811;
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    color: white;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .block-industry::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.15), transparent);
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    position: relative;
+    z-index: 10;
+  }
+
+  .section-header {
+    text-align: center;
+    margin-bottom: 4.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .subheading {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #6366f1;
+    margin-bottom: 0.75rem;
+    display: inline-block;
+  }
+
+  .section-header h2 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    line-height: 1.2;
+    margin: 0;
+    background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    max-width: 700px;
+  }
+
+  .header-line {
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, #6366f1, #818cf8);
+    margin-top: 1.5rem;
+    border-radius: 99px;
+  }
+
+  .industries-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 2rem;
+    margin-bottom: 4rem;
+  }
+
+  .industry-card {
+    background: rgba(15, 23, 42, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    padding: 2.25rem 2rem;
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .industry-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 20px;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.06), transparent, rgba(99, 102, 241, 0.05));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .industry-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(99, 102, 241, 0.25);
+    background: rgba(15, 23, 42, 0.7);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3), 0 0 30px rgba(99, 102, 241, 0.08);
+  }
+
+  .industry-icon-wrap {
+    width: 60px;
+    height: 60px;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.75rem;
+    transition: all 0.3s ease;
+  }
+
+  .industry-card:hover .industry-icon-wrap {
+    background: #6366f1;
+    border-color: #6366f1;
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.35);
+  }
+
+  .industry-icon {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    transition: all 0.3s ease;
+  }
+
+  .industry-card:hover .industry-icon {
+    filter: brightness(0) invert(1);
+  }
+
+  .industry-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0 0 0.85rem 0;
+    color: #ffffff;
+    transition: color 0.3s ease;
+  }
+
+  .industry-card:hover .industry-title {
+    color: #a5b4fc;
+  }
+
+  .industry-desc {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #94a3b8;
+    margin: 0;
+    flex-grow: 1;
+  }
+
+  .cta-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: 2rem;
+  }
+
+  .btn-premium {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 2.25rem;
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    border: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+    border-radius: 99px;
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 10px 25px rgba(99, 102, 241, 0.3);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    text-decoration: none;
+  }
+
+  .btn-premium:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 30px rgba(99, 102, 241, 0.45);
+    background: linear-gradient(135deg, #818cf8 0%, #4f46e5 100%);
+  }
+
+  .arrow-icon {
+    transition: transform 0.3s ease;
+  }
+
+  .btn-premium:hover .arrow-icon {
+    transform: translateX(4px);
+  }
+
+  @media (max-width: 768px) {
+    .section-header h2 {
+      font-size: 2rem;
+    }
+    .industries-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<script define:vars={{ Title, SubHeading, Bg, btn, industries }}>
+  console.log("Client-side Astro Props inside industry block:", { Title, SubHeading, Bg, btn, industries });
+</script>

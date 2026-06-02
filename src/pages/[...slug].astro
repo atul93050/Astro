@@ -1,5 +1,5 @@
 ---
-import { getEntry } from "astro:content";
+import { parse } from "yaml";
 import MainLayout from "../layouts/MainLayout.astro";
 import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
@@ -57,17 +57,25 @@ try {
   console.error("Failed to load section definitions inside slug.astro:", e);
 }
 
-// 3. Query page entry
-const entry = await getEntry("pages", cleanSlug);
-
-// If page does not exist, return 404
-if (!entry) {
+// 3. Query page entry directly from disk to bypass content collections cache
+const pagePath = path.resolve("src/content/pages", `${cleanSlug}.md`);
+if (!fs.existsSync(pagePath)) {
   return new Response("Page Not Found", { status: 404 });
 }
 
-const pageRaw = entry.data;
+let pageRaw: any = {};
+try {
+  const content = fs.readFileSync(pagePath, "utf-8");
+  const parts = content.split(/^---$/m);
+  if (parts.length >= 3) {
+    pageRaw = parse(parts[1]);
+  }
+} catch (e) {
+  console.error("Error reading page from disk:", e);
+  return new Response("Error loading page", { status: 500 });
+}
 
-// Asynchronously resolve section blocks content
+// Asynchronously resolve section blocks content directly from disk
 const resolvedBlocks = await Promise.all(
   (pageRaw.blocks || []).map(async (block: any) => {
     const config = allDefinitions.find((d: any) => d.key === block.type);
@@ -76,11 +84,23 @@ const resolvedBlocks = await Promise.all(
     ) : {};
 
     if (block.sectionId) {
-      const sectionEntry = await getEntry("sections", block.sectionId);
+      const sectionPath = path.resolve("src/content/sections", `${block.sectionId}.md`);
+      let sectionData = {};
+      if (fs.existsSync(sectionPath)) {
+        try {
+          const content = fs.readFileSync(sectionPath, "utf-8");
+          const parts = content.split(/^---$/m);
+          if (parts.length >= 3) {
+            sectionData = parse(parts[1]);
+          }
+        } catch (e) {
+          console.error("Error reading section data from disk:", e);
+        }
+      }
       return {
         ...defaultValues,
         ...block,
-        ...(sectionEntry ? sectionEntry.data : {})
+        ...sectionData
       };
     }
     return {

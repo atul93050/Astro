@@ -37,10 +37,15 @@ function saveCatalog(catalog: any[]) {
 
 function detectMediaType(filename: string): string {
   const ext = path.extname(filename).toLowerCase();
+  const imageExts = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif", ".svg"];
+  const videoExts = [".mp4", ".webm", ".ogg", ".avi", ".mov", ".mkv"];
+  const audioExts = [".mp3", ".wav", ".aac", ".flac", ".m4a"];
+  
   if (ext === ".svg") return "svg";
   if (ext === ".pdf") return "pdf";
-  if (ext.match(/\.(jpg|jpeg|png|gif|webp)/)) return "image";
-  if (ext.match(/\.(mp4|webm|ogg|avi|mov|mkv)/)) return "video";
+  if (imageExts.includes(ext)) return "image";
+  if (videoExts.includes(ext)) return "video";
+  if (audioExts.includes(ext)) return "audio";
   return "document";
 }
 
@@ -197,16 +202,18 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const caption = formData.get("caption")?.toString().trim() || "";
     const folder = formData.get("folder")?.toString().trim() || "";
 
-    if (!file || !(file instanceof File) || file.size === 0) {
+    if (!file || typeof file !== "object" || !("size" in file) || !("name" in file) || (file as any).size === 0) {
       return new Response(JSON.stringify({ success: false, error: "No valid file uploaded" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
 
+    const uploadedFile = file as any;
+
     // Prepare unique name
-    const ext = path.extname(file.name) || ".png";
-    const baseName = path.basename(file.name, ext).replace(/[^a-z0-9-_]/gi, "_").toLowerCase();
+    const ext = path.extname(uploadedFile.name) || ".png";
+    const baseName = path.basename(uploadedFile.name, ext).replace(/[^a-z0-9-_]/gi, "_").toLowerCase();
     const uniqueName = `${baseName}-${Date.now()}${ext}`;
     const filePath = path.join(UPLOAD_DIR, uniqueName);
 
@@ -222,8 +229,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     
     const newMedia = {
       url: relativeUrl,
-      title: title || file.name,
-      alt: alt || title || file.name.split(".")[0],
+      title: title || uploadedFile.name,
+      alt: alt || title || uploadedFile.name.split(".")[0],
       caption,
       folder,
       uploadedAt: new Date().toISOString(),

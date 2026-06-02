@@ -17,7 +17,18 @@ try {
 }
 
 const categories = ["hero", "content", "marketing", "social", "other"];
-const fieldTypes = ["text", "textarea", "number", "boolean", "select", "image", "list", "repeater"];
+const fieldTypes = [
+  "text", "textarea", "richtext", "markdown", "code", "html", "email", "tel", "url", "slug", "password", "hidden",
+  "number", "range", "percentage",
+  "checkbox", "toggle", "boolean",
+  "select", "multiselect", "radio", "button-group",
+  "image", "gallery", "svg", "icon", "file", "video", "audio",
+  "date", "time", "datetime", "month",
+  "color", "gradient",
+  "json", "css", "javascript",
+  "group", "object", "array", "repeater",
+  "link"
+];
 ---
 
 <AdminLayout title="Section Definitions — Developer Mode">
@@ -212,7 +223,7 @@ const fieldTypes = ["text", "textarea", "number", "boolean", "select", "image", 
   </div>
 
   <!-- Delete Confirm Modal -->
-  <div class="modal-overlay" id="delete-confirm-overlay">
+  <div class="modal-overlay" id="delete-modal-overlay">
     <div class="modal-panel" style="max-width:460px;">
       <div class="modal-head">
         <h4>Delete Section Definition</h4>
@@ -504,6 +515,28 @@ const fieldTypes = ["text", "textarea", "number", "boolean", "select", "image", 
   .toast-notification.visible { transform: translateY(0); opacity: 1; }
   .toast-content { display: flex; align-items: center; gap: 0.5rem; }
   .toast-message { font-size: 0.88rem; color: var(--text-main); font-weight: 500; }
+
+  /* Searchable Field Type Dropdown Picker */
+  .type-picker-dropdown {
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6) !important;
+    border-color: var(--primary) !important;
+  }
+  .type-picker-search-input {
+    background: var(--bg-body) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-main) !important;
+    border-radius: 6px;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.8rem;
+    width: 100%;
+  }
+  .type-opt-btn {
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .type-opt-btn:hover {
+    background: rgba(99, 102, 241, 0.18) !important;
+    color: var(--primary) !important;
+  }
 </style>
 
 <script is:inline define:vars={{ allDefinitions, categories, fieldTypes }}>
@@ -513,9 +546,19 @@ const fieldTypes = ["text", "textarea", "number", "boolean", "select", "image", 
   let fieldsData = [];
   let pendingDeleteKey = null;
 
-  const FIELD_TYPES = fieldTypes;
+  const FIELD_GROUPS = {
+    "Basic": ["text", "textarea", "richtext", "markdown", "code", "html", "email", "tel", "url", "slug", "password", "hidden"],
+    "Number": ["number", "range", "percentage"],
+    "Boolean": ["checkbox", "toggle", "boolean"],
+    "Selection": ["select", "multiselect", "radio", "button-group"],
+    "Media": ["image", "gallery", "svg", "icon", "file", "video", "audio"],
+    "Date & Time": ["date", "time", "datetime", "month"],
+    "Design": ["color", "gradient"],
+    "Advanced": ["json", "css", "javascript"],
+    "Structure": ["group", "object", "array", "repeater"],
+    "Link": ["link"]
+  };
 
-  // Unified tab & search filtering
   const searchInput = document.getElementById('def-search');
 
   function filterDefinitions() {
@@ -548,73 +591,67 @@ const fieldTypes = ["text", "textarea", "number", "boolean", "select", "image", 
     searchInput.addEventListener('input', filterDefinitions);
   }
 
-  // Open create modal
-  document.getElementById('open-create-def-btn').addEventListener('click', () => {
-    openModal(false);
-  });
+  const deleteBtn = document.getElementById('confirm-delete-btn');
+  if (deleteBtn) {
+    deleteBtn.addEventListener('click', async () => {
+      if (!pendingDeleteKey) return;
+      try {
+        const res = await fetch('/api/section-definitions-crud', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: pendingDeleteKey })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Blueprint deleted successfully');
+          document.getElementById('delete-modal-overlay').classList.remove('active');
+          setTimeout(() => window.location.reload(), 700);
+        } else {
+          showToast('Failed to delete blueprint: ' + data.error, true);
+        }
+      } catch (e) {
+        showToast('Network error', true);
+      }
+    });
+  }
 
-  // Edit buttons
-  document.querySelectorAll('.edit-def-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const key = btn.dataset.key;
+  document.getElementById('defs-grid').addEventListener('click', (e) => {
+    const editBtn = e.target.closest('.edit-def-btn');
+    const delBtn = e.target.closest('.delete-def-btn');
+
+    if (editBtn) {
+      const key = editBtn.dataset.key;
       const def = allDefs.find(d => d.key === key);
       if (def) openModal(true, def);
-    });
+    }
+
+    if (delBtn) {
+      const key = delBtn.dataset.key;
+      const name = delBtn.dataset.name;
+      pendingDeleteKey = key;
+      document.getElementById('delete-def-name').textContent = name;
+      document.getElementById('delete-modal-overlay').classList.add('active');
+    }
   });
 
-  // Delete buttons
-  document.querySelectorAll('.delete-def-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      pendingDeleteKey = btn.dataset.key;
-      document.getElementById('delete-def-name').textContent = btn.dataset.name;
-      document.getElementById('delete-confirm-overlay').classList.add('active');
-    });
-  });
-
+  document.getElementById('open-create-def-btn').addEventListener('click', () => openModal(false));
   document.getElementById('close-delete-modal').addEventListener('click', () => {
-    document.getElementById('delete-confirm-overlay').classList.remove('active');
+    document.getElementById('delete-modal-overlay').classList.remove('active');
     pendingDeleteKey = null;
   });
   document.getElementById('cancel-delete-btn').addEventListener('click', () => {
-    document.getElementById('delete-confirm-overlay').classList.remove('active');
-    pendingDeleteKey = null;
-  });
-  document.getElementById('confirm-delete-btn').addEventListener('click', async () => {
-    if (!pendingDeleteKey) return;
-    try {
-      const res = await fetch('/api/section-definitions-crud', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: pendingDeleteKey })
-      });
-      const data = await res.json();
-      if (data.success) {
-        showToast('Definition deleted!');
-        document.getElementById('delete-confirm-overlay').classList.remove('active');
-        setTimeout(() => window.location.reload(), 600);
-      } else {
-        showToast('Error: ' + data.error, true);
-      }
-    } catch (e) {
-      showToast('Network error', true);
-    }
+    document.getElementById('delete-modal-overlay').classList.remove('active');
     pendingDeleteKey = null;
   });
 
-  // Close modal
   document.getElementById('close-def-modal').addEventListener('click', closeModal);
   document.getElementById('cancel-def-modal').addEventListener('click', closeModal);
-  document.getElementById('def-modal-overlay').addEventListener('click', (e) => {
-    if (e.target === document.getElementById('def-modal-overlay')) closeModal();
-  });
 
-  // Add field button
   document.getElementById('add-field-btn').addEventListener('click', () => {
     fieldsData.push({ name: '', label: '', type: 'text', required: false, default: '', options: [], repeaterFields: [] });
     renderFieldsBuilder();
   });
 
-  // Save definition
   document.getElementById('save-def-btn').addEventListener('click', saveDef);
 
   function openModal(isEdit, def = null) {
@@ -639,6 +676,227 @@ const fieldTypes = ["text", "textarea", "number", "boolean", "select", "image", 
     editMode = false; editingKey = null; fieldsData = [];
   }
 
+  function getFieldByPath(path) {
+    let target = fieldsData;
+    for (let i = 0; i < path.length; i++) {
+      if (target === undefined || target === null) return null;
+      target = target[path[i]];
+    }
+    return target;
+  }
+
+  window.updateFieldAtPath = function(pathStr, key, value) {
+    const path = JSON.parse(pathStr);
+    const target = getFieldByPath(path);
+    if (target) {
+      target[key] = value;
+      if (key === 'type') {
+        if (['repeater', 'group', 'object', 'array'].includes(value)) {
+          if (!target.repeaterFields) target.repeaterFields = [];
+        }
+        renderFieldsBuilder();
+      }
+    }
+  };
+
+  window.updateFieldOptions = function(pathStr, value) {
+    const path = JSON.parse(pathStr);
+    const target = getFieldByPath(path);
+    if (target) {
+      target.options = value.split(',').map(s => {
+        const item = s.trim();
+        if (item.includes(':')) {
+          const parts = item.split(':');
+          return { value: parts[0].trim(), label: parts.slice(1).join(':').trim() };
+        }
+        return item;
+      }).filter(Boolean);
+    }
+  };
+
+  window.updateValidationAtPath = function(pathStr, key, value) {
+    const path = JSON.parse(pathStr);
+    const target = getFieldByPath(path);
+    if (target) {
+      if (!target.validation) target.validation = {};
+      if (key === 'min') {
+        const num = value !== '' ? parseFloat(value) : undefined;
+        target.validation.min = num;
+        target.validation.minLength = num;
+      } else if (key === 'max') {
+        const num = value !== '' ? parseFloat(value) : undefined;
+        target.validation.max = num;
+        target.validation.maxLength = num;
+      } else {
+        target.validation[key] = value;
+      }
+    }
+  };
+
+  window.updateShowHideAtPath = function(pathStr, typeKey, subKey, value) {
+    const path = JSON.parse(pathStr);
+    const target = getFieldByPath(path);
+    if (target) {
+      if (!target[typeKey]) target[typeKey] = { field: '', value: '' };
+      let finalVal = value;
+      if (subKey === 'value') {
+        if (value === 'true') finalVal = true;
+        else if (value === 'false') finalVal = false;
+      }
+      target[typeKey][subKey] = finalVal;
+    }
+  };
+
+  window.addFieldAtPath = function(pathStr) {
+    const path = JSON.parse(pathStr);
+    const targetArray = getFieldByPath(path);
+    if (Array.isArray(targetArray)) {
+      targetArray.push({ name: '', label: '', type: 'text', required: false, default: '', options: [], repeaterFields: [] });
+      renderFieldsBuilder();
+    }
+  };
+
+  window.removeFieldAtPath = function(parentPathStr, idx) {
+    const parentPath = JSON.parse(parentPathStr);
+    const targetArray = getFieldByPath(parentPath);
+    if (Array.isArray(targetArray)) {
+      const f = targetArray[idx];
+      const fieldName = f ? f.name || 'this field' : 'this field';
+      window.customConfirm(`Are you sure you want to delete the field "${fieldName}"?`, () => {
+        targetArray.splice(idx, 1);
+        renderFieldsBuilder();
+      });
+    }
+  };
+
+  window.duplicateFieldAtPath = function(parentPathStr, idx) {
+    const parentPath = JSON.parse(parentPathStr);
+    const targetArray = getFieldByPath(parentPath);
+    if (Array.isArray(targetArray)) {
+      const sourceField = targetArray[idx];
+      if (!sourceField) return;
+      const duplicated = JSON.parse(JSON.stringify(sourceField));
+      duplicated.name = `${duplicated.name || 'field'}_copy`;
+      duplicated.label = `${duplicated.label || 'Field'} (Copy)`;
+      targetArray.splice(idx + 1, 0, duplicated);
+      renderFieldsBuilder();
+    }
+  };
+
+  window.moveFieldAtPath = function(parentPathStr, idx, dir) {
+    const parentPath = JSON.parse(parentPathStr);
+    const targetArray = getFieldByPath(parentPath);
+    if (Array.isArray(targetArray)) {
+      const targetIdx = idx + dir;
+      if (targetIdx < 0 || targetIdx >= targetArray.length) return;
+      const temp = targetArray[idx];
+      targetArray[idx] = targetArray[targetIdx];
+      targetArray[targetIdx] = temp;
+      renderFieldsBuilder();
+    }
+  };
+
+  window.toggleAdvSettings = function(pathId) {
+    const el = document.getElementById(`adv-settings-${pathId}`);
+    if (el) {
+      el.style.display = el.style.display === 'none' ? 'grid' : 'none';
+    }
+  };
+
+  let draggedIdx = null;
+  let dragParentPathStr = null;
+
+  window.handleDragStart = function(e, idx, parentPathStr) {
+    draggedIdx = idx;
+    dragParentPathStr = parentPathStr;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', idx);
+  };
+
+  window.handleDragOver = function(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  window.handleDrop = function(e, idx, parentPathStr) {
+    e.preventDefault();
+    if (draggedIdx === null || dragParentPathStr !== parentPathStr || draggedIdx === idx) return;
+    const parentPath = JSON.parse(parentPathStr);
+    const targetArray = getFieldByPath(parentPath);
+    if (Array.isArray(targetArray)) {
+      const draggedField = targetArray[draggedIdx];
+      targetArray.splice(draggedIdx, 1);
+      targetArray.splice(idx, 0, draggedField);
+      draggedIdx = null;
+      dragParentPathStr = null;
+      renderFieldsBuilder();
+    }
+  };
+
+  window.toggleTypePicker = function(pathId) {
+    const dropdown = document.getElementById(`type-picker-${pathId}`);
+    if (!dropdown) return;
+    const isHidden = dropdown.style.display === 'none';
+    document.querySelectorAll('.type-picker-dropdown').forEach(el => el.style.display = 'none');
+    if (isHidden) {
+      dropdown.style.display = 'block';
+      const searchInput = dropdown.querySelector('.type-picker-search-input');
+      if (searchInput) {
+        searchInput.value = '';
+        searchInput.focus();
+        const wrapper = document.getElementById(`type-select-wrap-${pathId}`);
+        const pathStr = wrapper ? wrapper.dataset.path : '';
+        filterTypeOptions(pathId, pathStr, '');
+      }
+    } else {
+      dropdown.style.display = 'none';
+    }
+  };
+
+  window.filterTypeOptions = function(pathId, pathStr, query) {
+    const dropdown = document.getElementById(`type-picker-${pathId}`);
+    if (!dropdown) return;
+    const listContainer = dropdown.querySelector('.type-picker-options');
+    if (!listContainer) return;
+    
+    const q = query.toLowerCase().trim();
+    let html = '';
+    
+    for (const [groupName, types] of Object.entries(FIELD_GROUPS)) {
+      const filteredTypes = types.filter(t => t.toLowerCase().includes(q));
+      if (filteredTypes.length > 0) {
+        html += `<div style="font-weight:600; color:var(--text-dim); margin-top:0.35rem; margin-bottom:0.15rem; font-size:0.75rem; text-transform:uppercase;">${groupName}</div>`;
+        filteredTypes.forEach(t => {
+          html += `
+            <button type="button" class="type-opt-btn" onclick="selectFieldType('${pathId}', '${pathStr}', '${t}')" style="display:block; width:100%; text-align:left; background:none; border:none; color:var(--text-main); padding:0.35rem 0.5rem; border-radius:4px; cursor:pointer; font-size:0.8rem; margin-bottom:0.1rem;">
+              ${t}
+            </button>
+          `;
+        });
+      }
+    }
+    
+    if (!html) {
+      html = '<div style="color:var(--text-dim); text-align:center; padding:0.5rem 0;">No matching types</div>';
+    }
+    
+    listContainer.innerHTML = html;
+  };
+
+  window.selectFieldType = function(pathId, pathStr, type) {
+    const wrapper = document.getElementById(`type-select-wrap-${pathId}`);
+    const finalPathStr = pathStr || wrapper.parentElement.dataset.path;
+    updateFieldAtPath(finalPathStr, 'type', type);
+    const dropdown = document.getElementById(`type-picker-${pathId}`);
+    if (dropdown) dropdown.style.display = 'none';
+  };
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.custom-select-searchable')) {
+      document.querySelectorAll('.type-picker-dropdown').forEach(el => el.style.display = 'none');
+    }
+  });
+
   function renderFieldsBuilder() {
     const container = document.getElementById('fields-builder-list');
     const noMsg = document.getElementById('no-fields-msg');
@@ -656,118 +914,178 @@ const fieldTypes = ["text", "textarea", "number", "boolean", "select", "image", 
     if (noMsg) noMsg.style.display = 'none';
     container.innerHTML = '';
 
-    fieldsData.forEach((field, idx) => {
+    renderFieldsList(fieldsData, container, []);
+  }
+
+  function renderFieldsList(fields, containerEl, parentPath = []) {
+    fields.forEach((field, idx) => {
+      const currentPath = [...parentPath, idx];
+      const pathStr = JSON.stringify(currentPath);
+      const parentPathStr = JSON.stringify(parentPath);
+      const pathId = currentPath.join('-');
+      
       const row = document.createElement('div');
       row.className = 'field-builder-row';
-      row.style = 'background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; gap: 0.65rem;';
+      row.draggable = true;
+      row.setAttribute('ondragstart', `handleDragStart(event, ${idx}, '${parentPathStr}')`);
+      row.setAttribute('ondragover', `handleDragOver(event)`);
+      row.setAttribute('ondrop', `handleDrop(event, ${idx}, '${parentPathStr}')`);
+      row.style = 'background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; gap: 0.65rem; margin-bottom: 0.75rem;';
 
-      const needsOptions = field.type === 'select';
-      const isRepeater = field.type === 'repeater';
-      const isLists = field.type === 'list';
+      const needsOptions = ['select', 'multiselect', 'radio', 'button-group'].includes(field.type);
+      const hasSubfields = ['repeater', 'group', 'object', 'array'].includes(field.type);
 
       row.innerHTML = `
-        <div style="display:grid; grid-template-columns: 1fr 1fr 160px 90px auto; gap:0.75rem; align-items:end;">
-          <div class="form-group">
-            <label style="font-size:0.75rem;">Field Name <span class="req">*</span></label>
-            <input type="text" value="${escHtml(field.name)}" placeholder="e.g. title" oninput="updateField(${idx}, 'name', this.value)" />
+        <!-- Header Bar -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); margin-bottom: 0.5rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <!-- Drag Handle -->
+            <div class="drag-handle" style="cursor: grab; display: flex; align-items: center; color: var(--text-dim);" title="Drag to reorder">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
+            </div>
+            <!-- Up/Down buttons -->
+            <div style="display: flex; gap: 0.25rem;">
+              <button type="button" class="btn btn-outline" style="padding: 2px; height: 24px; min-width: 26px; display: flex; align-items: center; justify-content: center;" onclick="moveFieldAtPath('${parentPathStr}', ${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"></polyline></svg>
+              </button>
+              <button type="button" class="btn btn-outline" style="padding: 2px; height: 24px; min-width: 26px; display: flex; align-items: center; justify-content: center;" onclick="moveFieldAtPath('${parentPathStr}', ${idx}, 1)" ${idx === fields.length - 1 ? 'disabled' : ''}>
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+            </div>
+            <!-- Field index indicator badge -->
+            <span style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); background: var(--bg-body); padding: 0.15rem 0.5rem; border-radius: 4px; border: 1px solid var(--border-color);">
+              Field #${idx + 1}
+            </span>
           </div>
-          <div class="form-group">
-            <label style="font-size:0.75rem;">Label</label>
-            <input type="text" value="${escHtml(field.label)}" placeholder="e.g. Section Title" oninput="updateField(${idx}, 'label', this.value)" />
+
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <!-- Required checkbox -->
+            <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; font-weight: 600; cursor: pointer; margin: 0; user-select: none;">
+              <input type="checkbox" id="req-${pathId}" ${field.required ? 'checked' : ''} onchange="updateFieldAtPath('${pathStr}', 'required', this.checked)" style="width: auto; margin: 0;" />
+              <span>Required Field</span>
+            </label>
+            
+            <!-- Actions -->
+            <div style="display: flex; gap: 0.35rem; align-items: center;">
+              <button type="button" class="btn btn-outline btn-sm" style="height: 28px; padding: 0 0.5rem; font-size: 0.75rem;" onclick="toggleAdvSettings('${pathId}')" title="Configure Validation & Visibility">
+                ⚙️ Settings
+              </button>
+              <button type="button" class="btn btn-outline btn-sm" style="height: 28px; padding: 0 0.5rem; font-size: 0.75rem;" onclick="duplicateFieldAtPath('${parentPathStr}', ${idx})" title="Duplicate field">
+                Duplicate
+              </button>
+              <button type="button" class="btn btn-sm btn-outline" style="height: 28px; width: 28px; min-width: unset; padding: 0; display: flex; align-items: center; justify-content: center; color: var(--color-error); border-color: rgba(239, 68, 68, 0.2);" onclick="removeFieldAtPath('${parentPathStr}', ${idx})" title="Delete field">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            </div>
           </div>
-          <div class="form-group">
-            <label style="font-size:0.75rem;">Type</label>
-            <select onchange="updateField(${idx}, 'type', this.value)">
-              ${FIELD_TYPES.map(t => `<option value="${t}" ${field.type === t ? 'selected' : ''}>${t}</option>`).join('')}
-            </select>
-          </div>
-          <div class="form-group" style="flex-direction:row; align-items:center; gap:0.5rem;">
-            <input type="checkbox" id="req-${idx}" ${field.required ? 'checked' : ''} onchange="updateField(${idx}, 'required', this.checked)" style="width:auto;" />
-            <label for="req-${idx}" style="font-size:0.75rem; cursor:pointer; white-space:nowrap;">Required</label>
-          </div>
-          <button type="button" class="remove-field-btn" onclick="removeField(${idx})">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-          </button>
         </div>
+
+        <!-- Inputs Grid -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;">
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.75rem; font-weight: 600;">Field Name / Key <span class="req" style="color: var(--color-error);">*</span></label>
+            <input type="text" class="code-font" style="font-family: monospace; font-size: 0.85rem;" value="${escHtml(field.name)}" placeholder="e.g. title_text" oninput="updateFieldAtPath('${pathStr}', 'name', this.value)" />
+          </div>
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.75rem; font-weight: 600;">Display Label</label>
+            <input type="text" value="${escHtml(field.label)}" placeholder="e.g. Section Title" oninput="updateFieldAtPath('${pathStr}', 'label', this.value)" />
+          </div>
+          <div class="form-group" style="position: relative; margin: 0;">
+            <label style="font-size: 0.75rem; font-weight: 600;">Field Type</label>
+            <div class="custom-select-searchable" id="type-select-wrap-${pathId}" data-path="${escHtml(pathStr)}">
+              <button type="button" class="btn btn-outline type-picker-btn" onclick="toggleTypePicker('${pathId}')" style="width: 100%; text-align: left; justify-content: space-between; font-weight: normal;">
+                <span style="font-weight: 600; color: var(--primary);">${field.type || 'text'}</span>
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+              <div class="type-picker-dropdown" id="type-picker-${pathId}" style="display: none; position: absolute; left: 0; right: 0; top: 105%; z-index: 2000; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.5rem; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
+                <input type="text" class="type-picker-search-input" placeholder="Search type..." oninput="filterTypeOptions('${pathId}', '${pathStr}', this.value)" style="margin-bottom: 0.5rem; padding: 0.35rem 0.5rem; font-size: 0.8rem; width: 100%; height: auto;" />
+                <div class="type-picker-options" style="max-height: 160px; overflow-y: auto; font-size: 0.8rem;">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         ${needsOptions ? `
-          <div class="form-group">
-            <label style="font-size:0.75rem;">Select Options (comma-separated)</label>
-            <input type="text" value="${escHtml((field.options || []).join(', '))}" placeholder="e.g. left, right, center" oninput="updateField(${idx}, 'options', this.value.split(',').map(s=>s.trim()).filter(Boolean))" />
+          <div class="form-group" style="margin-top:0.25rem;">
+            <label style="font-size:0.75rem;">Select Options (comma-separated list, or format: val:Label)</label>
+            <input type="text" value="${escHtml((field.options || []).map(o => typeof o === 'object' ? `${o.value}:${o.label}` : String(o)).join(', '))}" placeholder="e.g. left, center, right OR active:Active State, inactive:Inactive State" oninput="updateFieldOptions('${pathStr}', this.value)" />
           </div>
         ` : ''}
-        ${!isRepeater ? `
+
+        <div class="advanced-settings-panel" id="adv-settings-${pathId}" style="display:none; margin-top:0.4rem; background:rgba(0,0,0,0.15); border:1px solid var(--border-color); padding:0.85rem; border-radius:6px; grid-template-columns:1fr 1fr; gap:0.65rem;">
           <div class="form-group">
-            <label style="font-size:0.75rem;">Default Value</label>
-            <input type="text" value="${escHtml(typeof field.default === 'object' ? JSON.stringify(field.default) : String(field.default ?? ''))}" placeholder="Default value" oninput="updateField(${idx}, 'default', this.value)" />
+            <label style="font-size:0.7rem;">Placeholder text</label>
+            <input type="text" value="${escHtml(field.placeholder)}" oninput="updateFieldAtPath('${pathStr}', 'placeholder', this.value)" />
           </div>
-        ` : `
-          <div style="background:rgba(99,102,241,0.05); border:1px dashed rgba(99,102,241,0.3); border-radius:6px; padding:0.85rem;">
+          <div class="form-group">
+            <label style="font-size:0.7rem;">Help Text / description</label>
+            <input type="text" value="${escHtml(field.helpText)}" oninput="updateFieldAtPath('${pathStr}', 'helpText', this.value)" />
+          </div>
+          <div class="form-group">
+            <label style="font-size:0.7rem;">Default Value</label>
+            <input type="text" value="${escHtml(typeof field.default === 'object' ? JSON.stringify(field.default) : String(field.default ?? ''))}" oninput="updateFieldAtPath('${pathStr}', 'default', this.value)" />
+          </div>
+          <div class="form-group">
+            <label style="font-size:0.7rem;">Validation RegEx regex</label>
+            <input type="text" value="${escHtml(field.validation?.regex)}" placeholder="e.g. ^[A-Za-z]+$" oninput="updateValidationAtPath('${pathStr}', 'regex', this.value)" />
+          </div>
+          <div class="form-group">
+            <label style="font-size:0.7rem;">Min Value / Min Length</label>
+            <input type="number" value="${field.validation?.min !== undefined ? field.validation.min : (field.validation?.minLength !== undefined ? field.validation.minLength : '')}" placeholder="e.g. 3" oninput="updateValidationAtPath('${pathStr}', 'min', this.value)" />
+          </div>
+          <div class="form-group">
+            <label style="font-size:0.7rem;">Max Value / Max Length</label>
+            <input type="number" value="${field.validation?.max !== undefined ? field.validation.max : (field.validation?.maxLength !== undefined ? field.validation.maxLength : '')}" placeholder="e.g. 100" oninput="updateValidationAtPath('${pathStr}', 'max', this.value)" />
+          </div>
+          <div class="form-group" style="grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; border-top:1px solid var(--border-color); padding-top:0.5rem;">
+            <div>
+              <label style="font-size:0.7rem; color:var(--text-dim);">Show If Field (Dependency)</label>
+              <input type="text" value="${escHtml(field.showIf?.field)}" placeholder="e.g. enable_cta" oninput="updateShowHideAtPath('${pathStr}', 'showIf', 'field', this.value)" />
+            </div>
+            <div>
+              <label style="font-size:0.7rem; color:var(--text-dim);">Show If Equals Value</label>
+              <input type="text" value="${escHtml(field.showIf?.value !== undefined ? String(field.showIf.value) : '')}" placeholder="e.g. true" oninput="updateShowHideAtPath('${pathStr}', 'showIf', 'value', this.value)" />
+            </div>
+          </div>
+          <div class="form-group" style="grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+            <div>
+              <label style="font-size:0.7rem; color:var(--text-dim);">Hide If Field (Dependency)</label>
+              <input type="text" value="${escHtml(field.hideIf?.field)}" placeholder="e.g. hide_image" oninput="updateShowHideAtPath('${pathStr}', 'hideIf', 'field', this.value)" />
+            </div>
+            <div>
+              <label style="font-size:0.7rem; color:var(--text-dim);">Hide If Equals Value</label>
+              <input type="text" value="${escHtml(field.hideIf?.value !== undefined ? String(field.hideIf.value) : '')}" placeholder="e.g. true" oninput="updateShowHideAtPath('${pathStr}', 'hideIf', 'value', this.value)" />
+            </div>
+          </div>
+        </div>
+
+        ${hasSubfields ? `
+          <div style="background:rgba(99,102,241,0.03); border:1px dashed rgba(99,102,241,0.25); border-radius:6px; padding:0.85rem; margin-top:0.4rem;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-              <span style="font-size:0.75rem; font-weight:600; color:var(--text-muted); text-transform:uppercase;">Sub-fields (Repeater Items)</span>
-              <button type="button" class="btn btn-outline btn-sm" onclick="addRepeaterSubField(${idx})">+ Sub-field</button>
+              <span style="font-size:0.7rem; font-weight:600; color:var(--text-muted); text-transform:uppercase;">Sub-fields (${field.type})</span>
+              <button type="button" class="btn btn-outline btn-sm" onclick="addFieldAtPath('${JSON.stringify([...currentPath, 'repeaterFields'])}')">+ Add Sub-field</button>
             </div>
-            <div id="repeater-subfields-${idx}">
-              ${(field.repeaterFields || []).map((sf, sfIdx) => `
-                <div style="display:grid; grid-template-columns:1fr 1fr 140px auto; gap:0.5rem; margin-bottom:0.5rem; align-items:end;">
-                  <div class="form-group">
-                    <label style="font-size:0.7rem;">Name</label>
-                    <input type="text" value="${escHtml(sf.name)}" placeholder="field name" oninput="updateSubField(${idx}, ${sfIdx}, 'name', this.value)" />
-                  </div>
-                  <div class="form-group">
-                    <label style="font-size:0.7rem;">Label</label>
-                    <input type="text" value="${escHtml(sf.label)}" placeholder="field label" oninput="updateSubField(${idx}, ${sfIdx}, 'label', this.value)" />
-                  </div>
-                  <div class="form-group">
-                    <label style="font-size:0.7rem;">Type</label>
-                    <select onchange="updateSubField(${idx}, ${sfIdx}, 'type', this.value)">
-                      ${['text','textarea','number','boolean','image','select'].map(t => `<option value="${t}" ${sf.type === t ? 'selected' : ''}>${t}</option>`).join('')}
-                    </select>
-                  </div>
-                  <button type="button" class="remove-field-btn" onclick="removeSubField(${idx}, ${sfIdx})">
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                  </button>
-                </div>
-              `).join('')}
+            <div id="subfields-container-${pathId}">
             </div>
           </div>
-        `}
+        ` : ''}
       `;
-      container.appendChild(row);
+      containerEl.appendChild(row);
+
+      if (hasSubfields) {
+        const subfieldsContainer = document.getElementById(`subfields-container-${pathId}`);
+        if (subfieldsContainer) {
+          if (!field.repeaterFields) field.repeaterFields = [];
+          renderFieldsList(field.repeaterFields, subfieldsContainer, [...currentPath, 'repeaterFields']);
+        }
+      }
     });
   }
 
   function escHtml(str) {
     return String(str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
-
-  window.updateField = function(idx, key, value) {
-    if (!fieldsData[idx]) return;
-    fieldsData[idx][key] = value;
-    if (key === 'type') renderFieldsBuilder();
-  };
-
-  window.updateSubField = function(parentIdx, sfIdx, key, value) {
-    if (!fieldsData[parentIdx]) return;
-    if (!fieldsData[parentIdx].repeaterFields) fieldsData[parentIdx].repeaterFields = [];
-    if (!fieldsData[parentIdx].repeaterFields[sfIdx]) return;
-    fieldsData[parentIdx].repeaterFields[sfIdx][key] = value;
-  };
-
-  window.removeField = function(idx) {
-    fieldsData.splice(idx, 1);
-    renderFieldsBuilder();
-  };
-
-  window.addRepeaterSubField = function(parentIdx) {
-    if (!fieldsData[parentIdx].repeaterFields) fieldsData[parentIdx].repeaterFields = [];
-    fieldsData[parentIdx].repeaterFields.push({ name: '', label: '', type: 'text', required: false });
-    renderFieldsBuilder();
-  };
-
-  window.removeSubField = function(parentIdx, sfIdx) {
-    fieldsData[parentIdx].repeaterFields.splice(sfIdx, 1);
-    renderFieldsBuilder();
-  };
 
   async function saveDef() {
     const key = document.getElementById('def-key').value.trim();
@@ -824,7 +1142,6 @@ const fieldTypes = ["text", "textarea", "number", "boolean", "select", "image", 
     setTimeout(() => t.classList.remove('visible'), 3000);
   }
 
-  // Handle URL query parameters on page load to edit a schema
   window.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
     const editKey = params.get('edit');

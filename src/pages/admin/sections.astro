@@ -1169,7 +1169,7 @@ const categories = ["hero", "content", "marketing", "social", "other"];
         }
 
         if (!selectedBlockType) {
-          alert("Please select a section type template from the blueprint catalog.");
+          showToast("Please select a section type template from the blueprint catalog.");
           return;
         }
 
@@ -1196,11 +1196,11 @@ const categories = ["hero", "content", "marketing", "social", "other"];
               window.location.href = `/admin/sections/editor?id=${secId}`;
             }, 800);
           } else {
-            alert("Error: " + (data.error || "Save failed"));
+            showToast("Error: " + (data.error || "Save failed"));
             submitCreateBtn.disabled = false;
           }
         } catch(e) {
-          alert("Connection error occurred.");
+          showToast("Connection error occurred.");
           submitCreateBtn.disabled = false;
         }
       });
@@ -1239,12 +1239,12 @@ const categories = ["hero", "content", "marketing", "social", "other"];
               window.location.reload();
             }, 800);
           } else {
-            alert("Error: " + (data.error || "Delete failed"));
+            showToast("Error: " + (data.error || "Delete failed"));
             confirmDeleteBtn.disabled = false;
             confirmDeleteBtn.innerText = "Delete Section";
           }
         } catch(e) {
-          alert("Network connection error");
+          showToast("Network connection error");
           confirmDeleteBtn.disabled = false;
           confirmDeleteBtn.innerText = "Delete Section";
         }
@@ -1404,7 +1404,7 @@ const categories = ["hero", "content", "marketing", "social", "other"];
           return;
         }
         if (!selectedBlockType) {
-          alert("Please select a section type blueprint from the catalog.");
+          showToast("Please select a section type blueprint from the catalog.");
           return;
         }
 
@@ -1425,12 +1425,12 @@ const categories = ["hero", "content", "marketing", "social", "other"];
               window.location.href = `/admin/sections/editor?id=${secId}`;
             }, 800);
           } else {
-            alert("Error: " + (data.error || "Create failed"));
+            showToast("Error: " + (data.error || "Create failed"));
             confirmCreateBtn.disabled = false;
             if (confirmSpan) confirmSpan.innerText = "Create & Edit Section";
           }
         } catch(e) {
-          alert("Connection error occurred.");
+          showToast("Connection error occurred.");
           confirmCreateBtn.disabled = false;
           if (confirmSpan) confirmSpan.innerText = "Create & Edit Section";
         }
@@ -1468,7 +1468,7 @@ const categories = ["hero", "content", "marketing", "social", "other"];
           window.location.reload();
         }, 800);
       } else {
-        alert("Error duplicating: " + (data.error || "failed"));
+        showToast("Error duplicating: " + (data.error || "failed"));
       }
     } catch(e) {
       showToast("Network Error occurred.");
@@ -1540,10 +1540,10 @@ const categories = ["hero", "content", "marketing", "social", "other"];
         localStorage.setItem("cms_section_templates", JSON.stringify(templates));
         showToast(`Template "${templateName}" saved successfully!`);
       } else {
-        alert("Error loading section content from disk.");
+        showToast("Error loading section content from disk.");
       }
     } catch(e) {
-      alert("Network Connection error");
+      showToast("Network Connection error");
     }
   }
 
@@ -1579,10 +1579,10 @@ const categories = ["hero", "content", "marketing", "social", "other"];
           window.location.href = `/admin/sections/editor?id=${payload.id}`;
         }, 800);
       } else {
-        alert("Error creating: " + data.error);
+        showToast("Error creating: " + data.error);
       }
     } catch(e) {
-      alert("Network Connection error");
+      showToast("Network Connection error");
     }
   }
 
@@ -1616,10 +1616,10 @@ const categories = ["hero", "content", "marketing", "social", "other"];
         downloadAnchor.remove();
         showToast("✓ Section exported to JSON successfully!");
       } else {
-        alert("Error loading section for export.");
+        showToast("Error loading section for export.");
       }
     } catch(e) {
-      alert("Network error exporting section.");
+      showToast("Network error exporting section.");
     }
   }
 
@@ -1629,7 +1629,7 @@ const categories = ["hero", "content", "marketing", "social", "other"];
       try {
         const sectionData = JSON.parse(e.target.result);
         if (!sectionData.type) {
-          alert("Invalid backup JSON: Missing component 'type' field.");
+          showToast("Invalid backup JSON: Missing component 'type' field.");
           return;
         }
 
@@ -1659,10 +1659,10 @@ const categories = ["hero", "content", "marketing", "social", "other"];
             window.location.reload();
           }, 800);
         } else {
-          alert("Import failed: " + data.error);
+          showToast("Import failed: " + data.error);
         }
       } catch(err) {
-        alert("Error parsing JSON file. Make sure file content is valid JSON.");
+        showToast("Error parsing JSON file. Make sure file content is valid JSON.");
       }
     };
     reader.readAsText(file);

@@ -1105,5 +1105,80 @@
         "repeaterFields": []
       }
     ]
+  },
+  {
+    "key": "industry",
+    "name": "Industry Expertise Section",
+    "category": "other",
+    "description": "Industry Expertise Section",
+    "componentPath": "src/blocks/industry.astro",
+    "previewImage": "",
+    "fields": [
+      {
+        "name": "Title",
+        "label": "Section Title",
+        "type": "text",
+        "required": false,
+        "default": "",
+        "options": [],
+        "repeaterFields": []
+      },
+      {
+        "name": "Bg",
+        "label": "Background Image",
+        "type": "image",
+        "required": false,
+        "default": "",
+        "options": [],
+        "repeaterFields": []
+      },
+      {
+        "name": "SubHeading",
+        "label": "Sub Heading",
+        "type": "text",
+        "required": false,
+        "default": "",
+        "options": [],
+        "repeaterFields": []
+      },
+      {
+        "name": "industries",
+        "label": "industries",
+        "type": "repeater",
+        "required": false,
+        "default": "",
+        "options": [],
+        "repeaterFields": [
+          {
+            "name": "icon",
+            "label": "icon",
+            "type": "image",
+            "required": false
+          },
+          {
+            "name": "title ",
+            "label": "title",
+            "type": "text",
+            "required": false
+          },
+          {
+            "name": "description",
+            "label": "description",
+            "type": "textarea",
+            "required": false
+          }
+        ]
+      },
+      {
+        "name": "btn",
+        "label": "btn",
+        "type": "link",
+        "required": false,
+        "default": "",
+        "options": [],
+        "repeaterFields": [],
+        "placeholder": "Link"
+      }
+    ]
   }
 ]

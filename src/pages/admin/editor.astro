@@ -68,6 +68,39 @@ if (slug) {
       try {
         pageData = { ...pageData, ...parse(parts[1]) };
         rawBody = parts.slice(2).join("---").trim();
+        
+        // Resolve section blocks content for the editor client
+        if (pageData.blocks && Array.isArray(pageData.blocks)) {
+          pageData.blocks = pageData.blocks.map((block: any) => {
+            const config = BLOCK_REGISTRY.find((d: any) => d.type === block.type);
+            const defaultValues = config ? { ...config.defaultValues } : {};
+
+            if (block.sectionId) {
+              const secPath = path.resolve("src/content/sections", `${block.sectionId}.md`);
+              let secData = {};
+              if (fs.existsSync(secPath)) {
+                const secContent = fs.readFileSync(secPath, "utf-8");
+                const secParts = secContent.split(/^---$/m);
+                if (secParts.length >= 3) {
+                  try {
+                    secData = parse(secParts[1]) || {};
+                  } catch (err) {
+                    console.error(`Error parsing YAML in section ${block.sectionId}:`, err);
+                  }
+                }
+              }
+              return {
+                ...defaultValues,
+                ...block,
+                ...secData
+              };
+            }
+            return {
+              ...defaultValues,
+              ...block
+            };
+          });
+        }
       } catch (e) {
         console.error("Error parsing YAML in editor:", e);
       }
@@ -1357,9 +1390,15 @@ if (slug) {
 
     // Dynamic Media triggers hooking on delegates
     document.addEventListener("click", (e) => {
-      if (e.target && e.target.classList.contains("media-picker-trigger")) {
-        const targetId = e.target.getAttribute("data-target");
-        openMediaModal(targetId);
+      const trigger = e.target.closest(".media-picker-trigger");
+      if (trigger) {
+        const targetId = trigger.getAttribute("data-target");
+        const galleryTarget = trigger.getAttribute("data-gallery-target");
+        if (targetId) {
+          openMediaModal(targetId);
+        } else if (galleryTarget) {
+          openGalleryPicker(galleryTarget);
+        }
       }
     });
 
@@ -1592,10 +1631,10 @@ if (slug) {
           }
         }, 50);
       } else {
-        alert("Error loading section details from API.");
+        showToast("Error loading section details from API.");
       }
     } catch(e) {
-      alert("Network Connection error");
+      showToast("Network Connection error");
     }
   }
 
@@ -1709,67 +1748,471 @@ if (slug) {
   }
 
   // Synchronize inputs back to array state on change
-  window.syncField = function(blockIdx, fieldName, value) {
-    blocks[blockIdx][fieldName] = value;
-    updateSeoIndicators();
+  const ROOT_OBJECT = blocks;
+  const updateUI = renderBlocks;
+
+  function renderSubFieldsHTML(fields, parentObj, path = []) {
+    let html = '';
+    fields.forEach(field => {
+      const currentPath = [...path, field.name];
+      const pathStr = JSON.stringify(currentPath);
+      const escPathStr = escHtml(pathStr);
+      const pathId = currentPath.join('-');
+      const val = parentObj[field.name] !== undefined ? parentObj[field.name] : (field.default !== undefined ? field.default : "");
+      
+      const isRequired = field.required ? '<span class="required">*</span>' : '';
+      
+      let inputFieldHtml = "";
+      const inputId = `field-${pathId}`;
+      const placeholder = field.placeholder || field.label || "";
+      const helpText = field.helpText ? `<span class="field-help" style="font-size:0.75rem; color:var(--text-dim); display:block; margin-top:0.2rem;">${field.helpText}</span>` : '';
+      
+      // Validation attributes
+      const validationAttr = `
+        data-path='${escPathStr}'
+        data-label='${escHtml(field.label)}'
+        data-required='${field.required ? 'true' : 'false'}'
+        data-validation='${JSON.stringify(field.validation || {})}'
+      `;
+
+      if (["text", "email", "tel", "url", "slug", "password", "hidden"].includes(field.type)) {
+        inputFieldHtml = `<input type="${field.type}" id="${inputId}" value="${escHtml(val)}" oninput="syncPathValue('${escPathStr}', this.value)" placeholder="${escHtml(placeholder)}" ${field.required ? 'required' : ''} ${validationAttr} />`;
+      } else if (field.type === "number") {
+        const minAttr = field.validation?.min !== undefined ? `min="${field.validation.min}"` : '';
+        const maxAttr = field.validation?.max !== undefined ? `max="${field.validation.max}"` : '';
+        const stepAttr = field.validation?.step !== undefined ? `step="${field.validation.step}"` : '';
+        inputFieldHtml = `<input type="number" id="${inputId}" value="${val}" ${minAttr} ${maxAttr} ${stepAttr} oninput="syncPathValue('${escPathStr}', parseFloat(this.value) || 0)" placeholder="${escHtml(placeholder)}" ${field.required ? 'required' : ''} ${validationAttr} />`;
+      } else if (field.type === "range") {
+        const minAttr = field.validation?.min !== undefined ? field.validation.min : 0;
+        const maxAttr = field.validation?.max !== undefined ? field.validation.max : 100;
+        const stepAttr = field.validation?.step !== undefined ? field.validation.step : 1;
+        inputFieldHtml = `
+          <div style="display:flex; align-items:center; gap:1rem;">
+            <input type="range" id="${inputId}" min="${minAttr}" max="${maxAttr}" step="${stepAttr}" value="${val || minAttr}" oninput="syncPathValue('${escPathStr}', parseFloat(this.value) || 0); document.getElementById('val-disp-${pathId}').textContent = this.value" style="flex:1;" ${validationAttr} />
+            <span id="val-disp-${pathId}" style="font-weight:600; font-size:0.85rem; min-width:30px; text-align:right;">${val || minAttr}</span>
+          </div>
+        `;
+      } else if (field.type === "percentage") {
+        inputFieldHtml = `
+          <div style="display:flex; align-items:center; position:relative;">
+            <input type="number" id="${inputId}" min="0" max="100" value="${val}" oninput="syncPathValue('${escPathStr}', parseFloat(this.value) || 0)" placeholder="0-100" style="padding-right:2rem;" ${validationAttr} />
+            <span style="position:absolute; right:0.75rem; font-size:0.85rem; color:var(--text-dim); pointer-events:none;">%</span>
+          </div>
+        `;
+      } else if (["textarea", "json", "css", "javascript", "code", "html", "markdown", "richtext"].includes(field.type)) {
+        inputFieldHtml = `<textarea id="${inputId}" rows="4" class="form-textarea code-font" oninput="syncPathValue('${escPathStr}', this.value)" placeholder="${escHtml(placeholder)}" ${field.required ? 'required' : ''} ${validationAttr}>${val}</textarea>`;
+      } else if (["checkbox", "toggle", "boolean"].includes(field.type)) {
+        inputFieldHtml = `
+          <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.25rem;">
+            <input type="checkbox" id="${inputId}" ${val ? 'checked' : ''} onchange="syncPathValue('${escPathStr}', this.checked)" style="width:auto;" ${validationAttr} />
+            <label for="${inputId}" style="font-weight:500; cursor:pointer; margin:0;">${field.label}</label>
+          </div>
+        `;
+      } else if (field.type === "select") {
+        const options = (field.options || []).map(opt => {
+          const v = typeof opt === 'object' ? opt.value : opt;
+          const l = typeof opt === 'object' ? opt.label : opt;
+          return `<option value="${v}" ${val === v ? 'selected' : ''}>${escHtml(l)}</option>`;
+        }).join('');
+        inputFieldHtml = `<select id="${inputId}" onchange="syncPathValue('${escPathStr}', this.value)" ${validationAttr}>${options}</select>`;
+      } else if (field.type === "multiselect") {
+        const items = Array.isArray(val) ? val : [];
+        const optionsHtml = (field.options || []).map(opt => {
+          const v = typeof opt === 'object' ? opt.value : opt;
+          const l = typeof opt === 'object' ? opt.label : opt;
+          return `
+            <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.83rem; cursor:pointer;">
+              <input type="checkbox" value="${v}" ${items.includes(v) ? 'checked' : ''} onchange="syncMultiselect('${escPathStr}', '${v}', this.checked)" style="width:auto;" />
+              <span>${escHtml(l)}</span>
+            </label>
+          `;
+        }).join('');
+        inputFieldHtml = `
+          <div class="multiselect-wrap" ${validationAttr} style="display:flex; flex-direction:column; gap:0.35rem; padding:0.5rem; border:1px solid var(--border-color); border-radius:6px; max-height:140px; overflow-y:auto; background:var(--bg-body);">
+            ${optionsHtml || '<span style="font-size:0.75rem; color:var(--text-dim);">No options configured</span>'}
+          </div>
+        `;
+      } else if (field.type === "radio") {
+        const optionsHtml = (field.options || []).map((opt, oIdx) => {
+          const v = typeof opt === 'object' ? opt.value : opt;
+          const l = typeof opt === 'object' ? opt.label : opt;
+          return `
+            <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.83rem; cursor:pointer;">
+              <input type="radio" name="radio-${pathId}" value="${v}" ${val === v ? 'checked' : ''} onchange="syncPathValue('${escPathStr}', this.value)" style="width:auto;" />
+              <span>${escHtml(l)}</span>
+            </label>
+          `;
+        }).join('');
+        inputFieldHtml = `
+          <div style="display:flex; flex-wrap:wrap; gap:1rem; padding-top:0.25rem;" ${validationAttr}>
+            ${optionsHtml}
+          </div>
+        `;
+      } else if (field.type === "button-group") {
+        const optionsHtml = (field.options || []).map(opt => {
+          const v = typeof opt === 'object' ? opt.value : opt;
+          const l = typeof opt === 'object' ? opt.label : opt;
+          return `
+            <button type="button" class="btn btn-sm ${val === v ? 'btn-primary' : 'btn-outline'}" onclick="syncPathValue('${escPathStr}', '${v}')" style="min-height:unset; height:auto; padding:0.35rem 0.65rem; border-radius:4px;">
+              ${escHtml(l)}
+            </button>
+          `;
+        }).join('');
+        inputFieldHtml = `
+          <div class="btn-group-toggle" style="display:flex; gap:0.25rem;" ${validationAttr}>
+            ${optionsHtml}
+          </div>
+        `;
+      } else if (["image", "svg", "icon", "file", "video", "audio"].includes(field.type)) {
+        inputFieldHtml = `
+          <div class="input-picker-wrap" ${validationAttr}>
+            <input type="text" id="${inputId}" value="${val}" oninput="syncPathValue('${escPathStr}', this.value)" placeholder="${escHtml(placeholder)}" />
+            <button type="button" class="btn btn-outline btn-sm media-picker-trigger" data-target="${inputId}">Pick</button>
+          </div>
+        `;
+      } else if (field.type === "gallery") {
+        const items = Array.isArray(val) ? val : [];
+        inputFieldHtml = `
+          <div class="gallery-editor" ${validationAttr} style="border: 1px dashed var(--border-color); padding: 0.75rem; border-radius: 8px; background:var(--bg-body);">
+            <div class="gallery-thumbs" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.5rem;">
+              ${items.map((img, imgIdx) => `
+                <div class="gallery-thumb" style="position:relative; width:80px; height:80px; border-radius:6px; overflow:hidden; border:1px solid var(--border-color);">
+                  <img src="${img}" style="width:100%; height:100%; object-fit:cover;" />
+                  <button type="button" onclick="removeFromGallery('${escPathStr}', ${imgIdx})" style="position:absolute; top:2px; right:2px; padding:2px; background:rgba(0,0,0,0.85); border:none; color:white; border-radius:50%; cursor:pointer; width:18px; height:18px; display:flex; align-items:center; justify-content:center; font-size:0.6rem;">&times;</button>
+                </div>
+              `).join('')}
+            </div>
+            <button type="button" class="btn btn-outline btn-sm media-picker-trigger" data-gallery-target="${escPathStr}">Add Image</button>
+          </div>
+        `;
+      } else if (["date", "time", "datetime", "month"].includes(field.type)) {
+        const subType = field.type === 'datetime' ? 'datetime-local' : field.type;
+        inputFieldHtml = `<input type="${subType}" id="${inputId}" value="${val}" oninput="syncPathValue('${escPathStr}', this.value)" ${field.required ? 'required' : ''} ${validationAttr} />`;
+      } else if (field.type === "color") {
+        inputFieldHtml = `
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <input type="color" id="${inputId}" value="${val || '#000000'}" oninput="syncPathValue('${escPathStr}', this.value)" style="width:50px; height:34px; padding:0; cursor:pointer;" ${validationAttr} />
+            <input type="text" value="${val || '#000000'}" oninput="syncPathValue('${escPathStr}', this.value)" style="flex:1;" placeholder="#000000" />
+          </div>
+        `;
+      } else if (field.type === "gradient") {
+        inputFieldHtml = `
+          <div style="display:flex; flex-direction:column; gap:0.35rem;">
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <div id="grad-preview-${pathId}" style="width:50px; height:34px; border-radius:4px; border:1px solid var(--border-color); background:${val || 'transparent'};"></div>
+              <input type="text" id="${inputId}" value="${val}" oninput="syncPathValue('${escPathStr}', this.value); document.getElementById('grad-preview-${pathId}').style.background = this.value" style="flex:1;" placeholder="linear-gradient(...)" ${validationAttr} />
+            </div>
+          </div>
+        `;
+      } else if (field.type === "link") {
+        const linkVal = typeof val === 'object' ? val : {};
+        inputFieldHtml = `
+          <div class="link-editor-card" ${validationAttr} style="border: 1px solid var(--border-color); padding: 0.85rem; border-radius: 6px; display:flex; flex-direction:column; gap:0.5rem; background: rgba(255,255,255,0.01);">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+              <div class="form-group" style="margin:0;">
+                <label style="font-size:0.75rem;">Link Text</label>
+                <input type="text" value="${escHtml(linkVal.text || '')}" oninput="syncLinkField('${escPathStr}', 'text', this.value)" placeholder="e.g. Learn More" />
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label style="font-size:0.75rem;">Link URL</label>
+                <input type="text" value="${escHtml(linkVal.url || '')}" oninput="syncLinkField('${escPathStr}', 'url', this.value)" placeholder="e.g. /about OR https://google.com" />
+              </div>
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:0.75rem; margin-top:0.25rem;">
+              <label style="display:flex; align-items:center; gap:0.3; font-size:0.75rem; cursor:pointer;"><input type="checkbox" ${linkVal.newTab ? 'checked' : ''} onchange="syncLinkField('${escPathStr}', 'newTab', this.checked)" style="width:auto;" /> New Tab</label>
+              <label style="display:flex; align-items:center; gap:0.3; font-size:0.75rem; cursor:pointer;"><input type="checkbox" ${linkVal.nofollow ? 'checked' : ''} onchange="syncLinkField('${escPathStr}', 'nofollow', this.checked)" style="width:auto;" /> No Follow</label>
+              <label style="display:flex; align-items:center; gap:0.3; font-size:0.75rem; cursor:pointer;"><input type="checkbox" ${linkVal.sponsored ? 'checked' : ''} onchange="syncLinkField('${escPathStr}', 'sponsored', this.checked)" style="width:auto;" /> Sponsored</label>
+              <label style="display:flex; align-items:center; gap:0.3; font-size:0.75rem; cursor:pointer;"><input type="checkbox" ${linkVal.ugc ? 'checked' : ''} onchange="syncLinkField('${escPathStr}', 'ugc', this.checked)" style="width:auto;" /> UGC</label>
+            </div>
+          </div>
+        `;
+      } else if (["group", "object"].includes(field.type)) {
+        const subVal = typeof val === 'object' ? val : {};
+        inputFieldHtml = `
+          <div class="group-editor-card" ${validationAttr} style="border:1px solid var(--border-color); padding: 0.75rem 1rem; border-radius: 8px; background: rgba(99, 102, 241, 0.02); display:flex; flex-direction:column; gap:0.5rem;">
+            ${renderSubFieldsHTML(field.repeaterFields || [], subVal, currentPath)}
+          </div>
+        `;
+      } else if (field.type === "repeater") {
+        const items = Array.isArray(val) ? val : [];
+        const schemaJson = JSON.stringify(field.repeaterFields || []);
+        
+        inputFieldHtml = `
+          <div class="repeater-section" ${validationAttr}>
+            <div class="repeater-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+              <h5 style="margin:0; font-size:0.85rem;">${field.label} Items</h5>
+              <button type="button" class="btn btn-outline btn-sm" onclick="addRepeaterItemAtPath('${escPathStr}', '${escHtml(schemaJson)}')">+ Add Item</button>
+            </div>
+            <div class="repeater-items-wrap" style="display:flex; flex-direction:column; gap:0.5rem;">
+              ${items.map((item, itemIdx) => `
+                <div class="repeater-item-row" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 1rem; position: relative;">
+                  <div style="position:absolute; top:0.5rem; right:0.5rem; display:flex; gap:0.25rem;">
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:2px; height:20px; min-width:24px;" onclick="moveRepeaterItemAtPath('${escPathStr}', ${itemIdx}, -1)" ${itemIdx === 0 ? 'disabled' : ''}>&uarr;</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:2px; height:20px; min-width:24px;" onclick="moveRepeaterItemAtPath('${escPathStr}', ${itemIdx}, 1)" ${itemIdx === items.length - 1 ? 'disabled' : ''}>&darr;</button>
+                    <button type="button" class="btn-icon-sm btn-delete-block" onclick="removeRepeaterItemAtPath('${escPathStr}', ${itemIdx})" style="padding:2px; height:20px; width:20px; display:flex; align-items:center; justify-content:center;">&times;</button>
+                  </div>
+                  <div style="display:flex; flex-direction:column; gap:0.5rem; padding-top:0.75rem; width:100%;">
+                    ${renderSubFieldsHTML(field.repeaterFields || [], item, [...currentPath, itemIdx])}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      } else if (field.type === "array" || field.type === "list") {
+        const items = Array.isArray(val) ? val : [];
+        inputFieldHtml = `
+          <div class="repeater-section" ${validationAttr}>
+            <div class="repeater-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+              <h5 style="margin:0; font-size:0.85rem;">${field.label}</h5>
+              <button type="button" class="btn btn-outline btn-sm" onclick="addListStringItemAtPath('${escPathStr}')">+ Add Item</button>
+            </div>
+            <div class="repeater-items-wrap" style="display:flex; flex-direction:column; gap:0.35rem;">
+              ${items.map((item, itemIdx) => `
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                  <input type="text" value="${escHtml(item)}" oninput="syncListStringFieldAtPath('${escPathStr}', ${itemIdx}, this.value)" style="flex:1;" />
+                  <button type="button" class="btn-icon-sm btn-delete-block" onclick="removeListStringItemAtPath('${escPathStr}', ${itemIdx})" style="padding:2px; height:24px; width:24px; display:flex; align-items:center; justify-content:center;">&times;</button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      const showIfAttr = field.showIf ? `data-show-if-field="${field.showIf.field}" data-show-if-value="${field.showIf.value}"` : '';
+      const hideIfAttr = field.hideIf ? `data-hide-if-field="${field.hideIf.field}" data-hide-if-value="${field.hideIf.value}"` : '';
+
+      html += `
+        <div class="form-group ${['repeater', 'gallery', 'textarea', 'group', 'object', 'array', 'list', 'link'].includes(field.type) ? 'col-12' : 'col-6'}" 
+             id="wrap-${pathId}" 
+             data-path='${escPathStr}'
+             ${showIfAttr} 
+             ${hideIfAttr} 
+             style="margin-top:0.4rem;">
+          <label style="font-weight:600; display:block; margin-bottom:0.25rem;">${field.label} ${isRequired}</label>
+          ${inputFieldHtml}
+          ${helpText}
+          <span class="field-error" id="err-${pathId}" style="color:var(--color-error); font-size:0.75rem; display:none; margin-top:0.25rem; font-weight:500;"></span>
+        </div>
+      `;
+    });
+    return html;
   }
 
-  // Dynamic simple lists string helpers
-  window.addListStringItem = function(blockIdx, fieldName) {
-    if (!blocks[blockIdx][fieldName]) blocks[blockIdx][fieldName] = [];
-    blocks[blockIdx][fieldName].push("");
-    renderBlocks();
-  };
+  function escHtml(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
 
-  window.syncListStringField = function(blockIdx, fieldName, itemIdx, value) {
-    blocks[blockIdx][fieldName][itemIdx] = value;
-  };
-
-  window.removeListStringItem = function(blockIdx, fieldName, itemIdx) {
-    blocks[blockIdx][fieldName].splice(itemIdx, 1);
-    renderBlocks();
-  };
-
-  // Dynamic nested list string helpers
-  window.addNestedListStringItem = function(blockIdx, repeaterName, itemIdx, fieldName) {
-    if (!blocks[blockIdx][repeaterName][itemIdx][fieldName]) {
-      blocks[blockIdx][repeaterName][itemIdx][fieldName] = [];
+  function setNestedValue(obj, path, value) {
+    let current = obj;
+    for (let i = 0; i < path.length - 1; i++) {
+      const key = path[i];
+      if (current[key] === undefined || current[key] === null) {
+        current[key] = typeof path[i+1] === 'number' ? [] : {};
+      }
+      current = current[key];
     }
-    blocks[blockIdx][repeaterName][itemIdx][fieldName].push("");
-    renderBlocks();
-  };
+    current[path[path.length - 1]] = value;
+  }
 
-  window.syncNestedListStringField = function(blockIdx, repeaterName, itemIdx, fieldName, sItemIdx, value) {
-    blocks[blockIdx][repeaterName][itemIdx][fieldName][sItemIdx] = value;
-  };
+  function getNestedValue(obj, path) {
+    let current = obj;
+    for (let i = 0; i < path.length; i++) {
+      if (current === undefined || current === null) return undefined;
+      current = current[path[i]];
+    }
+    return current;
+  }
 
-  window.removeNestedListStringItem = function(blockIdx, repeaterName, itemIdx, fieldName, sItemIdx) {
-    blocks[blockIdx][repeaterName][itemIdx][fieldName].splice(sItemIdx, 1);
-    renderBlocks();
-  };
-
-  // Repeater helpers
-  window.addRegistryRepeaterItem = function(blockIdx, fieldName, repeaterFieldsSchema) {
-    if (!blocks[blockIdx][fieldName]) blocks[blockIdx][fieldName] = [];
-    
-    // Create new item with defaults
-    const newItem = {};
-    repeaterFieldsSchema.forEach(field => {
-      newItem[field.name] = field.default !== undefined ? field.default : "";
-    });
-    
-    blocks[blockIdx][fieldName].push(newItem);
-    renderBlocks();
-  };
-
-  window.syncRepeaterRegistryField = function(blockIdx, repeaterName, itemIdx, fieldName, value) {
-    blocks[blockIdx][repeaterName][itemIdx][fieldName] = value;
+  window.syncPathValue = function(pathJsonStr, value) {
+    const path = JSON.parse(pathJsonStr);
+    setNestedValue(ROOT_OBJECT, path, value);
+    evaluateConditionalVisibility();
+    validateAllFields();
     updateSeoIndicators();
   };
 
-  window.removeRepeaterRegistryItem = function(blockIdx, repeaterName, itemIdx) {
-    blocks[blockIdx][repeaterName].splice(itemIdx, 1);
-    renderBlocks();
+  window.syncMultiselect = function(pathJsonStr, optVal, checked) {
+    const path = JSON.parse(pathJsonStr);
+    let items = getNestedValue(ROOT_OBJECT, path);
+    if (!Array.isArray(items)) items = [];
+    if (checked) {
+      if (!items.includes(optVal)) items.push(optVal);
+    } else {
+      const idx = items.indexOf(optVal);
+      if (idx !== -1) items.splice(idx, 1);
+    }
+    setNestedValue(ROOT_OBJECT, path, items);
+    validateAllFields();
+  };
+
+  window.syncLinkField = function(pathJsonStr, key, value) {
+    const path = JSON.parse(pathJsonStr);
+    let linkVal = getNestedValue(ROOT_OBJECT, path);
+    if (typeof linkVal !== 'object' || linkVal === null) linkVal = {};
+    linkVal[key] = value;
+    setNestedValue(ROOT_OBJECT, path, linkVal);
+    validateAllFields();
+  };
+
+  window.addRepeaterItemAtPath = function(pathJsonStr, schemaJson) {
+    const path = JSON.parse(pathJsonStr);
+    const schema = JSON.parse(schemaJson);
+    let items = getNestedValue(ROOT_OBJECT, path);
+    if (!Array.isArray(items)) items = [];
+    const newItem = {};
+    schema.forEach(f => {
+      newItem[f.name] = f.default !== undefined ? f.default : "";
+    });
+    items.push(newItem);
+    setNestedValue(ROOT_OBJECT, path, items);
+    updateUI();
+  };
+
+  window.removeRepeaterItemAtPath = function(pathJsonStr, idx) {
+    const path = JSON.parse(pathJsonStr);
+    const items = getNestedValue(ROOT_OBJECT, path);
+    if (Array.isArray(items)) {
+      items.splice(idx, 1);
+      updateUI();
+    }
+  };
+
+  window.moveRepeaterItemAtPath = function(pathJsonStr, idx, dir) {
+    const path = JSON.parse(pathJsonStr);
+    const items = getNestedValue(ROOT_OBJECT, path);
+    if (Array.isArray(items)) {
+      const targetIdx = idx + dir;
+      if (targetIdx >= 0 && targetIdx < items.length) {
+        const temp = items[idx];
+        items[idx] = items[targetIdx];
+        items[targetIdx] = temp;
+        updateUI();
+      }
+    }
+  };
+
+  window.addListStringItemAtPath = function(pathJsonStr) {
+    const path = JSON.parse(pathJsonStr);
+    let items = getNestedValue(ROOT_OBJECT, path);
+    if (!Array.isArray(items)) items = [];
+    items.push("");
+    setNestedValue(ROOT_OBJECT, path, items);
+    updateUI();
+  };
+
+  window.removeListStringItemAtPath = function(pathJsonStr, idx) {
+    const path = JSON.parse(pathJsonStr);
+    const items = getNestedValue(ROOT_OBJECT, path);
+    if (Array.isArray(items)) {
+      items.splice(idx, 1);
+      updateUI();
+    }
+  };
+
+  window.syncListStringFieldAtPath = function(pathJsonStr, idx, val) {
+    const path = JSON.parse(pathJsonStr);
+    const items = getNestedValue(ROOT_OBJECT, path);
+    if (Array.isArray(items)) {
+      items[idx] = val;
+    }
+  };
+
+  let activeGalleryPathStr = null;
+  window.openGalleryPicker = function(pathStr) {
+    activeGalleryPathStr = pathStr;
+    activeMediaPickerTarget = "";
+    document.getElementById("media-picker-overlay").classList.add("active");
+    loadMediaCatalogGrid();
+  };
+
+  window.removeFromGallery = function(pathStr, idx) {
+    const path = JSON.parse(pathStr);
+    const items = getNestedValue(ROOT_OBJECT, path);
+    if (Array.isArray(items)) {
+      items.splice(idx, 1);
+      updateUI();
+    }
+  };
+
+  window.evaluateConditionalVisibility = function() {
+    document.querySelectorAll('[data-show-if-field]').forEach(el => {
+      const showField = el.dataset.showIfField;
+      const showVal = el.dataset.showIfValue;
+      const path = JSON.parse(el.dataset.path);
+      const dependencyPath = [...path.slice(0, -1), showField];
+      const actualVal = getNestedValue(ROOT_OBJECT, dependencyPath);
+      
+      let isMatch = false;
+      if (showVal === 'true') isMatch = (actualVal === true);
+      else if (showVal === 'false') isMatch = (actualVal === false || actualVal === undefined || actualVal === null || actualVal === '');
+      else isMatch = (String(actualVal) === String(showVal));
+
+      el.style.display = isMatch ? '' : 'none';
+    });
+
+    document.querySelectorAll('[data-hide-if-field]').forEach(el => {
+      const hideField = el.dataset.hideIfField;
+      const hideVal = el.dataset.hideIfValue;
+      const path = JSON.parse(el.dataset.path);
+      const dependencyPath = [...path.slice(0, -1), hideField];
+      const actualVal = getNestedValue(ROOT_OBJECT, dependencyPath);
+      
+      let isMatch = false;
+      if (hideVal === 'true') isMatch = (actualVal === true);
+      else if (hideVal === 'false') isMatch = (actualVal === false || actualVal === undefined || actualVal === null || actualVal === '');
+      else isMatch = (String(actualVal) === String(hideVal));
+
+      el.style.display = isMatch ? 'none' : '';
+    });
+  };
+
+  window.validateAllFields = function() {
+    let hasErrors = false;
+    document.querySelectorAll('[data-validation]').forEach(el => {
+      const validation = JSON.parse(el.dataset.validation || '{}');
+      const path = JSON.parse(el.dataset.path || '[]');
+      const isRequired = el.dataset.required === 'true';
+      const val = getNestedValue(ROOT_OBJECT, path);
+      const label = el.dataset.label || 'Field';
+
+      let errorMsg = '';
+      if (isRequired && (val === undefined || val === null || val === '')) {
+        errorMsg = `${label} is required`;
+      } else if (val !== undefined && val !== null && val !== '') {
+        if (validation.minLength && String(val).length < validation.minLength) {
+          errorMsg = `${label} must be at least ${validation.minLength} characters`;
+        }
+        if (validation.maxLength && String(val).length > validation.maxLength) {
+          errorMsg = `${label} cannot exceed ${validation.maxLength} characters`;
+        }
+        if (validation.min !== undefined && parseFloat(val) < validation.min) {
+          errorMsg = `${label} must be at least ${validation.min}`;
+        }
+        if (validation.max !== undefined && parseFloat(val) > validation.max) {
+          errorMsg = `${label} cannot exceed ${validation.max}`;
+        }
+        if (validation.regex) {
+          const rx = new RegExp(validation.regex);
+          if (!rx.test(String(val))) {
+            errorMsg = `${label} format is invalid`;
+          }
+        }
+      }
+
+      const pathId = path.join('-');
+      const errSpan = document.getElementById(`err-${pathId}`);
+      if (errSpan) {
+        errSpan.textContent = errorMsg;
+        if (errorMsg) {
+          errSpan.style.display = 'block';
+          hasErrors = true;
+        } else {
+          errSpan.style.display = 'none';
+        }
+      }
+    });
+    return !hasErrors;
   };
 
   // Dynamic form renderer driven completely by BLOCK_REGISTRY
@@ -1798,154 +2241,7 @@ if (slug) {
       let fieldsHtml = "";
 
       if (config) {
-        config.fields.forEach(field => {
-          const val = block[field.name] !== undefined ? block[field.name] : (field.default !== undefined ? field.default : "");
-          const isRequired = field.required ? '<span class="required">*</span>' : '';
-          
-          let inputFieldHtml = "";
-          
-          if (field.type === "text") {
-            inputFieldHtml = `<input type="text" value="${val}" oninput="syncField(${idx}, '${field.name}', this.value)" placeholder="${field.label}" ${field.required ? 'required' : ''} />`;
-          } else if (field.type === "number") {
-            inputFieldHtml = `<input type="number" value="${val}" oninput="syncField(${idx}, '${field.name}', parseFloat(this.value) || 0)" placeholder="${field.label}" ${field.required ? 'required' : ''} />`;
-          } else if (field.type === "textarea") {
-            inputFieldHtml = `<textarea rows="4" oninput="syncField(${idx}, '${field.name}', this.value)" placeholder="${field.label}" ${field.required ? 'required' : ''}>${val}</textarea>`;
-          } else if (field.type === "boolean") {
-            inputFieldHtml = `
-              <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.25rem;">
-                <input type="checkbox" id="block-${idx}-${field.name}" ${val ? 'checked' : ''} onchange="syncField(${idx}, '${field.name}', this.checked)" style="width:auto;" />
-                <label for="block-${idx}-${field.name}" style="font-weight:500; cursor:pointer;">${field.label}</label>
-              </div>
-            `;
-          } else if (field.type === "select") {
-            const options = (field.options || []).map(opt => `
-              <option value="${opt}" ${val === opt ? 'selected' : ''}>${opt.charAt(0).toUpperCase() + opt.slice(1)}</option>
-            `).join('');
-            inputFieldHtml = `<select onchange="syncField(${idx}, '${field.name}', this.value)">${options}</select>`;
-          } else if (field.type === "image") {
-            inputFieldHtml = `
-              <div class="input-picker-wrap">
-                <input type="text" id="block-${idx}-${field.name}" value="${val}" oninput="syncField(${idx}, '${field.name}', this.value)" placeholder="Image relative path" />
-                <button type="button" class="btn btn-outline btn-sm media-picker-trigger" data-target="block-${idx}-${field.name}">Pick</button>
-              </div>
-            `;
-          } else if (field.type === "list") {
-            const items = Array.isArray(val) ? val : [];
-            inputFieldHtml = `
-              <div class="repeater-section">
-                <div class="repeater-header">
-                  <h5>${field.label}</h5>
-                  <button type="button" class="btn btn-outline btn-sm" onclick="addListStringItem(${idx}, '${field.name}')">+ Add Item</button>
-                </div>
-                <div class="repeater-items-wrap">
-                  ${items.map((item, itemIdx) => `
-                    <div style="display:flex; gap:0.5rem;">
-                      <input type="text" value="${item}" oninput="syncListStringField(${idx}, '${field.name}', ${itemIdx}, this.value)" placeholder="Bullet / highlight text" style="flex:1;" />
-                      <button type="button" class="btn-icon-sm btn-delete-block" onclick="removeListStringItem(${idx}, '${field.name}', ${itemIdx})">${ICONS.delete}</button>
-                    </div>
-                  `).join('')}
-                </div>
-              </div>
-            `;
-          } else if (field.type === "repeater") {
-            const items = Array.isArray(val) ? val : [];
-            const fieldsSchemaString = JSON.stringify(field.repeaterFields || []).replace(/"/g, '&quot;');
-            
-            inputFieldHtml = `
-              <div class="repeater-section">
-                <div class="repeater-header">
-                  <h5>${field.label}</h5>
-                  <button type="button" class="btn btn-outline btn-sm" onclick='addRegistryRepeaterItem(${idx}, "${field.name}", ${fieldsSchemaString})'>+ Add Item</button>
-                </div>
-                <div class="repeater-items-wrap">
-                  ${items.map((item, itemIdx) => {
-                    let subFieldsHtml = "";
-                    
-                    if (field.repeaterFields) {
-                      field.repeaterFields.forEach(subField => {
-                        const subVal = item[subField.name] !== undefined ? item[subField.name] : "";
-                        const isSubRequired = subField.required ? '<span class="required">*</span>' : '';
-                        
-                        let subInputHtml = "";
-                        const subId = `block-${idx}-${field.name}-${itemIdx}-${subField.name}`;
-                        
-                        if (subField.type === "text") {
-                          subInputHtml = `<input type="text" value="${subVal}" oninput="syncRepeaterRegistryField(${idx}, '${field.name}', ${itemIdx}, '${subField.name}', this.value)" ${subField.required ? 'required' : ''} />`;
-                        } else if (subField.type === "number") {
-                          subInputHtml = `<input type="number" value="${subVal}" oninput="syncRepeaterRegistryField(${idx}, '${field.name}', ${itemIdx}, '${subField.name}', parseFloat(this.value) || 0)" ${subField.required ? 'required' : ''} />`;
-                        } else if (subField.type === "textarea") {
-                          subInputHtml = `<textarea rows="2" oninput="syncRepeaterRegistryField(${idx}, '${field.name}', ${itemIdx}, '${subField.name}', this.value)" ${subField.required ? 'required' : ''}>${subVal}</textarea>`;
-                        } else if (subField.type === "boolean") {
-                          subInputHtml = `
-                            <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.25rem;">
-                              <input type="checkbox" id="${subId}" ${subVal ? 'checked' : ''} onchange="syncRepeaterRegistryField(${idx}, '${field.name}', ${itemIdx}, '${subField.name}', this.checked)" style="width:auto;" />
-                              <label for="${subId}" style="font-weight:500; cursor:pointer;">${subField.label}</label>
-                            </div>
-                          `;
-                        } else if (subField.type === "select") {
-                          const subOpts = (subField.options || []).map(opt => `
-                            <option value="${opt}" ${subVal === opt ? 'selected' : ''}>${opt.charAt(0).toUpperCase() + opt.slice(1)}</option>
-                          `).join('');
-                          subInputHtml = `<select onchange="syncRepeaterRegistryField(${idx}, '${field.name}', ${itemIdx}, '${subField.name}', this.value)">${subOpts}</select>`;
-                        } else if (subField.type === "image") {
-                          subInputHtml = `
-                            <div class="input-picker-wrap">
-                              <input type="text" id="${subId}" value="${subVal}" oninput="syncRepeaterRegistryField(${idx}, '${field.name}', ${itemIdx}, '${subField.name}', this.value)" />
-                              <button type="button" class="btn btn-outline btn-sm media-picker-trigger" data-target="${subId}">Pick</button>
-                            </div>
-                          `;
-                        } else if (subField.type === "list") {
-                          const subItems = Array.isArray(subVal) ? subVal : [];
-                          subInputHtml = `
-                            <div class="repeater-section">
-                              <div class="repeater-header">
-                                <h5>${subField.label}</h5>
-                                <button type="button" class="btn btn-outline btn-sm" onclick="addNestedListStringItem(${idx}, '${field.name}', ${itemIdx}, '${subField.name}')">+ Add Sub-Item</button>
-                              </div>
-                              <div class="repeater-items-wrap">
-                                ${subItems.map((sItem, sItemIdx) => `
-                                  <div style="display:flex; gap:0.5rem;">
-                                    <input type="text" value="${sItem}" oninput="syncNestedListStringField(${idx}, '${field.name}', ${itemIdx}, '${subField.name}', ${sItemIdx}, this.value)" style="flex:1;" />
-                                    <button type="button" class="btn-icon-sm btn-delete-block" onclick="removeNestedListStringItem(${idx}, '${field.name}', ${itemIdx}, '${subField.name}', ${sItemIdx})">${ICONS.delete}</button>
-                                  </div>
-                                `).join('')}
-                              </div>
-                            </div>
-                          `;
-                        }
-                        
-                        subFieldsHtml += `
-                          <div class="form-group col-12" style="margin-top:0.4rem;">
-                            <label>${subField.label} ${isSubRequired}</label>
-                            ${subInputHtml}
-                          </div>
-                        `;
-                      });
-                    }
-                    
-                    return `
-                      <div class="repeater-item-row">
-                        <div class="repeater-item-actions">
-                          <button type="button" class="btn-icon-sm btn-delete-block" onclick="removeRepeaterRegistryItem(${idx}, '${field.name}', ${itemIdx})">${ICONS.delete}</button>
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:0.5rem; width:100%; padding-right:2rem;">
-                          ${subFieldsHtml}
-                        </div>
-                      </div>
-                    `;
-                  }).join('')}
-                </div>
-              </div>
-            `;
-          }
-          
-          fieldsHtml += `
-            <div class="form-group ${field.type === 'repeater' || field.type === 'list' || field.type === 'textarea' ? 'col-12' : 'col-6'}">
-              <label>${field.label} ${isRequired}</label>
-              ${inputFieldHtml}
-            </div>
-          `;
-        });
+        fieldsHtml = renderSubFieldsHTML(config.fields, block, [idx]);
       }
 
       const sectionIdHtml = block.sectionId 
@@ -1965,13 +2261,16 @@ if (slug) {
             <button type="button" class="btn-icon-sm btn-delete-block" onclick="deleteBlock(${idx})" title="Delete Block">${ICONS.delete}</button>
           </div>
         </div>
-        <div class="block-form-grid">
+        <div class="block-form-grid" style="display:flex; flex-direction:column; gap:0.5rem;">
           ${fieldsHtml}
         </div>
       `;
 
       container.appendChild(card);
     });
+
+    evaluateConditionalVisibility();
+    validateAllFields();
   }
 
   // Real-time SEO Scoring & Character Counter logic
@@ -2180,6 +2479,11 @@ if (slug) {
       return;
     }
 
+    if (!validateAllFields()) {
+      showToast("Please fix the validation errors in the blocks section first.");
+      return;
+    }
+
     const headerScripts = document.getElementById("page-header-scripts").value;
     const footerScripts = document.getElementById("page-footer-scripts").value;
     const customCss = document.getElementById("page-custom-css").value;
@@ -2367,6 +2671,17 @@ if (slug) {
         targetInput.dispatchEvent(changeEvent);
       }
       hideMediaModal();
+    } else if (activeGalleryPathStr) {
+      const path = JSON.parse(activeGalleryPathStr);
+      let items = getNestedValue(ROOT_OBJECT, path);
+      if (!Array.isArray(items)) items = [];
+      if (!items.includes(url)) {
+        items.push(url);
+      }
+      setNestedValue(ROOT_OBJECT, path, items);
+      hideMediaModal();
+      activeGalleryPathStr = null;
+      updateUI();
     }
   };
 
