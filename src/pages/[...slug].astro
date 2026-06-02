@@ -46,6 +46,17 @@ if (matchingRedirect) {
   return Astro.redirect(matchingRedirect.to, status);
 }
 
+// Load section definitions dynamically
+let allDefinitions: any[] = [];
+try {
+  const definitionsPath = path.resolve("src/data/section-definitions.json");
+  if (fs.existsSync(definitionsPath)) {
+    allDefinitions = JSON.parse(fs.readFileSync(definitionsPath, "utf-8"));
+  }
+} catch (e) {
+  console.error("Failed to load section definitions inside slug.astro:", e);
+}
+
 // 3. Query page entry
 const entry = await getEntry("pages", cleanSlug);
 
@@ -59,14 +70,23 @@ const pageRaw = entry.data;
 // Asynchronously resolve section blocks content
 const resolvedBlocks = await Promise.all(
   (pageRaw.blocks || []).map(async (block: any) => {
+    const config = allDefinitions.find((d: any) => d.key === block.type);
+    const defaultValues = config ? Object.fromEntries(
+      (config.fields || []).map((f: any) => [f.name, f.default !== undefined ? f.default : ""])
+    ) : {};
+
     if (block.sectionId) {
       const sectionEntry = await getEntry("sections", block.sectionId);
       return {
+        ...defaultValues,
         ...block,
         ...(sectionEntry ? sectionEntry.data : {})
       };
     }
-    return block;
+    return {
+      ...defaultValues,
+      ...block
+    };
   })
 );
 

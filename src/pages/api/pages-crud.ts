@@ -225,30 +225,30 @@ export const GET: APIRoute = async ({ url, cookies }) => {
 
       // Resolve section blocks content for the editor client
       if (data && Array.isArray(data.blocks)) {
+        const definitions = loadDefinitions();
         data.blocks = data.blocks.map((block: any) => {
+          const config = definitions.find((d: any) => d.key === block.type);
+          const defaultValues = config ? Object.fromEntries(
+            (config.fields || []).map((f: any) => [f.name, f.default !== undefined ? f.default : ""])
+          ) : {};
+
           if (block.sectionId) {
             const secPath = path.resolve("src/content/sections", `${block.sectionId}.md`);
+            let secData = {};
             if (fs.existsSync(secPath)) {
               const secContent = fs.readFileSync(secPath, "utf-8");
-              const { data: secData } = parseMarkdown(secContent);
-              return {
-                ...block,
-                ...secData
-              };
-            } else {
-              // Merge default values from definitions registry
-              const definitions = loadDefinitions();
-              const config = definitions.find((d: any) => d.key === block.type);
-              const defaultValues = config ? Object.fromEntries(
-                (config.fields || []).map((f: any) => [f.name, f.default !== undefined ? f.default : ""])
-              ) : {};
-              return {
-                ...block,
-                ...defaultValues
-              };
+              secData = parseMarkdown(secContent).data || {};
             }
+            return {
+              ...defaultValues,
+              ...block,
+              ...secData
+            };
           }
-          return block;
+          return {
+            ...defaultValues,
+            ...block
+          };
         });
       }
 
