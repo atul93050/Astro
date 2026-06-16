@@ -26,7 +26,7 @@ const validLogos = (logos || []).filter(l => l && l.image);
           {/* Output logos twice for smooth infinite loop */}
           {[...validLogos, ...validLogos, ...validLogos].map((logo) => (
             <div class="slide">
-              <img src={logo.image} alt={logo.alt || "Partner logo"} class="partner-logo" />
+              <img src={logo.image} alt={logo.alt || "Partner logo"} class="partner-logo" loading="lazy" decoding="async" />
             </div>
           ))}
         </div>

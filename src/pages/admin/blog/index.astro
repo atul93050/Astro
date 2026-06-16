@@ -1,0 +1,1288 @@
+---
+import AdminLayout from '../../../layouts/admin/AdminLayout.astro';
+
+export const prerender = false;
+---
+
+<AdminLayout title="Blog Posts">
+
+  <!-- Top bar: Title + New Post CTA -->
+  <div class="blog-topbar">
+    <div class="blog-topbar-left">
+      <p class="blog-subtitle">Manage, publish, and organize all your blog content from one place.</p>
+    </div>
+    <div class="blog-topbar-right">
+      <a href="/admin/blog/create" class="btn btn-primary" id="new-post-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Post
+      </a>
+    </div>
+  </div>
+
+  <!-- Status Filter Tabs -->
+  <div class="status-tabs-bar" id="status-tabs-bar">
+    <button class="status-tab active" data-status="all">
+      All
+      <span class="tab-count" id="count-all">0</span>
+    </button>
+    <button class="status-tab" data-status="published">
+      Published
+      <span class="tab-count published" id="count-published">0</span>
+    </button>
+    <button class="status-tab" data-status="draft">
+      Draft
+      <span class="tab-count draft" id="count-draft">0</span>
+    </button>
+    <button class="status-tab" data-status="scheduled">
+      Scheduled
+      <span class="tab-count scheduled" id="count-scheduled">0</span>
+    </button>
+    <button class="status-tab" data-status="archived">
+      Archived
+      <span class="tab-count archived" id="count-archived">0</span>
+    </button>
+  </div>
+
+  <!-- Filters Row: Search + Category + Author -->
+  <div class="filters-row">
+    <div class="search-wrap">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="search" id="search-input" placeholder="Search posts by title…" autocomplete="off" />
+    </div>
+    <div class="filter-selects">
+      <select id="category-filter">
+        <option value="">All Categories</option>
+      </select>
+      <select id="author-filter">
+        <option value="">All Authors</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Bulk Actions Bar (hidden by default) -->
+  <div class="bulk-bar" id="bulk-bar">
+    <div class="bulk-bar-left">
+      <span id="bulk-count-label">0 posts selected</span>
+    </div>
+    <div class="bulk-bar-right">
+      <button class="btn btn-outline btn-sm" id="bulk-publish-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Publish
+      </button>
+      <button class="btn btn-outline btn-sm" id="bulk-draft-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+        Set Draft
+      </button>
+      <button class="btn btn-danger btn-sm" id="bulk-delete-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        Delete
+      </button>
+    </div>
+  </div>
+
+  <!-- Posts Table -->
+  <div class="admin-table-wrapper" id="table-wrapper">
+    <table class="admin-table" id="posts-table">
+      <thead>
+        <tr>
+          <th style="width:42px; padding-left:1.5rem;">
+            <input type="checkbox" id="select-all-checkbox" title="Select all" />
+          </th>
+          <th style="width:56px;">Image</th>
+          <th>Title / Slug</th>
+          <th>Author</th>
+          <th>Category</th>
+          <th>Tags</th>
+          <th>Status</th>
+          <th>Date</th>
+          <th style="text-align:right;">Views</th>
+          <th style="text-align:center; width:110px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="posts-tbody">
+        <!-- JS populated -->
+      </tbody>
+    </table>
+
+    <!-- Empty State -->
+    <div class="empty-state" id="empty-state" style="display:none;">
+      <div class="empty-state-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+          <polyline points="10 9 9 9 8 9"/>
+        </svg>
+      </div>
+      <h3 id="empty-state-title">No posts found</h3>
+      <p id="empty-state-msg">Create your first blog post to get started.</p>
+      <a href="/admin/blog/create" class="btn btn-primary" style="margin-top:1.25rem;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Create First Post
+      </a>
+    </div>
+
+    <!-- Loading State -->
+    <div class="loading-state" id="loading-state">
+      <div class="loading-spinner"></div>
+      <p>Loading posts…</p>
+    </div>
+  </div>
+
+  <!-- Pagination Controls -->
+  <div class="pagination-bar" id="pagination-bar" style="display:none;">
+    <span class="pagination-info" id="pagination-info">Showing 1–10 of 0</span>
+    <div class="pagination-controls">
+      <button class="btn btn-outline btn-sm" id="prev-page-btn" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Prev
+      </button>
+      <div class="page-numbers" id="page-numbers"></div>
+      <button class="btn btn-outline btn-sm" id="next-page-btn" disabled>
+        Next
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  </div>
+
+</AdminLayout>
+
+<!-- Delete Confirm Modal -->
+<div class="confirm-modal-overlay" id="delete-modal">
+  <div class="confirm-modal">
+    <div class="confirm-modal-header">
+      <h4>Delete Post</h4>
+      <button class="close-modal-btn" id="close-delete-modal">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="confirm-modal-body">
+      Are you sure you want to permanently delete <strong id="delete-post-title">"this post"</strong>? This action cannot be undone and will also remove all associated comments.
+      <div class="warning-text">
+        <strong>⚠ Warning:</strong> This will permanently delete the post file from the filesystem.
+      </div>
+    </div>
+    <div class="confirm-modal-footer">
+      <button class="btn btn-outline" id="cancel-delete-btn">Cancel</button>
+      <button class="btn btn-danger" id="confirm-delete-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        Delete Permanently
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Delete Confirm Modal -->
+<div class="confirm-modal-overlay" id="bulk-delete-modal">
+  <div class="confirm-modal">
+    <div class="confirm-modal-header">
+      <h4>Bulk Delete Posts</h4>
+      <button class="close-modal-btn" id="close-bulk-delete-modal">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="confirm-modal-body">
+      Are you sure you want to delete <strong id="bulk-delete-count">0 posts</strong>? This is permanent and cannot be undone.
+      <div class="warning-text">
+        <strong>⚠ Warning:</strong> All selected posts and their comments will be removed from the filesystem.
+      </div>
+    </div>
+    <div class="confirm-modal-footer">
+      <button class="btn btn-outline" id="cancel-bulk-delete-btn">Cancel</button>
+      <button class="btn btn-danger" id="confirm-bulk-delete-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+        Delete All Selected
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Notification -->
+<div class="toast-notification" id="toast-notify">
+  <div class="toast-content">
+    <span class="toast-message" id="toast-message">Done!</span>
+  </div>
+</div>
+
+<style is:global>
+  /* ── Page chrome ─────────────────────────────────────────────────── */
+  .blog-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.75rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .blog-subtitle {
+    font-size: 0.93rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+  .blog-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+  }
+
+  /* ── Status filter tabs ──────────────────────────────────────────── */
+  .status-tabs-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    border-bottom: 1px solid var(--bg-surface-border);
+    margin-bottom: 1.5rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .status-tabs-bar::-webkit-scrollbar { display: none; }
+
+  .status-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.25rem;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+    position: relative;
+    bottom: -1px;
+    font-family: var(--font-body);
+  }
+  .status-tab:hover {
+    color: var(--text-main);
+    border-bottom-color: rgba(99, 102, 241, 0.35);
+  }
+  .status-tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    text-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+  }
+  .status-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--primary);
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.7), 0 0 24px rgba(99, 102, 241, 0.4);
+    border-radius: 2px 2px 0 0;
+  }
+
+  .tab-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: rgba(156, 163, 175, 0.1);
+    color: var(--text-dim);
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
+  }
+  .status-tab.active .tab-count {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--primary);
+    border-color: rgba(99, 102, 241, 0.25);
+  }
+  .tab-count.published { background: rgba(16, 185, 129, 0.1); color: #10B981; border-color: rgba(16, 185, 129, 0.2); }
+  .tab-count.draft     { background: rgba(156, 163, 175, 0.1); color: var(--text-muted); }
+  .tab-count.scheduled { background: rgba(245, 158, 11, 0.1); color: #F59E0B; border-color: rgba(245, 158, 11, 0.2); }
+  .tab-count.archived  { background: rgba(239, 68, 68, 0.1); color: #EF4444; border-color: rgba(239, 68, 68, 0.2); }
+
+  /* ── Filters Row ─────────────────────────────────────────────────── */
+  .filters-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 220px;
+    max-width: 360px;
+  }
+  .search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 15px;
+    height: 15px;
+    color: var(--text-dim);
+    pointer-events: none;
+    flex-shrink: 0;
+  }
+  #search-input {
+    width: 100%;
+    padding-left: 2.25rem !important;
+  }
+  .filter-selects {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+  .filter-selects select {
+    min-width: 150px;
+  }
+
+  /* ── Bulk actions bar ────────────────────────────────────────────── */
+  .bulk-bar {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(99, 102, 241, 0.07);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: var(--radius-sm);
+    padding: 0.6rem 1rem;
+    margin-bottom: 0.85rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+    animation: slideDown 0.2s ease;
+  }
+  .bulk-bar.visible { display: flex; }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .bulk-bar-left span {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--primary);
+  }
+  .bulk-bar-right {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  /* ── Table enhancements ──────────────────────────────────────────── */
+  #posts-table thead th:first-child {
+    padding-left: 1.5rem;
+  }
+  .post-img-thumb {
+    width: 42px;
+    height: 42px;
+    border-radius: var(--radius-sm);
+    object-fit: cover;
+    border: 1px solid var(--border-color);
+    background: rgba(156, 163, 175, 0.06);
+    display: block;
+  }
+  .post-img-placeholder {
+    width: 42px;
+    height: 42px;
+    border-radius: var(--radius-sm);
+    background: rgba(99, 102, 241, 0.06);
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+  .post-title-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+  }
+  .post-title-text {
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: var(--text-main);
+    line-height: 1.3;
+    max-width: 260px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .post-slug-text {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    font-family: 'Courier New', monospace;
+    opacity: 0.85;
+  }
+
+  /* Status badges */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.22rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  .status-badge.published {
+    background: rgba(16, 185, 129, 0.12);
+    color: #10B981;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+  }
+  .status-badge.draft {
+    background: rgba(156, 163, 175, 0.1);
+    color: #9CA3AF;
+    border: 1px solid rgba(156, 163, 175, 0.15);
+  }
+  .status-badge.scheduled {
+    background: rgba(245, 158, 11, 0.1);
+    color: #F59E0B;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+  }
+  .status-badge.archived {
+    background: rgba(239, 68, 68, 0.1);
+    color: #EF4444;
+    border: 1px solid rgba(239, 68, 68, 0.15);
+  }
+
+  /* Tag pills */
+  .tags-cell {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    max-width: 200px;
+  }
+  .tag-pill {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 20px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--primary);
+    border: 1px solid rgba(99, 102, 241, 0.15);
+    white-space: nowrap;
+  }
+  .tags-more {
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    align-self: center;
+  }
+
+  /* Row hover effect */
+  #posts-table tbody tr {
+    transition: var(--transition);
+  }
+  #posts-table tbody tr:hover td {
+    background: rgba(99, 102, 241, 0.025) !important;
+  }
+  #posts-table tbody tr.selected-row td {
+    background: rgba(99, 102, 241, 0.045) !important;
+  }
+
+  /* Action buttons in table */
+  .row-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    justify-content: center;
+  }
+
+  /* Views number */
+  .views-num {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Empty / Loading states ──────────────────────────────────────── */
+  .empty-state {
+    padding: 5rem 2rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .empty-state-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: rgba(99, 102, 241, 0.06);
+    border: 1px solid rgba(99, 102, 241, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+    color: var(--text-dim);
+  }
+  .empty-state-icon svg { width: 32px; height: 32px; }
+  .empty-state h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+  .empty-state p {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+  }
+
+  .loading-state {
+    padding: 4rem 2rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(99, 102, 241, 0.15);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+  }
+  .loading-state p {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* ── Pagination ──────────────────────────────────────────────────── */
+  .pagination-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 1.25rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .pagination-info {
+    font-size: 0.825rem;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  .pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .page-numbers {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .page-btn {
+    min-width: 30px;
+    height: 30px;
+    padding: 0 0.35rem;
+    border-radius: 6px;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-body);
+  }
+  .page-btn:hover {
+    background: rgba(156, 163, 175, 0.08);
+    border-color: var(--text-muted);
+    color: var(--text-main);
+  }
+  .page-btn.active-page {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+  }
+
+  /* ── Author cell ────────────────────────────────────────────────── */
+  .author-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+  }
+  .author-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), #a855f7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: white;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  .author-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .author-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-main);
+    white-space: nowrap;
+  }
+
+  /* ── Category pill in table ──────────────────────────────────────── */
+  .cat-pill {
+    display: inline-block;
+    padding: 0.18rem 0.55rem;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    border: 1px solid;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 900px) {
+    .filter-selects { display: none; }
+    .search-wrap { max-width: 100%; }
+    .post-title-text { max-width: 160px; }
+  }
+  @media (max-width: 600px) {
+    .blog-topbar { flex-direction: column; align-items: flex-start; }
+    .status-tabs-bar { gap: 0; }
+    .status-tab { padding: 0.6rem 0.85rem; font-size: 0.8rem; }
+  }
+</style>
+
+<script is:inline>
+// ─── State ───────────────────────────────────────────────────────────────────
+let allPosts       = [];
+let filteredPosts  = [];
+let allCategories  = [];
+let allAuthors     = [];
+let activeStatus   = 'all';
+let searchQuery    = '';
+let catFilter      = '';
+let authorFilter   = '';
+let currentPage    = 1;
+const PER_PAGE     = 12;
+let selectedSlugs  = new Set();
+let pendingDeleteSlug = null;
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+(function init() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setup);
+  } else {
+    setup();
+  }
+})();
+
+async function setup() {
+  bindTabEvents();
+  bindSearchEvents();
+  bindBulkBarEvents();
+  bindModalEvents();
+  bindSelectAll();
+
+  await Promise.all([
+    loadPosts(),
+    loadCategories(),
+    loadAuthors(),
+  ]);
+}
+
+// ─── API Calls ───────────────────────────────────────────────────────────────
+async function loadPosts() {
+  showLoading(true);
+  try {
+    const res = await fetch('/api/blog-crud?action=list', { credentials: 'include' });
+    const json = await res.json();
+    if (json.success) {
+      allPosts = json.posts || [];
+    } else {
+      showToast('Failed to load posts: ' + (json.error || 'Unknown error'), 'error');
+    }
+  } catch (e) {
+    showToast('Network error loading posts.', 'error');
+  }
+  showLoading(false);
+  applyFilters();
+  updateCounts();
+}
+
+async function loadCategories() {
+  try {
+    const res = await fetch('/api/blog-crud?action=categories', { credentials: 'include' });
+    const json = await res.json();
+    if (json.success) {
+      allCategories = json.categories || [];
+      populateCategoryFilter();
+    }
+  } catch (_) {}
+}
+
+async function loadAuthors() {
+  try {
+    const res = await fetch('/api/blog-crud?action=authors', { credentials: 'include' });
+    const json = await res.json();
+    if (json.success) {
+      allAuthors = json.authors || [];
+      populateAuthorFilter();
+    }
+  } catch (_) {}
+}
+
+// ─── Populate Filters ────────────────────────────────────────────────────────
+function populateCategoryFilter() {
+  const sel = document.getElementById('category-filter');
+  if (!sel) return;
+  const currentVal = sel.value;
+  sel.innerHTML = '<option value="">All Categories</option>' +
+    allCategories.map(c => `<option value="${c.slug}">${c.name} (${c.postCount || 0})</option>`).join('');
+  sel.value = currentVal;
+}
+
+function populateAuthorFilter() {
+  const sel = document.getElementById('author-filter');
+  if (!sel) return;
+  const currentVal = sel.value;
+  sel.innerHTML = '<option value="">All Authors</option>' +
+    allAuthors.map(a => `<option value="${a.id}">${a.name} (${a.postCount || 0})</option>`).join('');
+  sel.value = currentVal;
+}
+
+// ─── Filter & Render ─────────────────────────────────────────────────────────
+function applyFilters() {
+  filteredPosts = allPosts.filter(post => {
+    if (activeStatus !== 'all' && post.status !== activeStatus) return false;
+    if (catFilter && post.category !== catFilter) return false;
+    if (authorFilter && post.author !== authorFilter) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const titleMatch = (post.title || '').toLowerCase().includes(q);
+      const slugMatch  = (post.slug || '').toLowerCase().includes(q);
+      if (!titleMatch && !slugMatch) return false;
+    }
+    return true;
+  });
+
+  currentPage = 1;
+  renderTable();
+  renderPagination();
+}
+
+function updateCounts() {
+  const counts = {
+    all: allPosts.length,
+    published: allPosts.filter(p => p.status === 'published').length,
+    draft: allPosts.filter(p => p.status === 'draft').length,
+    scheduled: allPosts.filter(p => p.status === 'scheduled').length,
+    archived: allPosts.filter(p => p.status === 'archived').length,
+  };
+  Object.entries(counts).forEach(([key, val]) => {
+    const el = document.getElementById('count-' + key);
+    if (el) el.textContent = val;
+  });
+}
+
+function renderTable() {
+  const tbody = document.getElementById('posts-tbody');
+  const emptyEl = document.getElementById('empty-state');
+  if (!tbody) return;
+
+  const start = (currentPage - 1) * PER_PAGE;
+  const pagePosts = filteredPosts.slice(start, start + PER_PAGE);
+
+  if (filteredPosts.length === 0) {
+    tbody.innerHTML = '';
+    if (emptyEl) {
+      emptyEl.style.display = 'flex';
+      const titleEl = document.getElementById('empty-state-title');
+      const msgEl   = document.getElementById('empty-state-msg');
+      if (activeStatus !== 'all' || searchQuery || catFilter || authorFilter) {
+        if (titleEl) titleEl.textContent = 'No posts match your filters';
+        if (msgEl)   msgEl.textContent = 'Try adjusting your search or filter criteria.';
+      } else {
+        if (titleEl) titleEl.textContent = 'No posts found';
+        if (msgEl)   msgEl.textContent = 'Create your first blog post to get started.';
+      }
+    }
+    document.getElementById('pagination-bar').style.display = 'none';
+    return;
+  }
+
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  tbody.innerHTML = pagePosts.map(post => {
+    const isSelected = selectedSlugs.has(post.slug);
+    const statusBadge = renderStatusBadge(post.status);
+    const tagsHtml   = renderTags(post.tags);
+    const authorHtml = renderAuthor(post.author);
+    const catHtml    = renderCategory(post.category);
+    const dateHtml   = formatDate(post.publishDate || post.scheduledDate || post.updatedDate || '');
+    const imgHtml    = post.featuredImage
+      ? `<img class="post-img-thumb" src="${escHtml(post.featuredImage)}" alt="" loading="lazy" />`
+      : `<div class="post-img-placeholder">
+           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+         </div>`;
+    const views = (post.views || 0).toLocaleString();
+
+    return `
+      <tr data-slug="${escHtml(post.slug)}" class="${isSelected ? 'selected-row' : ''}">
+        <td style="padding-left:1.5rem; width:42px;">
+          <input type="checkbox" class="row-checkbox" data-slug="${escHtml(post.slug)}" ${isSelected ? 'checked' : ''} />
+        </td>
+        <td>${imgHtml}</td>
+        <td>
+          <div class="post-title-cell">
+            <span class="post-title-text" title="${escHtml(post.title || 'Untitled')}">${escHtml(post.title || 'Untitled')}</span>
+            <span class="post-slug-text">/${escHtml(post.slug)}</span>
+          </div>
+        </td>
+        <td>${authorHtml}</td>
+        <td>${catHtml}</td>
+        <td>${tagsHtml}</td>
+        <td>${statusBadge}</td>
+        <td style="white-space:nowrap; font-size:0.82rem; color:var(--text-muted);">${dateHtml}</td>
+        <td class="views-num">${views}</td>
+        <td>
+          <div class="row-actions">
+            <a href="/admin/blog/edit?slug=${encodeURIComponent(post.slug)}" class="btn-action edit-btn" title="Edit post">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </a>
+            <button type="button" class="btn-action duplicate-btn" data-slug="${escHtml(post.slug)}" data-title="${escHtml(post.title || 'Untitled')}" title="Duplicate post">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>
+            <button type="button" class="btn-action delete-btn" data-slug="${escHtml(post.slug)}" data-title="${escHtml(post.title || 'Untitled')}" title="Delete post">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  // Bind row event listeners
+  tbody.querySelectorAll('.row-checkbox').forEach(cb => {
+    cb.addEventListener('change', onRowCheckboxChange);
+  });
+  tbody.querySelectorAll('.duplicate-btn').forEach(btn => {
+    btn.addEventListener('click', onDuplicateClick);
+  });
+  tbody.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', onDeleteClick);
+  });
+
+  syncSelectAll();
+  updateBulkBar();
+}
+
+// ─── Badge & Cell Renderers ───────────────────────────────────────────────────
+function renderStatusBadge(status) {
+  const map = {
+    published: { label: 'Published', icon: '<svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>' },
+    draft:     { label: 'Draft',     icon: '<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="6"/></svg>' },
+    scheduled: { label: 'Scheduled', icon: '⚠' },
+    archived:  { label: 'Archived',  icon: '<svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>' },
+  };
+  const s = map[status] || { label: status || 'Unknown', icon: '' };
+  return `<span class="status-badge ${escHtml(status || '')}">${s.icon} ${s.label}</span>`;
+}
+
+function renderTags(tags) {
+  if (!Array.isArray(tags) || tags.length === 0) {
+    return '<span style="color:var(--text-dim); font-size:0.75rem;">—</span>';
+  }
+  const show = tags.slice(0, 2);
+  const more = tags.length - 2;
+  return `<div class="tags-cell">
+    ${show.map(t => `<span class="tag-pill">${escHtml(t)}</span>`).join('')}
+    ${more > 0 ? `<span class="tags-more">+${more}</span>` : ''}
+  </div>`;
+}
+
+function renderAuthor(authorId) {
+  const author = allAuthors.find(a => a.id === authorId) || null;
+  const name = author ? author.name : (authorId || 'Unknown');
+  const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const avatarContent = (author && author.avatar)
+    ? `<img src="${escHtml(author.avatar)}" alt="${escHtml(name)}" />`
+    : initials;
+  return `<div class="author-cell">
+    <div class="author-avatar">${avatarContent}</div>
+    <span class="author-name">${escHtml(name)}</span>
+  </div>`;
+}
+
+function renderCategory(catSlug) {
+  const cat = allCategories.find(c => c.slug === catSlug) || null;
+  const name  = cat ? cat.name : (catSlug || 'Uncategorized');
+  const color = cat ? cat.color : '#6366F1';
+  const bg    = hexToRgba(color, 0.1);
+  const border = hexToRgba(color, 0.2);
+  return `<span class="cat-pill" style="background:${bg}; color:${color}; border-color:${border};">${escHtml(name)}</span>`;
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '<span style="color:var(--text-dim);">—</span>';
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch (_) {
+    return dateStr;
+  }
+}
+
+// ─── Pagination ───────────────────────────────────────────────────────────────
+function renderPagination() {
+  const bar      = document.getElementById('pagination-bar');
+  const infoEl   = document.getElementById('pagination-info');
+  const numsEl   = document.getElementById('page-numbers');
+  const prevBtn  = document.getElementById('prev-page-btn');
+  const nextBtn  = document.getElementById('next-page-btn');
+
+  const total    = filteredPosts.length;
+  const pages    = Math.ceil(total / PER_PAGE);
+  const start    = (currentPage - 1) * PER_PAGE + 1;
+  const end      = Math.min(currentPage * PER_PAGE, total);
+
+  if (total === 0) {
+    if (bar) bar.style.display = 'none';
+    return;
+  }
+
+  if (bar) bar.style.display = 'flex';
+  if (infoEl) infoEl.textContent = `Showing ${start}–${end} of ${total}`;
+
+  if (prevBtn) prevBtn.disabled = currentPage <= 1;
+  if (nextBtn) nextBtn.disabled = currentPage >= pages;
+
+  if (numsEl) {
+    const pageNums = getPaginationRange(currentPage, pages);
+    numsEl.innerHTML = pageNums.map(p => {
+      if (p === '…') return `<span style="color:var(--text-dim); padding:0 0.2rem;">…</span>`;
+      return `<button type="button" class="page-btn ${p === currentPage ? 'active-page' : ''}" data-page="${p}">${p}</button>`;
+    }).join('');
+    numsEl.querySelectorAll('.page-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentPage = parseInt(btn.dataset.page);
+        renderTable();
+        renderPagination();
+      });
+    });
+  }
+}
+
+function getPaginationRange(current, total) {
+  if (total <= 7) return Array.from({length: total}, (_, i) => i + 1);
+  if (current <= 3) return [1, 2, 3, 4, '…', total];
+  if (current >= total - 2) return [1, '…', total - 3, total - 2, total - 1, total];
+  return [1, '…', current - 1, current, current + 1, '…', total];
+}
+
+// ─── Events ───────────────────────────────────────────────────────────────────
+function bindTabEvents() {
+  const tabsBar = document.getElementById('status-tabs-bar');
+  if (!tabsBar) return;
+  tabsBar.addEventListener('click', e => {
+    const tab = e.target.closest('.status-tab');
+    if (!tab) return;
+    tabsBar.querySelectorAll('.status-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    activeStatus = tab.dataset.status;
+    selectedSlugs.clear();
+    applyFilters();
+  });
+}
+
+function bindSearchEvents() {
+  const searchInput = document.getElementById('search-input');
+  const catSel      = document.getElementById('category-filter');
+  const authorSel   = document.getElementById('author-filter');
+
+  if (searchInput) {
+    let debounceTimer;
+    searchInput.addEventListener('input', e => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        searchQuery = e.target.value.trim();
+        applyFilters();
+      }, 280);
+    });
+  }
+  if (catSel) {
+    catSel.addEventListener('change', e => {
+      catFilter = e.target.value;
+      applyFilters();
+    });
+  }
+  if (authorSel) {
+    authorSel.addEventListener('change', e => {
+      authorFilter = e.target.value;
+      applyFilters();
+    });
+  }
+
+  document.getElementById('prev-page-btn')?.addEventListener('click', () => {
+    if (currentPage > 1) { currentPage--; renderTable(); renderPagination(); }
+  });
+  document.getElementById('next-page-btn')?.addEventListener('click', () => {
+    const pages = Math.ceil(filteredPosts.length / PER_PAGE);
+    if (currentPage < pages) { currentPage++; renderTable(); renderPagination(); }
+  });
+}
+
+function bindSelectAll() {
+  const selectAll = document.getElementById('select-all-checkbox');
+  if (!selectAll) return;
+  selectAll.addEventListener('change', e => {
+    const isChecked = e.target.checked;
+    const start = (currentPage - 1) * PER_PAGE;
+    const pageSlugs = filteredPosts.slice(start, start + PER_PAGE).map(p => p.slug);
+    if (isChecked) {
+      pageSlugs.forEach(s => selectedSlugs.add(s));
+    } else {
+      pageSlugs.forEach(s => selectedSlugs.delete(s));
+    }
+    renderTable();
+    updateBulkBar();
+  });
+}
+
+function onRowCheckboxChange(e) {
+  const slug = e.target.dataset.slug;
+  if (e.target.checked) {
+    selectedSlugs.add(slug);
+  } else {
+    selectedSlugs.delete(slug);
+  }
+  const tr = e.target.closest('tr');
+  if (tr) tr.classList.toggle('selected-row', e.target.checked);
+  syncSelectAll();
+  updateBulkBar();
+}
+
+function syncSelectAll() {
+  const selectAll = document.getElementById('select-all-checkbox');
+  if (!selectAll) return;
+  const start = (currentPage - 1) * PER_PAGE;
+  const pageSlugs = filteredPosts.slice(start, start + PER_PAGE).map(p => p.slug);
+  if (pageSlugs.length === 0) { selectAll.checked = false; selectAll.disabled = true; return; }
+  selectAll.disabled = false;
+  selectAll.checked  = pageSlugs.every(s => selectedSlugs.has(s));
+  selectAll.indeterminate = !selectAll.checked && pageSlugs.some(s => selectedSlugs.has(s));
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulk-bar');
+  const lbl = document.getElementById('bulk-count-label');
+  if (!bar) return;
+  if (selectedSlugs.size > 0) {
+    bar.classList.add('visible');
+    if (lbl) lbl.textContent = `${selectedSlugs.size} post${selectedSlugs.size !== 1 ? 's' : ''} selected`;
+  } else {
+    bar.classList.remove('visible');
+  }
+}
+
+// ─── Row Actions ──────────────────────────────────────────────────────────────
+async function onDuplicateClick(e) {
+  const btn   = e.currentTarget;
+  const slug  = btn.dataset.slug;
+  const title = btn.dataset.title;
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/blog-crud', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'duplicate', slug }),
+    });
+    const json = await res.json();
+    if (json.success) {
+      showToast(`"${title}" duplicated as draft!`, 'success');
+      await loadPosts();
+    } else {
+      showToast('Duplicate failed: ' + (json.error || 'Unknown error'), 'error');
+    }
+  } catch (_) {
+    showToast('Network error during duplicate.', 'error');
+  }
+  btn.disabled = false;
+}
+
+function onDeleteClick(e) {
+  const btn   = e.currentTarget;
+  pendingDeleteSlug = btn.dataset.slug;
+  const title = btn.dataset.title;
+  document.getElementById('delete-post-title').textContent = '"' + title + '"';
+  openModal('delete-modal');
+}
+
+// ─── Bulk Actions ─────────────────────────────────────────────────────────────
+function bindBulkBarEvents() {
+  document.getElementById('bulk-publish-btn')?.addEventListener('click', () => bulkSetStatus('published'));
+  document.getElementById('bulk-draft-btn')?.addEventListener('click',   () => bulkSetStatus('draft'));
+  document.getElementById('bulk-delete-btn')?.addEventListener('click',  openBulkDeleteModal);
+}
+
+async function bulkSetStatus(newStatus) {
+  if (selectedSlugs.size === 0) return;
+  const slugsArr = Array.from(selectedSlugs);
+  const label = document.getElementById('bulk-publish-btn');
+
+  try {
+    await Promise.all(slugsArr.map(async slug => {
+      const post = allPosts.find(p => p.slug === slug);
+      if (!post) return;
+      await fetch('/api/blog-crud', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update',
+          originalSlug: slug,
+          slug,
+          status: newStatus,
+          title: post.title,
+          excerpt: post.excerpt || '',
+          author: post.author || '',
+          category: post.category || '',
+          tags: post.tags || [],
+          featuredImage: post.featuredImage || '',
+          publishDate: post.publishDate || '',
+          scheduledDate: post.scheduledDate || '',
+          seo: post.seo || {},
+        }),
+      });
+    }));
+    showToast(`${slugsArr.length} posts set to ${newStatus}!`, 'success');
+    selectedSlugs.clear();
+    await loadPosts();
+  } catch (_) {
+    showToast('Bulk update failed.', 'error');
+  }
+}
+
+function openBulkDeleteModal() {
+  const cnt = document.getElementById('bulk-delete-count');
+  if (cnt) cnt.textContent = `${selectedSlugs.size} post${selectedSlugs.size !== 1 ? 's' : ''}`;
+  openModal('bulk-delete-modal');
+}
+
+async function executeBulkDelete() {
+  const slugsArr = Array.from(selectedSlugs);
+  try {
+    await Promise.all(slugsArr.map(slug =>
+      fetch('/api/blog-crud', {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'post', slug }),
+      })
+    ));
+    showToast(`${slugsArr.length} posts deleted.`, 'success');
+    selectedSlugs.clear();
+    closeModal('bulk-delete-modal');
+    await loadPosts();
+  } catch (_) {
+    showToast('Bulk delete failed.', 'error');
+  }
+}
+
+async function executeDelete() {
+  if (!pendingDeleteSlug) return;
+  try {
+    const res = await fetch('/api/blog-crud', {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'post', slug: pendingDeleteSlug }),
+    });
+    const json = await res.json();
+    if (json.success) {
+      showToast('Post deleted successfully.', 'success');
+      selectedSlugs.delete(pendingDeleteSlug);
+      pendingDeleteSlug = null;
+      closeModal('delete-modal');
+      await loadPosts();
+    } else {
+      showToast('Delete failed: ' + (json.error || 'Unknown error'), 'error');
+    }
+  } catch (_) {
+    showToast('Network error during delete.', 'error');
+  }
+}
+
+// ─── Modals ───────────────────────────────────────────────────────────────────
+function bindModalEvents() {
+  document.getElementById('close-delete-modal')?.addEventListener('click',      () => closeModal('delete-modal'));
+  document.getElementById('cancel-delete-btn')?.addEventListener('click',       () => closeModal('delete-modal'));
+  document.getElementById('confirm-delete-btn')?.addEventListener('click',      executeDelete);
+
+  document.getElementById('close-bulk-delete-modal')?.addEventListener('click', () => closeModal('bulk-delete-modal'));
+  document.getElementById('cancel-bulk-delete-btn')?.addEventListener('click',  () => closeModal('bulk-delete-modal'));
+  document.getElementById('confirm-bulk-delete-btn')?.addEventListener('click', executeBulkDelete);
+
+  // Close on overlay click
+  ['delete-modal', 'bulk-delete-modal'].forEach(id => {
+    document.getElementById(id)?.addEventListener('click', e => {
+      if (e.target.id === id) closeModal(id);
+    });
+  });
+}
+
+function openModal(id)  { document.getElementById(id)?.classList.add('active'); }
+function closeModal(id) { document.getElementById(id)?.classList.remove('active'); }
+
+// ─── UI Helpers ───────────────────────────────────────────────────────────────
+function showLoading(show) {
+  const el = document.getElementById('loading-state');
+  const tw = document.getElementById('table-wrapper');
+  if (!el) return;
+  el.style.display = show ? 'flex' : 'none';
+  if (tw) {
+    const thead = tw.querySelector('thead');
+    const tbody = document.getElementById('posts-tbody');
+    if (thead) thead.style.display = show ? 'none' : '';
+    if (tbody && show) tbody.innerHTML = '';
+  }
+}
+
+function showToast(msg, type = 'success') {
+  const toast  = document.getElementById('toast-notify');
+  const msgEl  = document.getElementById('toast-message');
+  if (!toast || !msgEl) return;
+  msgEl.textContent = msg;
+  const colors = { success: '#10B981', error: '#EF4444', warning: '#F59E0B' };
+  toast.style.borderLeftColor = colors[type] || colors.success;
+  toast.classList.add('active');
+  setTimeout(() => toast.classList.remove('active'), 3500);
+}
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function hexToRgba(hex, alpha) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) return `rgba(99,102,241,${alpha})`;
+  const r = parseInt(result[1], 16);
+  const g = parseInt(result[2], 16);
+  const b = parseInt(result[3], 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+</script>

@@ -1,0 +1,1437 @@
+---
+import MainLayout from '../../layouts/MainLayout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import { getBlogPost, getBlogPosts } from '../../utils/blog';
+import fs from 'node:fs';
+import path from 'node:path';
+
+export const prerender = false;
+
+const { slug } = Astro.params;
+
+// ─── Authentication gate check for Draft Preview ──────────────────────────────
+const session = Astro.cookies.get("cms_session")?.value;
+const isAdmin = session === "authenticated-admin-session-2026";
+const isPreview = Astro.url.searchParams.get("preview") === "true";
+const isDev = import.meta.env.DEV;
+
+// ─── Find Post ────────────────────────────────────────────────────────────────
+const post = await getBlogPost(slug || '');
+
+if (!post) {
+  return Astro.redirect('/404');
+}
+
+// Security Check: Hide non-published posts unless viewing with Admin Preview
+if (post.data.status !== 'published' && (!isPreview || !isAdmin)) {
+  return Astro.redirect('/404');
+}
+
+const { html: contentHtml, headings } = post;
+const allPosts = await getBlogPosts();
+
+// ─── Load Metadata & settings ────────────────────────────────────────────────
+let meta = { categories: [], tags: [], authors: [], settings: {} };
+try {
+  const metaPath = path.resolve('src/data/blog-meta.json');
+  if (fs.existsSync(metaPath)) {
+    meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+  }
+} catch (e) {
+  console.error(e);
+}
+
+const categories = meta.categories || [];
+const tags = meta.tags || [];
+const authors = meta.authors || [];
+const settings = meta.settings || {
+  showExcerpt: true,
+  showAuthor: true,
+  showDate: true,
+  showTags: true,
+  showReadingTime: true,
+  showRelatedPosts: true,
+  relatedPostsCount: 3,
+  commentsEnabled: true
+};
+
+// Find post category, author & tags
+const categoryInfo = categories.find((c: any) => c.slug === post.data.category) || {
+  name: "Uncategorized",
+  slug: "uncategorized",
+  color: "#8B3FB8"
+};
+
+const authorInfo = authors.find((a: any) => a.id === post.data.author) || {
+  name: "Tangence Editor",
+  role: "Editor",
+  avatar: "",
+  bio: "Sharing industry insights and modern web strategies."
+};
+
+const postTags = (post.data.tags || []).map(tagSlug => {
+  return tags.find((t: any) => t.slug === tagSlug) || { name: tagSlug, slug: tagSlug, color: "#707085" };
+});
+
+// Calc Reading Time
+const bodyText = post.body || '';
+const words = bodyText.trim().split(/\s+/).length;
+const readingTime = Math.max(1, Math.ceil(words / 200));
+
+// ─── Load Comments ────────────────────────────────────────────────────────────
+let allComments = [];
+try {
+  const commentsPath = path.resolve('src/data/blog-comments.json');
+  if (fs.existsSync(commentsPath)) {
+    allComments = JSON.parse(fs.readFileSync(commentsPath, 'utf-8'));
+  }
+} catch (e) {
+  console.error(e);
+}
+// Show approved comments for this post
+const comments = allComments.filter((c: any) => c.postSlug === slug && c.status === 'approved');
+
+// Nest comment replies hierarchically
+const rootComments = comments.filter((c: any) => !c.parentId);
+const replies = comments.filter((c: any) => c.parentId);
+
+// ─── Previous & Next Navigation ──────────────────────────────────────────────
+const publishedPosts = allPosts
+  .filter(p => p.data.status === 'published')
+  .sort((a, b) => new Date(a.data.publishDate || a.data.updatedDate || 0).getTime() - new Date(b.data.publishDate || b.data.updatedDate || 0).getTime());
+
+const currIdx = publishedPosts.findIndex(p => p.slug === slug);
+const prevPost = currIdx > 0 ? publishedPosts[currIdx - 1] : null;
+const nextPost = currIdx < publishedPosts.length - 1 ? publishedPosts[currIdx + 1] : null;
+
+// ─── Related Posts (by Category or Tag similarity) ────────────────────────────
+let relatedPosts = allPosts
+  .filter(p => p.slug !== slug && p.data.status === 'published')
+  .map(p => {
+    let score = 0;
+    if (p.data.category === post.data.category) score += 5;
+    const commonTags = (p.data.tags || []).filter(t => (post.data.tags || []).includes(t));
+    score += commonTags.length * 2;
+    return { post: p, score };
+  })
+  .filter(p => p.score > 0)
+  .sort((a, b) => b.score - a.score)
+  .slice(0, parseInt(settings.relatedPostsCount || '3', 10))
+  .map(p => p.post);
+
+// Fallback to latest posts if no related posts found
+if (relatedPosts.length === 0) {
+  relatedPosts = allPosts
+    .filter(p => p.slug !== slug && p.data.status === 'published')
+    .sort((a, b) => new Date(b.data.publishDate || 0).getTime() - new Date(a.data.publishDate || 0).getTime())
+    .slice(0, parseInt(settings.relatedPostsCount || '3', 10));
+}
+
+// ─── SEO Metadata ─────────────────────────────────────────────────────────────
+const seoTitle = post.data.seo?.metaTitle || `${post.data.title} | Tangence`;
+const seoDescription = post.data.seo?.metaDescription || post.data.excerpt || '';
+const seoImage = post.data.seo?.ogImage || post.data.featuredImage || '';
+
+// Auto-generate Article Schema if schemaType is 'article'
+let schemaMarkup = post.data.seo?.schemaMarkup || '';
+if (post.data.seo?.schemaType === 'article') {
+  try {
+    const articleSchema = {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      "headline": post.data.title,
+      "description": seoDescription,
+      "image": seoImage ? (seoImage.startsWith('http') ? seoImage : `${Astro.url.origin}${seoImage}`) : undefined,
+      "datePublished": post.data.publishDate || post.data.updatedDate || new Date().toISOString(),
+      "dateModified": post.data.updatedDate || post.data.publishDate || new Date().toISOString(),
+      "author": {
+        "@type": "Person",
+        "name": authorInfo.name,
+        "url": authorInfo.slug ? `${Astro.url.origin}/blog/author/${authorInfo.slug}` : undefined
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Tangence",
+        "logo": {
+          "@type": "ImageObject",
+          "url": `${Astro.url.origin}/favicon.svg`
+        }
+      },
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": Astro.url.href
+      }
+    };
+    schemaMarkup = JSON.stringify(articleSchema, null, 2);
+  } catch (e) {
+    console.error("Failed to generate article schema:", e);
+  }
+}
+---
+
+<MainLayout
+  title={seoTitle}
+  description={seoDescription}
+  ogImage={seoImage}
+  ogType="article"
+  canonicalUrl={post.data.seo?.canonicalUrl || Astro.url.href}
+  robots={post.data.seo?.robots || 'index, follow'}
+  headerScripts={post.data.headerScripts || ''}
+  footerScripts={post.data.footerScripts || ''}
+  customCss={post.data.customCss || ''}
+  customJs={post.data.customJs || ''}
+  schemaMarkup={schemaMarkup}
+>
+  <Header />
+
+  <article class="blog-post-page">
+    
+    <!-- Admin Preview Badge -->
+    {isPreview && (
+      <div class="admin-preview-banner">
+        <span><i class="fa fa-eye"></i> Admin Preview Mode — This post status is <strong>{post.data.status.toUpperCase()}</strong></span>
+        <a href={`/admin/blog/edit?slug=${slug}`} class="btn-edit-shortcut">Edit Post</a>
+      </div>
+    )}
+
+    <!-- Post Hero Header -->
+    <header class="post-hero">
+      <div class="container hero-content">
+        <a href="/blog" class="back-link"><i class="fa fa-long-arrow-left"></i> Back to Blog</a>
+        
+        <div class="post-meta-top">
+          {categoryInfo && (
+            <a 
+              href={`/blog/category/${categoryInfo.slug}`} 
+              class="category-tag" 
+              style={`background-color: ${categoryInfo.color || '#6B2E97'}`}
+            >
+              {categoryInfo.name}
+            </a>
+          )}
+          {settings.showReadingTime && (
+            <span class="meta-item"><i class="fa fa-clock-o"></i> {readingTime} min read</span>
+          )}
+        </div>
+
+        <h1>{post.data.title}</h1>
+        {post.data.excerpt && <p class="excerpt">{post.data.excerpt}</p>}
+
+        <!-- Author details & publishing date -->
+        <div class="post-author-bar">
+          {settings.showAuthor && (
+            <div class="author-profile">
+              <div class="avatar-circle">
+                {authorInfo.avatar ? (
+                  <img src={authorInfo.avatar} alt={authorInfo.name} />
+                ) : (
+                  <span class="initials-avatar">{authorInfo.name.charAt(0)}</span>
+                )}
+              </div>
+              <div>
+                <span class="name">By {authorInfo.name}</span>
+                <span class="role">{authorInfo.role}</span>
+              </div>
+            </div>
+          )}
+          {settings.showDate && (
+            <div class="publish-date">
+              <i class="fa fa-calendar-o"></i>
+              <span>{new Date(post.data.publishDate || post.data.updatedDate || "").toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <!-- Large Featured Image -->
+      <div class="hero-image-container container">
+        <img 
+          src={post.data.featuredImage || '/images/default-blog-large.jpg'} 
+          alt={post.data.title}
+          class="featured-hero-image"
+          decoding="async"
+          fetchpriority="high"
+          onerror="this.src='https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=1200&auto=format&fit=crop'"
+        />
+      </div>
+    </header>
+
+    <!-- Content & Layout wrapper -->
+    <div class="post-layout container">
+      
+      <!-- Sticky Sidebar: Table of Contents & Social Share -->
+      <aside class="post-sidebar">
+        
+        {headings.length > 0 && (
+          <div class="sidebar-block toc-block">
+            <h4>Table of Contents</h4>
+            <nav class="toc">
+              <ul>
+                {headings.filter(h => h.depth <= 3).map(h => (
+                  <li class={`depth-${h.depth}`}>
+                    <a href={`#${h.slug}`}>{h.text}</a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </div>
+        )}
+
+        <div class="sidebar-block share-block">
+          <h4>Share Article</h4>
+          <div class="share-buttons">
+            <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(post.data.title)}&url=${encodeURIComponent(Astro.url.href)}`} target="_blank" rel="noopener noreferrer" aria-label="Share on Twitter">
+              <i class="fa fa-twitter"></i>
+            </a>
+            <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(Astro.url.href)}`} target="_blank" rel="noopener noreferrer" aria-label="Share on Facebook">
+              <i class="fa fa-facebook"></i>
+            </a>
+            <a href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(Astro.url.href)}`} target="_blank" rel="noopener noreferrer" aria-label="Share on LinkedIn">
+              <i class="fa fa-linkedin"></i>
+            </a>
+            <button id="btn-copy-link" aria-label="Copy Link">
+              <i class="fa fa-link"></i>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Article Text -->
+      <main class="post-content">
+        <div class="markdown-body">
+          <Fragment set:html={contentHtml} />
+        </div>
+
+        <!-- Tags List footer -->
+        {settings.showTags && postTags.length > 0 && (
+          <div class="post-tags-footer">
+            <span class="tags-label">Tags:</span>
+            <div class="tags-cloud">
+              {postTags.map(tag => (
+                <a href={`/blog/tag/${tag.slug}`} class="tag-badge">#{tag.name}</a>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <!-- Author Bio Card -->
+        {settings.showAuthor && (
+          <section class="author-bio-section">
+            <div class="author-bio-card">
+              <div class="bio-avatar">
+                {authorInfo.avatar ? (
+                  <img src={authorInfo.avatar} alt={authorInfo.name} />
+                ) : (
+                  <span class="initials-avatar">{authorInfo.name.charAt(0)}</span>
+                )}
+              </div>
+              <div class="bio-info">
+                <h3>About {authorInfo.name}</h3>
+                <span class="bio-role">{authorInfo.role}</span>
+                <p>{authorInfo.bio || "Staff writer and contributor at Tangence."}</p>
+                {authorInfo.slug && (
+                  <a href={`/blog/author/${authorInfo.slug}`} class="bio-posts-link">View all posts by this author <i class="fa fa-arrow-right"></i></a>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
+        <!-- Next/Prev navigation buttons -->
+        <nav class="post-navigation">
+          {prevPost ? (
+            <a href={`/blog/${prevPost.slug}`} class="nav-prev">
+              <span class="nav-label"><i class="fa fa-arrow-left"></i> Previous Article</span>
+              <span class="nav-title">{prevPost.data.title}</span>
+            </a>
+          ) : (
+            <div class="nav-empty"></div>
+          )}
+          
+          {nextPost ? (
+            <a href={`/blog/${nextPost.slug}`} class="nav-next">
+              <span class="nav-label">Next Article <i class="fa fa-arrow-right"></i></span>
+              <span class="nav-title">{nextPost.data.title}</span>
+            </a>
+          ) : (
+            <div class="nav-empty"></div>
+          )}
+        </nav>
+
+        <!-- Comments Section -->
+        {settings.commentsEnabled !== false && (
+          <section class="comments-section" id="comments">
+            <div class="comments-header">
+              <h2>Comments ({comments.length})</h2>
+            </div>
+
+            <!-- List comments -->
+            <div class="comments-list">
+              {rootComments.length === 0 ? (
+                <p class="no-comments-msg">No comments yet. Be the first to share your thoughts!</p>
+              ) : (
+                rootComments.map(comment => {
+                  const commentReplies = replies.filter(r => r.parentId === comment.id);
+                  return (
+                    <div class="comment-item" id={comment.id}>
+                      <div class="comment-wrapper">
+                        <div class="comment-avatar">
+                          <span class="avatar-letter">{comment.authorName.charAt(0)}</span>
+                        </div>
+                        <div class="comment-body">
+                          <div class="comment-meta">
+                            <strong>{comment.authorName}</strong>
+                            <span class="comment-date">{new Date(comment.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                          <p class="comment-text">{comment.body}</p>
+                          <button class="btn-reply" data-comment-id={comment.id} data-author-name={comment.authorName}>
+                            <i class="fa fa-reply"></i> Reply
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Render nested replies */}
+                      {commentReplies.length > 0 && (
+                        <div class="comment-replies">
+                          {commentReplies.map(reply => (
+                            <div class="comment-item reply-item" id={reply.id}>
+                              <div class="comment-wrapper">
+                                <div class="comment-avatar">
+                                  <span class="avatar-letter">{reply.authorName.charAt(0)}</span>
+                                </div>
+                                <div class="comment-body">
+                                  <div class="comment-meta">
+                                    <strong>{reply.authorName}</strong>
+                                    <span class="comment-date">{new Date(reply.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                  </div>
+                                  <p class="comment-text">{reply.body}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <!-- Comment Form -->
+            <div class="comment-respond">
+              <h3>Leave a Reply</h3>
+              
+              <div class="reply-target-banner" id="reply-target" style="display: none;">
+                <span>Replying to <strong id="reply-author-name">Author</strong></span>
+                <button type="button" id="btn-cancel-reply" aria-label="Cancel Reply"><i class="fa fa-times"></i></button>
+              </div>
+
+              <form id="comment-form" class="comment-form">
+                <input type="hidden" name="parentId" id="form-parent-id" value="" />
+                
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label for="comment-author">Name *</label>
+                    <input type="text" id="comment-author" name="authorName" required />
+                  </div>
+                  
+                  <div class="form-group">
+                    <label for="comment-email">Email *</label>
+                    <input type="email" id="comment-email" name="authorEmail" required />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="comment-website">Website</label>
+                    <input type="url" id="comment-website" name="authorWebsite" />
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="comment-body">Comment *</label>
+                  <textarea id="comment-body" name="body" rows="6" required></textarea>
+                </div>
+
+                <div class="form-actions">
+                  <button type="submit" class="btn-submit-comment" id="btn-submit-comment">Post Comment</button>
+                </div>
+
+                <div class="form-response" id="form-status" style="display: none;"></div>
+              </form>
+            </div>
+          </section>
+        )}
+      </main>
+    </div>
+
+    <!-- Related Posts Section -->
+    {settings.showRelatedPosts !== false && relatedPosts.length > 0 && (
+      <section class="related-posts-section">
+        <div class="container">
+          <div class="section-title-row">
+            <h2>Related Articles</h2>
+            <a href="/blog" class="view-all-link">View All <i class="fa fa-long-arrow-right"></i></a>
+          </div>
+          <div class="related-posts-grid">
+            {relatedPosts.map(related => {
+              const relatedCat = categories.find((c: any) => c.slug === related.data.category) || { name: "Insights", color: "#8B3FB8" };
+              return (
+                <article class="related-card">
+                  <div class="related-image">
+                    <a href={`/blog/${related.slug}`}>
+                      <img 
+                        src={related.data.featuredImage || '/images/default-blog.jpg'} 
+                        alt={related.data.title}
+                        loading="lazy"
+                        onerror="this.src='https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=600&auto=format&fit=crop'"
+                      />
+                    </a>
+                  </div>
+                  <div class="related-content">
+                    <span class="related-category" style={`color: ${relatedCat.color}`}>{relatedCat.name}</span>
+                    <h3><a href={`/blog/${related.slug}`}>{related.data.title}</a></h3>
+                    <div class="related-meta">
+                      <span>{new Date(related.data.publishDate || "").toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+    )}
+
+  </article>
+
+  <Footer />
+</MainLayout>
+
+<!-- Client scripts for Views count, Link copying, and Comments submission -->
+<script is:inline define:vars={{ slug, isDev }}>
+  document.addEventListener("DOMContentLoaded", () => {
+    const isPreview = new URLSearchParams(window.location.search).get("preview") === "true";
+
+    if (!isPreview && !isDev) {
+      // 1. Increment View Count
+      fetch("/api/blog-crud", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "view", slug })
+      }).catch(err => console.error("Failed to increment view:", err));
+    }
+
+    // 2. Social Share Link copying
+    const copyBtn = document.getElementById("btn-copy-link");
+    if (copyBtn) {
+      copyBtn.addEventListener("click", () => {
+        navigator.clipboard.writeText(window.location.href)
+          .then(() => {
+            const icon = copyBtn.querySelector("i");
+            icon.className = "fa fa-check";
+            copyBtn.style.color = "#10B981";
+            setTimeout(() => {
+              icon.className = "fa fa-link";
+              copyBtn.style.color = "";
+            }, 2000);
+          })
+          .catch(err => console.error("Could not copy:", err));
+      });
+    }
+
+    // 3. Comments Interactivity & Submission
+    const replyButtons = document.querySelectorAll(".btn-reply");
+    const parentIdInput = document.getElementById("form-parent-id");
+    const replyBanner = document.getElementById("reply-target");
+    const replyAuthorText = document.getElementById("reply-author-name");
+    const cancelReplyBtn = document.getElementById("btn-cancel-reply");
+
+    replyButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const commentId = btn.dataset.commentId;
+        const authorName = btn.dataset.authorName;
+        if (parentIdInput && replyBanner && replyAuthorText) {
+          parentIdInput.value = commentId;
+          replyAuthorText.innerText = authorName;
+          replyBanner.style.display = "flex";
+          document.getElementById("comments").scrollIntoView({ behavior: "smooth" });
+        }
+      });
+    });
+
+    if (cancelReplyBtn) {
+      cancelReplyBtn.addEventListener("click", () => {
+        if (parentIdInput && replyBanner) {
+          parentIdInput.value = "";
+          replyBanner.style.display = "none";
+        }
+      });
+    }
+
+    const form = document.getElementById("comment-form");
+    const formStatus = document.getElementById("form-status");
+    const submitBtn = document.getElementById("btn-submit-comment");
+
+    if (form && formStatus && submitBtn) {
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Submitting...";
+        formStatus.style.display = "none";
+        formStatus.className = "form-response";
+
+        const formData = new FormData(form);
+        const payload = {
+          action: "comment",
+          postSlug: slug,
+          parentId: formData.get("parentId") || null,
+          authorName: formData.get("authorName"),
+          authorEmail: formData.get("authorEmail"),
+          authorWebsite: formData.get("authorWebsite") || "",
+          body: formData.get("body")
+        };
+
+        try {
+          const res = await fetch("/api/blog-crud", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          const result = await res.json();
+          
+          if (result.success) {
+            formStatus.innerText = "Thank you! Your comment has been submitted and is awaiting moderation.";
+            formStatus.className = "form-response success";
+            formStatus.style.display = "block";
+            form.reset();
+            if (replyBanner) replyBanner.style.display = "none";
+            if (parentIdInput) parentIdInput.value = "";
+          } else {
+            formStatus.innerText = result.error || "Failed to submit comment. Please try again.";
+            formStatus.className = "form-response error";
+            formStatus.style.display = "block";
+          }
+        } catch (err) {
+          formStatus.innerText = "Network error. Failed to post comment.";
+          formStatus.className = "form-response error";
+          formStatus.style.display = "block";
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.innerText = "Post Comment";
+        }
+      });
+    }
+  });
+</script>
+
+<style>
+  /* ─── Variables and Structure ──────────────────────────────────────────────── */
+  .blog-post-page {
+    padding-top: 80px; /* header offset */
+    background-color: white;
+    color: var(--ink, #1A1A2E);
+    font-family: "Graphik", "Montserrat", sans-serif;
+  }
+
+  /* Admin Preview Banner */
+  .admin-preview-banner {
+    background-color: rgba(245, 158, 11, 0.15);
+    border-bottom: 1.5px dashed #F59E0B;
+    padding: 0.75rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.875rem;
+    color: #b45309;
+    font-weight: 500;
+  }
+  .btn-edit-shortcut {
+    background: #F59E0B;
+    color: white;
+    padding: 0.35rem 0.85rem;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: background 0.2s;
+  }
+  .btn-edit-shortcut:hover {
+    background: #d97706;
+    color: white;
+  }
+
+  /* ─── Hero Area ────────────────────────────────────────────────────────── */
+  .post-hero {
+    background: var(--gradient-hero, linear-gradient(135deg, #FFE4E1 0%, #F5E1FA 45%, #E8D5F7 100%));
+    padding: 4rem 0 0 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .back-link {
+    color: var(--purple-700, #6B2E97);
+    font-weight: 700;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    transition: transform 0.2s ease;
+  }
+  .back-link:hover {
+    transform: translateX(-4px);
+    color: var(--pink-600, #E91E63);
+  }
+  .post-meta-top {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+  .category-tag {
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 0.35rem 0.85rem;
+    border-radius: 20px;
+  }
+  .meta-item {
+    font-size: 0.825rem;
+    color: var(--muted, #707085);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .post-hero h1 {
+    font-size: clamp(2rem, 4.5vw, 3.4rem);
+    line-height: 1.15;
+    font-weight: 800;
+    color: var(--ink, #1A1A2E);
+    margin-bottom: 1.25rem;
+    max-width: 950px;
+  }
+  .excerpt {
+    font-size: clamp(1.05rem, 2.2vw, 1.25rem);
+    line-height: 1.55;
+    color: var(--ink-soft, #4A4A5E);
+    margin-bottom: 2.25rem;
+    max-width: 850px;
+  }
+  
+  /* Author bar */
+  .post-author-bar {
+    display: flex;
+    align-items: center;
+    gap: 2.5rem;
+    border-top: 1px solid var(--line, #EAE2F2);
+    padding: 1.5rem 0;
+    flex-wrap: wrap;
+  }
+  .author-profile {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .avatar-circle {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--purple-500, #8B3FB8) 0%, var(--pink-500, #F33B7B) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .avatar-circle img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .initials-avatar {
+    color: white;
+    font-weight: 700;
+    font-size: 1.1rem;
+    text-transform: uppercase;
+  }
+  .author-profile .name {
+    display: block;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .author-profile .role {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--muted, #707085);
+  }
+  .publish-date {
+    font-size: 0.9rem;
+    color: var(--ink-soft, #4A4A5E);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+  }
+
+  /* Hero Image container */
+  .hero-image-container {
+    margin-bottom: -4rem;
+    position: relative;
+    z-index: 10;
+  }
+  .featured-hero-image {
+    width: 100%;
+    max-height: 520px;
+    object-fit: cover;
+    border-radius: var(--radius-lg, 24px);
+    box-shadow: 0 15px 45px rgba(74, 19, 112, 0.08);
+    border: 1px solid var(--line, #EAE2F2);
+  }
+
+  /* ─── Grid Post Layout ──────────────────────────────────────────────────── */
+  .post-layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 4rem;
+    padding-top: 8rem;
+    padding-bottom: 5rem;
+    align-items: start;
+  }
+
+  /* ─── Sticky Sidebar ────────────────────────────────────────────────────── */
+  .post-sidebar {
+    position: sticky;
+    top: 110px;
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+  }
+  .sidebar-block h4 {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted, #707085);
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--line, #EAE2F2);
+    padding-bottom: 0.5rem;
+  }
+  
+  /* TOC Lists */
+  .toc ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+  .toc li.depth-2 {
+    padding-left: 0;
+  }
+  .toc li.depth-3 {
+    padding-left: 0.85rem;
+  }
+  .toc a {
+    font-size: 0.875rem;
+    color: var(--ink-soft, #4A4A5E);
+    line-height: 1.4;
+    font-weight: 500;
+    transition: color 0.2s;
+    display: inline-block;
+  }
+  .toc a:hover {
+    color: var(--purple-700, #6B2E97);
+  }
+
+  /* Share buttons */
+  .share-buttons {
+    display: flex;
+    gap: 0.65rem;
+  }
+  .share-buttons a,
+  .share-buttons button {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1px solid var(--line, #EAE2F2);
+    background: white;
+    color: var(--ink-soft, #4A4A5E);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all 0.22s ease;
+  }
+  .share-buttons a:hover,
+  .share-buttons button:hover {
+    background: var(--purple-700, #6B2E97);
+    border-color: var(--purple-700, #6B2E97);
+    color: white;
+    transform: translateY(-2px);
+  }
+
+  /* ─── Main Content Styling (Markdown Body) ─────────────────────────────── */
+  .post-content {
+    min-width: 0;
+  }
+  .markdown-body {
+    font-size: 1.125rem;
+    line-height: 1.8;
+    color: var(--ink-soft, #4A4A5E);
+  }
+  .markdown-body h2 {
+    font-size: 1.85rem;
+    font-weight: 800;
+    color: var(--ink, #1A1A2E);
+    margin: 2.75rem 0 1.25rem 0;
+    scroll-margin-top: 100px;
+  }
+  .markdown-body h3 {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: var(--ink, #1A1A2E);
+    margin: 2rem 0 1rem 0;
+    scroll-margin-top: 100px;
+  }
+  .markdown-body p {
+    margin-bottom: 1.5rem;
+  }
+  .markdown-body ul, 
+  .markdown-body ol {
+    margin-bottom: 1.5rem;
+    padding-left: 1.5rem;
+  }
+  .markdown-body li {
+    margin-bottom: 0.5rem;
+  }
+  .markdown-body blockquote {
+    border-left: 4px solid var(--purple-500, #8B3FB8);
+    background: var(--bg-soft, #FAF6FE);
+    padding: 1rem 1.5rem;
+    margin: 2rem 0;
+    border-radius: 0 8px 8px 0;
+    font-style: italic;
+  }
+  .markdown-body blockquote p {
+    margin-bottom: 0;
+  }
+  .markdown-body img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 12px;
+    margin: 2rem 0;
+    box-shadow: 0 5px 25px rgba(0,0,0,0.05);
+  }
+  .markdown-body pre {
+    background: #0F172A;
+    color: #E2E8F0;
+    padding: 1.25rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-family: monospace;
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+  }
+
+  /* Tags Cloud footer */
+  .post-tags-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 3.5rem;
+    border-top: 1px solid var(--line, #EAE2F2);
+    padding-top: 1.5rem;
+  }
+  .tags-label {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--ink, #1A1A2E);
+  }
+  .tags-cloud {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .tag-badge {
+    background: var(--bg-soft, #FAF6FE);
+    border: 1px solid var(--line, #EAE2F2);
+    color: var(--ink-soft, #4A4A5E);
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+  .tag-badge:hover {
+    border-color: var(--purple-500, #8B3FB8);
+    color: var(--purple-700, #6B2E97);
+  }
+
+  /* Author Bio Section */
+  .author-bio-section {
+    margin: 4rem 0;
+  }
+  .author-bio-card {
+    display: flex;
+    gap: 1.75rem;
+    background: var(--bg-soft, #FAF6FE);
+    border: 1px solid var(--line, #EAE2F2);
+    padding: 2.25rem;
+    border-radius: var(--radius-md, 16px);
+  }
+  .bio-avatar {
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--purple-500, #8B3FB8) 0%, var(--pink-500, #F33B7B) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .bio-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .bio-info h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+  }
+  .bio-role {
+    font-size: 0.78rem;
+    color: var(--purple-700, #6B2E97);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: block;
+    margin-bottom: 0.75rem;
+  }
+  .bio-info p {
+    font-size: 0.95rem;
+    color: var(--ink-soft, #4A4A5E);
+    line-height: 1.5;
+    margin-bottom: 1rem;
+  }
+  .bio-posts-link {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--purple-700, #6B2E97);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .bio-posts-link:hover {
+    color: var(--pink-600, #E91E63);
+  }
+
+  /* Next/Prev Navigation links */
+  .post-navigation {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    border-top: 1px solid var(--line, #EAE2F2);
+    border-bottom: 1px solid var(--line, #EAE2F2);
+    padding: 2.25rem 0;
+  }
+  .nav-prev, .nav-next {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .nav-next {
+    align-items: flex-end;
+    text-align: right;
+  }
+  .nav-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted, #707085);
+    margin-bottom: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: color 0.2s;
+  }
+  .nav-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--ink, #1A1A2E);
+    line-height: 1.4;
+    transition: color 0.2s;
+  }
+  .nav-prev:hover .nav-label,
+  .nav-next:hover .nav-label {
+    color: var(--purple-700, #6B2E97);
+  }
+  .nav-prev:hover .nav-title,
+  .nav-next:hover .nav-title {
+    color: var(--purple-700, #6B2E97);
+  }
+
+  /* ─── Comments section ──────────────────────────────────────────────────── */
+  .comments-section {
+    margin-top: 4rem;
+    border-top: 1px solid var(--line, #EAE2F2);
+    padding-top: 3.5rem;
+  }
+  .comments-header h2 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin-bottom: 2rem;
+  }
+  .no-comments-msg {
+    color: var(--muted, #707085);
+    font-style: italic;
+    margin-bottom: 2.5rem;
+  }
+  .comments-list {
+    margin-bottom: 4rem;
+  }
+  .comment-item {
+    margin-bottom: 2rem;
+  }
+  .comment-wrapper {
+    display: flex;
+    gap: 1.25rem;
+  }
+  .comment-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--purple-700, #6B2E97) 0%, var(--pink-600, #E91E63) 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+  .avatar-letter {
+    text-transform: uppercase;
+  }
+  .comment-body {
+    flex-grow: 1;
+    background: var(--bg-soft, #FAF6FE);
+    border: 1px solid var(--line, #EAE2F2);
+    padding: 1.25rem 1.5rem;
+    border-radius: 12px;
+    position: relative;
+  }
+  .comment-body::before {
+    content: "";
+    position: absolute;
+    top: 15px;
+    left: -6px;
+    width: 10px;
+    height: 10px;
+    background: var(--bg-soft, #FAF6FE);
+    border-left: 1px solid var(--line, #EAE2F2);
+    border-bottom: 1px solid var(--line, #EAE2F2);
+    transform: rotate(45deg);
+  }
+  .comment-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .comment-meta strong {
+    font-size: 0.95rem;
+  }
+  .comment-date {
+    font-size: 0.75rem;
+    color: var(--muted, #707085);
+  }
+  .comment-text {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: 0.75rem;
+    color: var(--ink-soft, #4A4A5E);
+  }
+  .btn-reply {
+    background: transparent;
+    border: none;
+    color: var(--purple-700, #6B2E97);
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0;
+  }
+  .btn-reply:hover {
+    color: var(--pink-600, #E91E63);
+  }
+
+  /* Reply Nesting styling */
+  .comment-replies {
+    padding-left: 3.5rem;
+    margin-top: 1.5rem;
+  }
+  .reply-item .comment-body {
+    background-color: white;
+  }
+  .reply-item .comment-body::before {
+    background-color: white;
+  }
+
+  /* Comment Form styling */
+  .comment-respond {
+    background: var(--bg-soft, #FAF6FE);
+    border: 1px solid var(--line, #EAE2F2);
+    padding: 2.25rem;
+    border-radius: var(--radius-md, 16px);
+  }
+  .comment-respond h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+  }
+  .reply-target-banner {
+    background: white;
+    border: 1px solid var(--line, #EAE2F2);
+    border-left: 3px solid var(--purple-500, #8B3FB8);
+    border-radius: 6px;
+    padding: 0.65rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    margin-bottom: 1.25rem;
+  }
+  .reply-target-banner button {
+    background: transparent;
+    border: none;
+    color: var(--pink-600, #E91E63);
+    cursor: pointer;
+  }
+  .comment-form .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+  .comment-form .form-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1.25rem;
+  }
+  .comment-form label {
+    font-size: 0.825rem;
+    font-weight: 700;
+    color: var(--ink-soft, #4A4A5E);
+    margin-bottom: 0.4rem;
+  }
+  .comment-form input[type="text"],
+  .comment-form input[type="email"],
+  .comment-form input[type="url"],
+  .comment-form textarea {
+    padding: 0.65rem 0.85rem !important;
+    border-radius: var(--radius-sm, 8px) !important;
+    border: 1px solid var(--line, #EAE2F2) !important;
+    background-color: white !important;
+    color: var(--ink, #1A1A2E) !important;
+    outline: none !important;
+    font-size: 0.9rem !important;
+    transition: all 0.22s ease !important;
+  }
+  .comment-form input:focus,
+  .comment-form textarea:focus {
+    border-color: var(--purple-500, #8B3FB8) !important;
+    box-shadow: 0 0 0 3px rgba(139, 63, 184, 0.1) !important;
+  }
+  .comment-form textarea {
+    height: auto !important;
+    resize: vertical;
+  }
+  .btn-submit-comment {
+    background: var(--purple-700, #6B2E97);
+    color: white;
+    border: none;
+    font-size: 0.9rem;
+    font-weight: 700;
+    padding: 0.75rem 2rem;
+    border-radius: 30px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(107, 46, 151, 0.25);
+    transition: all 0.22s;
+  }
+  .btn-submit-comment:hover {
+    background: var(--purple-500, #8B3FB8);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(107, 46, 151, 0.35);
+  }
+  .btn-submit-comment:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+  .form-response {
+    margin-top: 1.5rem;
+    font-size: 0.9rem;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    font-weight: 500;
+  }
+  .form-response.success {
+    background-color: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    color: #059669;
+  }
+  .form-response.error {
+    background-color: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #DC2626;
+  }
+
+  /* ─── Related Posts Section ────────────────────────────────────────────── */
+  .related-posts-section {
+    background-color: var(--bg-soft, #FAF6FE);
+    border-top: 1px solid var(--line, #EAE2F2);
+    padding: 5rem 0;
+  }
+  .section-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2.25rem;
+  }
+  .section-title-row h2 {
+    font-size: 1.65rem;
+    font-weight: 800;
+  }
+  .view-all-link {
+    font-weight: 700;
+    color: var(--purple-700, #6B2E97);
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .view-all-link:hover {
+    color: var(--pink-600, #E91E63);
+  }
+  .related-posts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+  }
+  .related-card {
+    background: white;
+    border: 1px solid var(--line, #EAE2F2);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-shadow: 0 4px 15px rgba(74, 19, 112, 0.01);
+    transition: transform 0.22s ease, box-shadow 0.22s ease;
+  }
+  .related-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px rgba(74, 19, 112, 0.04);
+  }
+  .related-image {
+    aspect-ratio: 16/10;
+    overflow: hidden;
+  }
+  .related-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .related-content {
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+  }
+  .related-category {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+    display: block;
+  }
+  .related-content h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.4;
+    margin-bottom: 0.75rem;
+  }
+  .related-content h3 a {
+    color: var(--ink, #1A1A2E);
+  }
+  .related-content h3 a:hover {
+    color: var(--purple-700, #6B2E97);
+  }
+  .related-meta {
+    font-size: 0.8rem;
+    color: var(--muted, #707085);
+    margin-top: auto;
+  }
+
+  /* ─── Responsive Adjustments ────────────────────────────────────────────── */
+  @media (max-width: 991px) {
+    .post-layout {
+      grid-template-columns: 1fr;
+      gap: 3rem;
+      padding-top: 6rem;
+    }
+    .post-sidebar {
+      position: static;
+      order: 1;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .post-hero {
+      padding-top: 2.5rem;
+    }
+    .hero-image-container {
+      margin-bottom: -2.5rem;
+    }
+    .post-layout {
+      padding-top: 4.5rem;
+    }
+    .author-bio-card {
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 1.5rem;
+    }
+    .comment-wrapper {
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .comment-body::before {
+      display: none;
+    }
+    .comment-replies {
+      padding-left: 1.5rem;
+    }
+    .post-navigation {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+    .nav-next {
+      align-items: flex-start;
+      text-align: left;
+    }
+  }
+</style>

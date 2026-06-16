@@ -1,0 +1,527 @@
+---
+import MainLayout from '../../../layouts/MainLayout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+import { getBlogPosts } from '../../../utils/blog';
+import fs from 'node:fs';
+import path from 'node:path';
+
+export const prerender = false;
+
+const { slug } = Astro.params;
+
+// ─── Load metadata & settings ────────────────────────────────────────────────
+let meta = { categories: [], tags: [], authors: [], settings: {} };
+try {
+  const metaPath = path.resolve('src/data/blog-meta.json');
+  if (fs.existsSync(metaPath)) {
+    meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+  }
+} catch (e) {
+  console.error("Failed to read blog-meta.json:", e);
+}
+
+const categories = meta.categories || [];
+const tags = meta.tags || [];
+const authors = meta.authors || [];
+const settings = meta.settings || {
+  showExcerpt: true,
+  showAuthor: true,
+  showDate: true,
+  showTags: true,
+  showReadingTime: true
+};
+
+const tagInfo = tags.find((t: any) => t.slug === slug);
+if (!tagInfo) {
+  return Astro.redirect('/404');
+}
+
+// ─── Query Parameters ─────────────────────────────────────────────────────────
+const q = Astro.url.searchParams.get('q') || '';
+const page = parseInt(Astro.url.searchParams.get('page') || '1', 10);
+const postsPerPage = 9;
+
+// ─── Load & Filter posts ──────────────────────────────────────────────────────
+const allPosts = await getBlogPosts();
+
+let posts = allPosts
+  .filter(post => post.data.status === 'published' && Array.isArray(post.data.tags) && post.data.tags.includes(slug))
+  .map(post => {
+    const body = post.body || '';
+    const words = body.trim().split(/\s+/).length;
+    const readingTime = Math.max(1, Math.ceil(words / 200));
+
+    const catInfo = categories.find((c: any) => c.slug === post.data.category) || {
+      name: "Uncategorized",
+      slug: "uncategorized",
+      color: "#8B3FB8"
+    };
+
+    const authorInfo = authors.find((a: any) => a.id === post.data.author) || {
+      name: "Tangence Editor",
+      role: "Editor",
+      avatar: ""
+    };
+
+    return {
+      ...post,
+      readingTime,
+      categoryInfo: catInfo,
+      authorInfo
+    };
+  });
+
+// Sort by publishDate descending
+posts.sort((a, b) => {
+  const dateA = new Date(a.data.publishDate || a.data.updatedDate || 0).getTime();
+  const dateB = new Date(b.data.publishDate || b.data.updatedDate || 0).getTime();
+  return dateB - dateA;
+});
+
+// Search filter inside this tag
+if (q) {
+  const query = q.toLowerCase();
+  posts = posts.filter(p => 
+    p.data.title.toLowerCase().includes(query) || 
+    (p.data.excerpt || '').toLowerCase().includes(query)
+  );
+}
+
+// ─── Pagination ──────────────────────────────────────────────────────────────
+const totalPosts = posts.length;
+const totalPages = Math.ceil(totalPosts / postsPerPage) || 1;
+const currentPage = Math.min(Math.max(1, page), totalPages);
+const startIndex = (currentPage - 1) * postsPerPage;
+const paginatedPosts = posts.slice(startIndex, startIndex + postsPerPage);
+
+function makeUrl(pageNum: number) {
+  const params = new URLSearchParams(Astro.url.search);
+  params.set('page', String(pageNum));
+  return `/blog/tag/${slug}?${params.toString()}`;
+}
+---
+
+<MainLayout 
+  title={`#${tagInfo.name} | Tag | Tangence Blog`}
+  description={tagInfo.description || `Read our articles tagged with #${tagInfo.name}.`}
+>
+  <Header />
+
+  <main class="archive-main">
+    
+    <!-- Header Banner -->
+    <header class="archive-hero" style={`background: linear-gradient(135deg, ${tagInfo.color || '#10B981'}12 0%, #FAF6FE 100%)`}>
+      <div class="container hero-content">
+        <a href="/blog" class="back-link"><i class="fa fa-long-arrow-left"></i> All Articles</a>
+        <span class="archive-label" style={`color: ${tagInfo.color || '#10B981'}`}>Tag Archive</span>
+        <h1 class="archive-title" style={`color: ${tagInfo.color || '#1A1A2E'}`}>
+          #{tagInfo.name}
+        </h1>
+        {tagInfo.description && <p class="archive-desc">{tagInfo.description}</p>}
+        
+        <span class="count-badge">{totalPosts} {totalPosts === 1 ? 'article' : 'articles'}</span>
+      </div>
+    </header>
+
+    <!-- Search / Filter bar -->
+    <section class="toolbar-section container">
+      <div class="toolbar-wrapper">
+        <h2>Articles tagged with #{tagInfo.name}</h2>
+        
+        <form action={`/blog/tag/${slug}`} method="GET" class="search-form">
+          <div class="search-input-wrapper">
+            <input 
+              type="text" 
+              name="q" 
+              placeholder="Search tag..." 
+              value={q}
+              autocomplete="off"
+            />
+            <button type="submit" aria-label="Search"><i class="fa fa-search"></i></button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Grid List -->
+    <section class="posts-section container">
+      {paginatedPosts.length === 0 ? (
+        <div class="empty-state">
+          <div class="empty-icon"><i class="fa fa-search"></i></div>
+          <h3>No articles found</h3>
+          <p>We couldn't find any articles matching your search query under this tag.</p>
+          <a href={`/blog/tag/${slug}`} class="btn-reset">Reset Search</a>
+        </div>
+      ) : (
+        <div class="posts-grid">
+          {paginatedPosts.map(post => (
+            <article class="post-card">
+              <div class="card-image">
+                <a href={`/blog/${post.slug}`}>
+                  <img 
+                    src={post.data.featuredImage || '/images/default-blog.jpg'} 
+                    alt={post.data.title}
+                    loading="lazy"
+                    onerror="this.src='https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=600&auto=format&fit=crop'"
+                  />
+                </a>
+              </div>
+              
+              <div class="card-content">
+                <div class="card-meta">
+                  {settings.showDate && (
+                    <span class="card-meta-item">
+                      {new Date(post.data.publishDate || "").toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  )}
+                  {settings.showReadingTime && (
+                    <span class="card-meta-divider">•</span>
+                    <span class="card-meta-item">{post.readingTime} min read</span>
+                  )}
+                </div>
+                
+                <h3 class="card-title">
+                  <a href={`/blog/${post.slug}`}>{post.data.title}</a>
+                </h3>
+                
+                {settings.showExcerpt && (
+                  <p class="card-excerpt">{post.data.excerpt || 'Read the full article.'}</p>
+                )}
+                
+                <div class="card-footer">
+                  {settings.showAuthor && (
+                    <div class="card-author">
+                      <span class="card-author-name">By {post.authorInfo.name}</span>
+                    </div>
+                  )}
+                  <a href={`/blog/${post.slug}`} class="card-link" aria-label={`Read ${post.data.title}`}>
+                    <i class="fa fa-long-arrow-right"></i>
+                  </a>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+
+      <!-- Pagination -->
+      {totalPages > 1 && (
+        <nav class="pagination" aria-label="Tag pagination">
+          <a 
+            href={currentPage > 1 ? makeUrl(currentPage - 1) : '#'} 
+            class:list={['pag-btn', 'prev', { disabled: currentPage === 1 }]}
+          >
+            <i class="fa fa-angle-left"></i> Previous
+          </a>
+          
+          <div class="pag-pages">
+            {Array.from({ length: totalPages }).map((_, idx) => {
+              const pageNum = idx + 1;
+              return (
+                <a 
+                  href={makeUrl(pageNum)} 
+                  class:list={['pag-page-link', { active: pageNum === currentPage }]}
+                >
+                  {pageNum}
+                </a>
+              );
+            })}
+          </div>
+          
+          <a 
+            href={currentPage < totalPages ? makeUrl(currentPage + 1) : '#'} 
+            class:list={['pag-btn', 'next', { disabled: currentPage === totalPages }]}
+          >
+            Next <i class="fa fa-angle-right"></i>
+          </a>
+        </nav>
+      )}
+    </section>
+
+  </main>
+
+  <Footer />
+</MainLayout>
+
+<style>
+  /* Reuse styles matching category listing */
+  .archive-main {
+    padding-top: 80px;
+    background-color: var(--bg-soft, #FAF6FE);
+    color: var(--ink, #1A1A2E);
+    min-height: 100vh;
+    font-family: "Graphik", "Montserrat", sans-serif;
+  }
+  .archive-hero {
+    padding: 5rem 0 4rem 0;
+    text-align: center;
+    border-bottom: 1px solid var(--line, #EAE2F2);
+  }
+  .hero-content {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  .back-link {
+    color: var(--ink-soft, #4A4A5E);
+    font-weight: 700;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    transition: transform 0.2s;
+  }
+  .back-link:hover {
+    transform: translateX(-4px);
+    color: var(--purple-700, #6B2E97);
+  }
+  .archive-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.75rem;
+  }
+  .archive-title {
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 800;
+    margin-bottom: 1rem;
+    text-transform: capitalize;
+  }
+  .archive-desc {
+    font-size: 1.05rem;
+    color: var(--ink-soft, #4A4A5E);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+  }
+  .count-badge {
+    background: white;
+    border: 1px solid var(--line, #EAE2F2);
+    padding: 0.35rem 0.85rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--muted, #707085);
+  }
+
+  .toolbar-section {
+    padding: 3rem 1.5rem 2rem 1.5rem;
+  }
+  .toolbar-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--line, #EAE2F2);
+    padding-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+  }
+  .toolbar-wrapper h2 {
+    font-size: 1.35rem;
+    font-weight: 700;
+  }
+  
+  /* Search Form */
+  .search-form {
+    width: 100%;
+    max-width: 320px;
+  }
+  .search-input-wrapper {
+    position: relative;
+    display: flex;
+  }
+  .search-input-wrapper input {
+    width: 100%;
+    padding: 0.6rem 1rem !important;
+    padding-right: 2.5rem !important;
+    border: 1px solid var(--line, #EAE2F2) !important;
+    border-radius: 30px !important;
+    background-color: white !important;
+    font-size: 0.85rem !important;
+    height: 36px !important;
+  }
+  .search-input-wrapper button {
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: var(--muted, #707085);
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Grid Lists */
+  .posts-section {
+    padding-bottom: 6rem;
+  }
+  .posts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 2rem;
+  }
+  .post-card {
+    background: white;
+    border: 1px solid var(--line, #EAE2F2);
+    border-radius: var(--radius-md, 16px);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .post-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(74, 19, 112, 0.04);
+  }
+  .card-image {
+    aspect-ratio: 16/10;
+    overflow: hidden;
+  }
+  .card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .card-content {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+  }
+  .card-meta {
+    font-size: 0.78rem;
+    color: var(--muted, #707085);
+    margin-bottom: 0.5rem;
+  }
+  .card-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+  }
+  .card-title a {
+    color: var(--ink, #1A1A2E);
+  }
+  .card-title a:hover {
+    color: var(--purple-700, #6B2E97);
+  }
+  .card-excerpt {
+    font-size: 0.85rem;
+    color: var(--ink-soft, #4A4A5E);
+    line-height: 1.5;
+    margin-bottom: 1.25rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--line, #EAE2F2);
+    padding-top: 1rem;
+    margin-top: auto;
+  }
+  .card-author-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--ink-soft, #4A4A5E);
+  }
+  .card-link {
+    color: var(--muted, #707085);
+  }
+  .post-card:hover .card-link {
+    color: var(--purple-700, #6B2E97);
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: white;
+    border: 1px solid var(--line, #EAE2F2);
+    border-radius: var(--radius-lg, 24px);
+    max-width: 500px;
+    margin: 2rem auto;
+  }
+  .empty-icon {
+    font-size: 2rem;
+    color: var(--muted, #707085);
+    margin-bottom: 1rem;
+  }
+  .btn-reset {
+    display: inline-block;
+    background: var(--purple-700, #6B2E97);
+    color: white;
+    padding: 0.5rem 1.25rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: 1rem;
+  }
+
+  /* Pagination */
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 3rem;
+    border-top: 1px solid var(--line, #EAE2F2);
+    padding-top: 1.5rem;
+  }
+  .pag-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--line, #EAE2F2);
+    border-radius: 20px;
+    background: white;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ink-soft, #4A4A5E);
+  }
+  .pag-btn.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .pag-pages {
+    display: flex;
+    gap: 0.25rem;
+  }
+  .pag-page-link {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ink-soft, #4A4A5E);
+  }
+  .pag-page-link.active {
+    background: var(--purple-700, #6B2E97);
+    color: white;
+  }
+
+  @media (max-width: 640px) {
+    .toolbar-wrapper {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 1rem;
+    }
+    .search-form {
+      max-width: 100%;
+    }
+  }
+</style>

@@ -1,0 +1,722 @@
+---
+import AdminLayout from '../../../layouts/admin/AdminLayout.astro';
+
+export const prerender = false;
+
+const slug = Astro.url.searchParams.get('slug') || '';
+---
+<AdminLayout title="Edit Post">
+  <link rel="stylesheet" href="/vendor/quill/quill.snow.css" />
+
+  <style>
+    .post-editor-layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 1.5rem;
+      align-items: start;
+    }
+    @media (max-width: 1100px) { .post-editor-layout { grid-template-columns: 1fr; } }
+
+    .editor-main { display: flex; flex-direction: column; gap: 1rem; }
+
+    .title-input {
+      width: 100%;
+      font-size: 1.8rem;
+      font-weight: 700;
+      font-family: var(--font-heading);
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.5rem 0;
+      outline: none;
+      transition: var(--transition);
+    }
+    .title-input::placeholder { color: var(--text-dim); }
+    .title-input:focus { border-bottom-color: var(--primary); }
+
+    .quill-wrapper {
+      background: var(--bg-surface-solid);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+    .quill-wrapper .ql-toolbar {
+      background: rgba(255,255,255,0.03);
+      border-color: var(--border-color) !important;
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.6rem 1rem;
+    }
+    .quill-wrapper .ql-toolbar button,
+    .quill-wrapper .ql-toolbar .ql-picker { color: var(--text-muted); }
+    .quill-wrapper .ql-toolbar button svg { fill: var(--text-muted); stroke: var(--text-muted); }
+    .quill-wrapper .ql-toolbar button:hover,
+    .quill-wrapper .ql-toolbar button.ql-active { color: var(--primary); }
+    .quill-wrapper .ql-toolbar button:hover svg,
+    .quill-wrapper .ql-toolbar button.ql-active svg { fill: var(--primary); stroke: var(--primary); }
+    .quill-wrapper .ql-toolbar .ql-picker-label { color: var(--text-muted); }
+    .quill-wrapper .ql-toolbar .ql-picker-options { background: var(--bg-surface-solid); border-color: var(--border-color); }
+    .quill-wrapper .ql-container { border: none !important; font-family: var(--font-body); font-size: 1rem; }
+    .quill-wrapper .ql-editor { min-height: 480px; color: var(--text-main); padding: 1.25rem 1.5rem; line-height: 1.8; }
+    .quill-wrapper .ql-editor.ql-blank::before { color: var(--text-dim); font-style: normal; }
+    .quill-wrapper .ql-editor h1,.quill-wrapper .ql-editor h2,.quill-wrapper .ql-editor h3 { color: var(--text-main); }
+    .quill-wrapper .ql-editor a { color: var(--primary); }
+    .quill-wrapper .ql-editor blockquote { border-left: 3px solid var(--primary); padding-left: 1rem; color: var(--text-muted); }
+    .quill-wrapper .ql-editor code { background: rgba(99,102,241,0.1); padding: 0.1em 0.4em; border-radius: 4px; }
+    .ql-stroke { stroke: var(--text-muted) !important; }
+    .ql-fill { fill: var(--text-muted) !important; }
+    .ql-snow .ql-toolbar button:hover .ql-stroke,
+    .ql-snow .ql-toolbar button.ql-active .ql-stroke { stroke: var(--primary) !important; }
+    .ql-snow .ql-toolbar button:hover .ql-fill,
+    .ql-snow .ql-toolbar button.ql-active .ql-fill { fill: var(--primary) !important; }
+
+    .editor-sidebar { display: flex; flex-direction: column; gap: 1rem; }
+
+    .sidebar-card { background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden; }
+    .sidebar-card-header { padding: 0.85rem 1.1rem; border-bottom: 1px solid var(--border-color); font-weight: 600; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; justify-content: space-between; }
+    .sidebar-card-body { padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: 0.75rem; }
+
+    .form-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.3rem; display: block; }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: var(--radius-sm); color: var(--text-main); padding: 0.55rem 0.85rem; font-size: 0.85rem; font-family: var(--font-body); outline: none; transition: var(--transition); box-sizing: border-box;
+    }
+    .form-input:focus,.form-select:focus,.form-textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+    .form-textarea { resize: vertical; min-height: 80px; }
+    .form-select option { background: var(--bg-surface-solid); }
+
+    .feat-img-preview { width: 100%; height: 130px; border-radius: var(--radius-sm); object-fit: cover; display: block; }
+    .feat-img-placeholder { width: 100%; height: 130px; border: 2px dashed var(--border-color); border-radius: var(--radius-sm); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.4rem; color: var(--text-dim); font-size: 0.8rem; cursor: pointer; transition: var(--transition); }
+    .feat-img-placeholder:hover { border-color: var(--primary); color: var(--primary); }
+
+    .tags-container { display: flex; flex-wrap: wrap; gap: 0.35rem; min-height: 38px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: var(--radius-sm); padding: 0.4rem; cursor: text; transition: var(--transition); }
+    .tags-container:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+    .tag-pill { background: var(--primary-light); color: var(--primary); border-radius: 4px; padding: 0.2rem 0.5rem; font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; gap: 0.3rem; }
+    .tag-pill .remove-tag { cursor: pointer; opacity: 0.6; }
+    .tag-pill .remove-tag:hover { opacity: 1; }
+    .tag-input { border: none; background: transparent; color: var(--text-main); font-size: 0.85rem; outline: none; min-width: 80px; flex: 1; padding: 0 0.2rem; font-family: var(--font-body); }
+
+    .status-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .status-btn { flex: 1; padding: 0.45rem 0.6rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-muted); font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: var(--transition); text-align: center; font-family: var(--font-body); }
+    .status-btn.active-draft { background: rgba(107,114,128,0.15); color: #9CA3AF; border-color: rgba(107,114,128,0.3); }
+    .status-btn.active-published { background: rgba(16,185,129,0.12); color: #10B981; border-color: rgba(16,185,129,0.3); }
+    .status-btn.active-archived { background: rgba(239,68,68,0.1); color: #EF4444; border-color: rgba(239,68,68,0.3); }
+    .status-btn.active-scheduled { background: rgba(245,158,11,0.1); color: #F59E0B; border-color: rgba(245,158,11,0.3); }
+    .scheduled-warning { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.25); border-radius: var(--radius-sm); padding: 0.6rem 0.75rem; font-size: 0.78rem; color: #F59E0B; display: none; }
+
+    .accordion-header { padding: 0.85rem 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-weight: 600; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; user-select: none; }
+    .accordion-header:hover { color: var(--text-main); }
+    .accordion-chevron { transition: transform 0.2s ease; }
+    .accordion-body { padding: 0 1.1rem 1rem; display: none; flex-direction: column; gap: 0.75rem; }
+    .accordion-body.open { display: flex; }
+
+    .save-bar { position: sticky; top: 0; z-index: 50; background: rgba(8,12,20,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; margin-bottom: 1.5rem; }
+    .save-bar-left { display: flex; align-items: center; gap: 0.75rem; }
+    .save-bar-right { display: flex; align-items: center; gap: 0.5rem; }
+    .word-count { font-size: 0.78rem; color: var(--text-dim); }
+
+    /* Revisions panel */
+    .revision-item { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--border-color); font-size: 0.8rem; }
+    .revision-item:last-child { border-bottom: none; }
+
+    .toast-container { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; }
+    .toast { background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.85rem 1.25rem; display: flex; align-items: center; gap: 0.75rem; font-size: 0.875rem; color: var(--text-main); box-shadow: 0 8px 24px rgba(0,0,0,0.4); animation: slideIn 0.3s cubic-bezier(0.4,0,0.2,1); min-width: 280px; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .toast.success .toast-icon { color: var(--color-success); }
+    .toast.error .toast-icon { color: var(--color-error); }
+    .toast-icon { font-size: 1.1rem; flex-shrink: 0; }
+
+    .loading-overlay { position: fixed; inset: 0; background: rgba(8,12,20,0.7); backdrop-filter: blur(4px); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+    .loading-spinner { width: 48px; height: 48px; border: 3px solid var(--border-color); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .media-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 9000; display: none; align-items: center; justify-content: center; }
+    .media-modal-overlay.open { display: flex; }
+    .media-modal { background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: var(--radius-lg); width: 90vw; max-width: 860px; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column; }
+    .media-modal-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+    .media-modal-header h4 { font-weight: 700; color: var(--text-main); }
+    .media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px,1fr)); gap: 0.75rem; padding: 1rem; overflow-y: auto; flex: 1; }
+    .media-item { position: relative; border-radius: var(--radius-sm); overflow: hidden; border: 2px solid transparent; cursor: pointer; aspect-ratio: 1; }
+    .media-item:hover { border-color: var(--primary); }
+    .media-item img { width: 100%; height: 100%; object-fit: cover; }
+  </style>
+
+  <!-- Loading -->
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="loading-spinner"></div>
+  </div>
+
+  <!-- Save Bar -->
+  <div class="save-bar">
+    <div class="save-bar-left">
+      <a href="/admin/blog" style="color:var(--text-muted);text-decoration:none;display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        All Posts
+      </a>
+      <span style="color:var(--text-dim);">|</span>
+      <span id="save-status" class="word-count" style="color:var(--text-dim);">Loading…</span>
+    </div>
+    <div class="save-bar-right">
+      <span id="word-count-display" class="word-count">— words</span>
+      <a id="preview-link" href="#" target="_blank" class="btn btn-outline btn-sm" style="text-decoration:none;">Preview</a>
+      <button type="button" class="btn btn-outline btn-sm" id="btn-draft" onclick="savePost('draft')">Save Draft</button>
+      <button type="button" class="btn btn-primary btn-sm" id="btn-publish" onclick="savePost()">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        Update
+      </button>
+    </div>
+  </div>
+
+  <div class="post-editor-layout">
+    <div class="editor-main">
+      <input type="text" class="title-input" id="post-title" placeholder="Post Title…" />
+
+      <div style="display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0;">
+        <label class="form-label" style="margin:0;">Slug:</label>
+        <input type="text" id="post-slug" class="form-input" style="max-width:320px;font-size:0.8rem;" />
+        <input type="hidden" id="post-original-slug" />
+      </div>
+
+      <div class="quill-wrapper">
+        <div id="quill-editor"></div>
+      </div>
+
+      <!-- Excerpt -->
+      <div class="sidebar-card">
+        <div class="sidebar-card-header">Excerpt</div>
+        <div class="sidebar-card-body">
+          <textarea class="form-textarea" id="post-excerpt" placeholder="Brief summary..." rows="3"></textarea>
+          <span style="font-size:0.75rem;color:var(--text-dim);" id="excerpt-count">0 / 160 characters</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="editor-sidebar">
+
+      <!-- Publish -->
+      <div class="sidebar-card">
+        <div class="sidebar-card-header">Publish</div>
+        <div class="sidebar-card-body">
+          <label class="form-label">Status</label>
+          <div class="status-row">
+            <button type="button" class="status-btn" id="btn-status-draft" data-status="draft" onclick="setStatus('draft')">Draft</button>
+            <button type="button" class="status-btn" id="btn-status-published" data-status="published" onclick="setStatus('published')">Published</button>
+            <button type="button" class="status-btn" id="btn-status-archived" data-status="archived" onclick="setStatus('archived')">Archived</button>
+            <button type="button" class="status-btn" id="btn-status-scheduled" data-status="scheduled" onclick="setStatus('scheduled')">Scheduled</button>
+          </div>
+          <div class="scheduled-warning" id="scheduled-warning">
+            ⚠ Scheduled publishing is future-ready. Post stays at this status until manually published.
+          </div>
+          <div>
+            <label class="form-label">Publish Date</label>
+            <input type="datetime-local" class="form-input" id="post-publish-date" />
+          </div>
+          <div>
+            <label class="form-label">Last Updated</label>
+            <input type="text" class="form-input" id="post-updated-date" disabled style="color:var(--text-dim);" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Author -->
+      <div class="sidebar-card">
+        <div class="sidebar-card-header">Author</div>
+        <div class="sidebar-card-body">
+          <select class="form-select" id="post-author"></select>
+        </div>
+      </div>
+
+      <!-- Category -->
+      <div class="sidebar-card">
+        <div class="sidebar-card-header">Category</div>
+        <div class="sidebar-card-body">
+          <select class="form-select" id="post-category"></select>
+        </div>
+      </div>
+
+      <!-- Tags -->
+      <div class="sidebar-card">
+        <div class="sidebar-card-header">Tags</div>
+        <div class="sidebar-card-body">
+          <div class="tags-container" id="tags-container" onclick="document.getElementById('tag-input').focus()">
+            <input type="text" class="tag-input" id="tag-input" placeholder="Add tag, Enter…" />
+          </div>
+          <div id="tag-suggestions" style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-top:0.25rem;"></div>
+        </div>
+      </div>
+
+      <!-- Featured Image -->
+      <div class="sidebar-card">
+        <div class="sidebar-card-header">
+          Featured Image
+          <button type="button" onclick="openMediaPicker()" style="background:transparent;border:none;color:var(--primary);font-size:0.78rem;cursor:pointer;font-weight:600;">Change</button>
+        </div>
+        <div class="sidebar-card-body">
+          <div id="feat-img-placeholder" class="feat-img-placeholder" onclick="openMediaPicker()">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span>Set Featured Image</span>
+          </div>
+          <img id="feat-img-preview" class="feat-img-preview" style="display:none;" alt="Featured image" />
+          <input type="hidden" id="post-featured-image" />
+          <button type="button" id="remove-feat-img" onclick="removeFeatImg()" style="display:none;background:transparent;border:none;color:var(--color-error);font-size:0.78rem;cursor:pointer;padding:0;font-family:var(--font-body);">✕ Remove image</button>
+        </div>
+      </div>
+
+      <!-- SEO -->
+      <div class="sidebar-card">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          SEO
+          <svg class="accordion-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="accordion-body">
+          <div>
+            <label class="form-label">Meta Title</label>
+            <input type="text" class="form-input" id="seo-meta-title" />
+            <span id="meta-title-count" style="font-size:0.75rem;color:var(--text-dim);">0 / 60</span>
+          </div>
+          <div>
+            <label class="form-label">Meta Description</label>
+            <textarea class="form-textarea" id="seo-meta-desc" rows="3"></textarea>
+            <span id="meta-desc-count" style="font-size:0.75rem;color:var(--text-dim);">0 / 160</span>
+          </div>
+          <div>
+            <label class="form-label">Focus Keyword</label>
+            <input type="text" class="form-input" id="seo-focus-kw" />
+          </div>
+          <div>
+            <label class="form-label">Canonical URL</label>
+            <input type="text" class="form-input" id="seo-canonical" />
+          </div>
+          <div>
+            <label class="form-label">Robots</label>
+            <select class="form-select" id="seo-robots">
+              <option value="index, follow">index, follow</option>
+              <option value="noindex, nofollow">noindex, nofollow</option>
+              <option value="noindex, follow">noindex, follow</option>
+              <option value="index, nofollow">index, nofollow</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">OG Image</label>
+            <input type="text" class="form-input" id="seo-og-image" />
+          </div>
+          <div>
+            <label class="form-label">Schema Type</label>
+            <select class="form-select" id="seo-schema-type">
+              <option value="none">None</option>
+              <option value="article">Article Schema</option>
+              <option value="custom">Custom Schema</option>
+            </select>
+          </div>
+          <div id="schema-markup-group" style="display:none;">
+            <label class="form-label">Schema Markup (JSON-LD)</label>
+            <textarea class="form-textarea" id="seo-schema-markup" rows="3" placeholder='{ "@context": "https://schema.org", ... }' style="font-family:monospace;"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scripts & Styles -->
+      <div class="sidebar-card">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          Scripts & Styles
+          <svg class="accordion-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="accordion-body">
+          <div>
+            <label class="form-label">Header Scripts</label>
+            <textarea class="form-textarea" id="post-header-scripts" rows="3" placeholder="<!-- header script injections -->"></textarea>
+          </div>
+          <div>
+            <label class="form-label">Footer Scripts</label>
+            <textarea class="form-textarea" id="post-footer-scripts" rows="3" placeholder="<!-- footer script injections -->"></textarea>
+          </div>
+          <div>
+            <label class="form-label">Custom CSS</label>
+            <textarea class="form-textarea" id="post-custom-css" rows="3" placeholder="/* custom CSS overrides */" style="font-family:monospace;"></textarea>
+          </div>
+          <div>
+            <label class="form-label">Custom JS</label>
+            <textarea class="form-textarea" id="post-custom-js" rows="3" placeholder="// custom javascript" style="font-family:monospace;"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Danger Zone -->
+      <div class="sidebar-card" style="border-color:rgba(239,68,68,0.2);">
+        <div class="sidebar-card-header" style="color:var(--color-error);">Danger Zone</div>
+        <div class="sidebar-card-body">
+          <button type="button" class="btn btn-danger btn-sm" onclick="deletePost()" style="width:100%;">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
+            Delete Post
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Media Picker -->
+  <div class="media-modal-overlay" id="media-modal">
+    <div class="media-modal">
+      <div class="media-modal-header">
+        <h4>Select Featured Image</h4>
+        <button type="button" onclick="closeMediaPicker()" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:1.2rem;">✕</button>
+      </div>
+      <div class="media-grid" id="media-grid"></div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <script is:inline src="/vendor/quill/quill.js"></script>
+  <script is:inline>
+    const editSlug = new URLSearchParams(window.location.search).get('slug') || '';
+    let currentStatus = 'draft';
+    let currentTags = [];
+    let quillEditor = null;
+    let availableTags = [];
+    let originalSlug = editSlug;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      quillEditor = new Quill('#quill-editor', {
+        theme: 'snow',
+        placeholder: 'Write your post content here…',
+        modules: {
+          toolbar: [
+            [{ header: [1, 2, 3, 4, false] }],
+            ['bold', 'italic', 'underline', 'strike'],
+            [{ color: [] }, { background: [] }],
+            ['blockquote', 'code-block'],
+            [{ list: 'ordered' }, { list: 'bullet' }],
+            [{ indent: '-1' }, { indent: '+1' }],
+            ['link', 'image'],
+            ['clean'],
+          ],
+        },
+      });
+      quillEditor.on('text-change', updateWordCount);
+
+      await Promise.all([loadAuthors(), loadCategories(), loadTagsSuggestions()]);
+      await loadPost();
+
+      document.getElementById('post-excerpt').addEventListener('input', function() {
+        document.getElementById('excerpt-count').textContent = `${this.value.length} / 160 characters`;
+      });
+
+      const metaTitleEl = document.getElementById('seo-meta-title');
+      metaTitleEl.addEventListener('input', () => {
+        const n = metaTitleEl.value.length;
+        const el = document.getElementById('meta-title-count');
+        el.textContent = `${n} / 60`;
+        el.style.color = n > 60 ? 'var(--color-error)' : 'var(--text-dim)';
+      });
+      const metaDescEl = document.getElementById('seo-meta-desc');
+      metaDescEl.addEventListener('input', () => {
+        const n = metaDescEl.value.length;
+        const el = document.getElementById('meta-desc-count');
+        el.textContent = `${n} / 160`;
+        el.style.color = n > 160 ? 'var(--color-error)' : 'var(--text-dim)';
+      });
+
+      const tagInputEl = document.getElementById('tag-input');
+      tagInputEl.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ',') {
+          e.preventDefault();
+          const val = tagInputEl.value.trim().toLowerCase().replace(/\s+/g, '-');
+          if (val && !currentTags.includes(val)) addTag(val);
+          tagInputEl.value = '';
+        } else if (e.key === 'Backspace' && !tagInputEl.value && currentTags.length > 0) {
+          removeTag(currentTags[currentTags.length - 1]);
+        }
+      });
+
+      // Schema Type selector change event
+      const schemaTypeEl = document.getElementById('seo-schema-type');
+      schemaTypeEl.addEventListener('change', () => {
+        document.getElementById('schema-markup-group').style.display = 
+          ['custom', 'article'].includes(schemaTypeEl.value) ? 'block' : 'none';
+      });
+
+      // Update preview link dynamically when slug is changed
+      const slugInputEl = document.getElementById('post-slug');
+      slugInputEl.addEventListener('input', function() {
+        document.getElementById('preview-link').href = `/blog/${this.value.trim()}?preview=true`;
+      });
+    });
+
+    async function loadPost() {
+      if (!editSlug) {
+        document.getElementById('loading-overlay').style.display = 'none';
+        return;
+      }
+      try {
+        const res = await fetch(`/api/blog-crud?action=get&slug=${editSlug}`, { credentials: 'include' });
+        const data = await res.json();
+        if (!data.success) { showToast('Post not found', 'error'); return; }
+
+        const post = data.post;
+        originalSlug = post.slug || editSlug;
+
+        document.getElementById('post-title').value = post.title || '';
+        document.getElementById('post-slug').value = post.slug || editSlug;
+        document.getElementById('post-original-slug').value = originalSlug;
+        document.getElementById('post-excerpt').value = post.excerpt || '';
+        document.getElementById('post-featured-image').value = post.featuredImage || '';
+        document.getElementById('excerpt-count').textContent = `${(post.excerpt || '').length} / 160 characters`;
+        document.getElementById('preview-link').href = `/blog/${post.slug}?preview=true`;
+        document.getElementById('save-status').textContent = `Editing: ${post.title || 'Untitled'}`;
+
+        if (post.featuredImage) {
+          document.getElementById('feat-img-preview').src = post.featuredImage;
+          document.getElementById('feat-img-preview').style.display = 'block';
+          document.getElementById('feat-img-placeholder').style.display = 'none';
+          document.getElementById('remove-feat-img').style.display = 'block';
+        }
+
+        if (post.publishDate) {
+          const dt = new Date(post.publishDate);
+          dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
+          document.getElementById('post-publish-date').value = dt.toISOString().slice(0, 16);
+        }
+        if (post.updatedDate) {
+          document.getElementById('post-updated-date').value = new Date(post.updatedDate).toLocaleString();
+        }
+
+        // Populate selects
+        document.getElementById('post-author').value = post.author || 'author-admin';
+        document.getElementById('post-category').value = post.category || 'uncategorized';
+        setStatus(post.status || 'draft');
+
+        // Tags
+        currentTags = Array.isArray(post.tags) ? [...post.tags] : [];
+        renderTags();
+
+        document.getElementById('post-header-scripts').value = post.headerScripts || '';
+        document.getElementById('post-footer-scripts').value = post.footerScripts || '';
+        document.getElementById('post-custom-css').value = post.customCss || '';
+        document.getElementById('post-custom-js').value = post.customJs || '';
+
+        // SEO
+        if (post.seo) {
+          document.getElementById('seo-meta-title').value = post.seo.metaTitle || '';
+          document.getElementById('seo-meta-desc').value = post.seo.metaDescription || '';
+          document.getElementById('seo-focus-kw').value = post.seo.focusKeyword || '';
+          document.getElementById('seo-canonical').value = post.seo.canonicalUrl || '';
+          document.getElementById('seo-robots').value = post.seo.robots || 'index, follow';
+          document.getElementById('seo-og-image').value = post.seo.ogImage || '';
+          document.getElementById('meta-title-count').textContent = `${(post.seo.metaTitle || '').length} / 60`;
+          document.getElementById('meta-desc-count').textContent = `${(post.seo.metaDescription || '').length} / 160`;
+          
+          const sType = post.seo.schemaType || 'none';
+          document.getElementById('seo-schema-type').value = sType;
+          document.getElementById('seo-schema-markup').value = post.seo.schemaMarkup || '';
+          document.getElementById('schema-markup-group').style.display = 
+            ['custom', 'article'].includes(sType) ? 'block' : 'none';
+        }
+
+        // Body into Quill
+        if (data.body && quillEditor) {
+          quillEditor.clipboard.dangerouslyPasteHTML(data.body);
+        }
+        updateWordCount();
+      } catch (e) {
+        showToast('Failed to load post', 'error');
+      } finally {
+        document.getElementById('loading-overlay').style.display = 'none';
+      }
+    }
+
+    function updateWordCount() {
+      if (!quillEditor) return;
+      const text = quillEditor.getText().trim();
+      const words = text ? text.split(/\s+/).length : 0;
+      const readTime = Math.max(1, Math.ceil(words / 200));
+      document.getElementById('word-count-display').textContent = `${words} words · ${readTime} min read`;
+    }
+
+    async function loadAuthors() {
+      try {
+        const res = await fetch('/api/blog-crud?action=authors', { credentials: 'include' });
+        const data = await res.json();
+        document.getElementById('post-author').innerHTML = (data.authors || []).map(a =>
+          `<option value="${a.id}">${a.name}</option>`
+        ).join('');
+      } catch {}
+    }
+
+    async function loadCategories() {
+      try {
+        const res = await fetch('/api/blog-crud?action=categories', { credentials: 'include' });
+        const data = await res.json();
+        document.getElementById('post-category').innerHTML = (data.categories || []).map(c =>
+          `<option value="${c.slug}">${c.name}</option>`
+        ).join('');
+      } catch {}
+    }
+
+    async function loadTagsSuggestions() {
+      try {
+        const res = await fetch('/api/blog-crud?action=tags', { credentials: 'include' });
+        const data = await res.json();
+        availableTags = data.tags || [];
+        document.getElementById('tag-suggestions').innerHTML = availableTags.map(t =>
+          `<span style="background:rgba(16,185,129,0.08);color:#10B981;padding:0.15rem 0.5rem;border-radius:4px;font-size:0.75rem;cursor:pointer;border:1px solid rgba(16,185,129,0.2);" onclick="addTag('${t.slug}')">${t.name}</span>`
+        ).join('');
+      } catch {}
+    }
+
+    function addTag(slug) { if (!currentTags.includes(slug)) { currentTags.push(slug); renderTags(); } }
+    function removeTag(slug) { currentTags = currentTags.filter(t => t !== slug); renderTags(); }
+    function renderTags() {
+      const container = document.getElementById('tags-container');
+      const input = document.getElementById('tag-input');
+      container.querySelectorAll('.tag-pill').forEach(el => el.remove());
+      currentTags.forEach(slug => {
+        const label = availableTags.find(t => t.slug === slug)?.name || slug;
+        const pill = document.createElement('span');
+        pill.className = 'tag-pill';
+        pill.innerHTML = `${label}<span class="remove-tag" onclick="removeTag('${slug}')">✕</span>`;
+        container.insertBefore(pill, input);
+      });
+    }
+
+    function setStatus(status) {
+      currentStatus = status;
+      document.querySelectorAll('.status-btn').forEach(btn => {
+        btn.className = 'status-btn';
+        if (btn.dataset.status === status) btn.classList.add(`active-${status}`);
+      });
+      document.getElementById('scheduled-warning').style.display = status === 'scheduled' ? 'block' : 'none';
+    }
+
+    function toggleAccordion(header) {
+      const body = header.nextElementSibling;
+      const chevron = header.querySelector('.accordion-chevron');
+      const isOpen = body.classList.contains('open');
+      body.classList.toggle('open', !isOpen);
+      chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
+    }
+
+    async function openMediaPicker() {
+      document.getElementById('media-modal').classList.add('open');
+      const gridEl = document.getElementById('media-grid');
+      gridEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-muted);">Loading...</div>';
+      try {
+        const res = await fetch('/api/media-crud?action=list', { credentials: 'include' });
+        const data = await res.json();
+        const images = (data.media || data.items || []).filter(i => ['image', 'svg'].includes(i.type));
+        if (!images.length) { gridEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-muted);">No images</div>'; return; }
+        gridEl.innerHTML = images.map(img => `<div class="media-item" onclick="selectMedia('${img.url}')"><img src="${img.url}" alt="${img.name}" loading="lazy" /></div>`).join('');
+      } catch { gridEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--color-error);">Failed to load</div>'; }
+    }
+    function closeMediaPicker() { document.getElementById('media-modal').classList.remove('open'); }
+    function selectMedia(url) {
+      document.getElementById('post-featured-image').value = url;
+      document.getElementById('feat-img-preview').src = url;
+      document.getElementById('feat-img-preview').style.display = 'block';
+      document.getElementById('feat-img-placeholder').style.display = 'none';
+      document.getElementById('remove-feat-img').style.display = 'block';
+      if (!document.getElementById('seo-og-image').value) document.getElementById('seo-og-image').value = url;
+      closeMediaPicker();
+    }
+    function removeFeatImg() {
+      document.getElementById('post-featured-image').value = '';
+      document.getElementById('feat-img-preview').style.display = 'none';
+      document.getElementById('feat-img-placeholder').style.display = 'flex';
+      document.getElementById('remove-feat-img').style.display = 'none';
+    }
+
+    async function savePost(forceStatus) {
+      const status = forceStatus || currentStatus;
+      const title = document.getElementById('post-title').value.trim();
+      if (!title) { showToast('Post title is required', 'error'); return; }
+      const slug = document.getElementById('post-slug').value.trim();
+      const body = quillEditor ? quillEditor.root.innerHTML : '';
+
+      const payload = {
+        action: 'update',
+        originalSlug,
+        title,
+        slug,
+        excerpt: document.getElementById('post-excerpt').value.trim(),
+        author: document.getElementById('post-author').value,
+        category: document.getElementById('post-category').value,
+        tags: [...currentTags],
+        featuredImage: document.getElementById('post-featured-image').value,
+        status,
+        publishDate: document.getElementById('post-publish-date').value || '',
+        scheduledDate: status === 'scheduled' ? document.getElementById('post-publish-date').value : '',
+        body,
+        headerScripts: document.getElementById('post-header-scripts').value.trim(),
+        footerScripts: document.getElementById('post-footer-scripts').value.trim(),
+        customCss: document.getElementById('post-custom-css').value.trim(),
+        customJs: document.getElementById('post-custom-js').value.trim(),
+        seo: {
+          metaTitle: document.getElementById('seo-meta-title').value,
+          metaDescription: document.getElementById('seo-meta-desc').value,
+          focusKeyword: document.getElementById('seo-focus-kw').value,
+          canonicalUrl: document.getElementById('seo-canonical').value,
+          robots: document.getElementById('seo-robots').value,
+          ogImage: document.getElementById('seo-og-image').value,
+          schemaMarkup: document.getElementById('seo-schema-markup').value.trim(),
+          schemaType: document.getElementById('seo-schema-type').value,
+        }
+      };
+
+      const btnId = forceStatus === 'draft' ? 'btn-draft' : 'btn-publish';
+      const btn = document.getElementById(btnId);
+      if (btn) btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/blog-crud', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Post updated!', 'success');
+          if (data.slug && data.slug !== originalSlug) {
+            originalSlug = data.slug;
+            document.getElementById('post-original-slug').value = data.slug;
+            history.replaceState({}, '', `/admin/blog/edit?slug=${data.slug}`);
+          }
+          document.getElementById('preview-link').href = `/blog/${slug}?preview=true`;
+          document.getElementById('post-updated-date').value = new Date().toLocaleString();
+        } else {
+          showToast(data.error || 'Update failed', 'error');
+        }
+      } catch { showToast('Network error', 'error'); }
+      finally { if (btn) btn.disabled = false; }
+    }
+
+    async function deletePost() {
+      const title = document.getElementById('post-title').value || 'this post';
+      if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+      try {
+        const res = await fetch('/api/blog-crud', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ action: 'post', slug: originalSlug }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Post deleted! Redirecting…', 'success');
+          setTimeout(() => { window.location.href = '/admin/blog'; }, 1200);
+        } else {
+          showToast(data.error || 'Delete failed', 'error');
+        }
+      } catch { showToast('Network error', 'error'); }
+    }
+
+    function showToast(msg, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.innerHTML = `<span class="toast-icon">${type === 'success' ? '✓' : '✕'}</span><span>${msg}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; toast.style.transition = 'all 0.3s'; setTimeout(() => toast.remove(), 300); }, 3500);
+    }
+  </script>
+</AdminLayout>

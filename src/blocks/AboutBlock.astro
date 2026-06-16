@@ -16,7 +16,7 @@ const { eyebrow, title, description, image, highlights = [] } = Astro.props;
         <div class="about-left">
           <div class="image-stack">
             <div class="image-frame">
-              <img src={image} alt={title} class="about-img" />
+              <img src={image} alt={title} class="about-img" loading="lazy" decoding="async" />
               <div class="border-overlay"></div>
             </div>
             <div class="back-card glow-card"></div>

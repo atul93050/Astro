@@ -1,0 +1,1009 @@
+---
+import AdminLayout from '../../../layouts/admin/AdminLayout.astro';
+
+export const prerender = false;
+---
+
+<AdminLayout title="Blog Comments — Moderation Inbox">
+
+  <!-- Page Header -->
+  <div class="comments-page-header">
+    <div class="header-text">
+      <p class="page-subtitle">Review, approve, or remove reader comments. Keep conversations healthy and spam-free.</p>
+    </div>
+    <div class="header-bulk-actions">
+      <button class="btn btn-outline btn-sm" id="btn-approve-all-pending">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        Approve All Pending
+      </button>
+      <button class="btn btn-sm btn-delete-spam-bulk" id="btn-delete-all-spam">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        Delete All Spam
+      </button>
+    </div>
+  </div>
+
+  <!-- Controls Row: Filter Tabs + Search -->
+  <div class="controls-row">
+    <!-- Status Filter Tabs -->
+    <div class="filter-tabs" id="filter-tabs" role="tablist">
+      <button class="tab-btn active" data-filter="all" role="tab" aria-selected="true">
+        All
+        <span class="tab-count" id="count-all">—</span>
+      </button>
+      <button class="tab-btn" data-filter="pending" role="tab" aria-selected="false">
+        Pending
+        <span class="tab-count tab-count--amber" id="count-pending">—</span>
+      </button>
+      <button class="tab-btn" data-filter="approved" role="tab" aria-selected="false">
+        Approved
+        <span class="tab-count tab-count--green" id="count-approved">—</span>
+      </button>
+      <button class="tab-btn" data-filter="spam" role="tab" aria-selected="false">
+        Spam
+        <span class="tab-count tab-count--red" id="count-spam">—</span>
+      </button>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="search-input-wrap">
+      <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input type="search" id="comments-search" placeholder="Search by author, email, or content…" autocomplete="off" />
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" id="loading-state">
+    <div class="spinner"></div>
+    <p>Loading comments…</p>
+  </div>
+
+  <!-- Comments List -->
+  <div class="comments-list" id="comments-list" style="display:none;"></div>
+
+  <!-- Empty State -->
+  <div class="empty-state" id="empty-state" style="display:none;">
+    <div class="empty-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+      </svg>
+    </div>
+    <h3 id="empty-title">No comments yet</h3>
+    <p id="empty-desc">When readers leave comments on your blog posts, they'll appear here for moderation.</p>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast-notification" id="toast-notify" role="status" aria-live="polite">
+    <div class="toast-content">
+      <span class="toast-icon" id="toast-icon">✓</span>
+      <span class="toast-message" id="toast-message">Action completed.</span>
+    </div>
+  </div>
+
+</AdminLayout>
+
+<style is:global>
+  /* ─── Page Layout ─────────────────────────────────────────────── */
+  .comments-page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.75rem;
+    flex-wrap: wrap;
+  }
+  .page-subtitle {
+    color: var(--text-muted);
+    font-size: 0.92rem;
+    margin: 0;
+    line-height: 1.5;
+  }
+  .header-bulk-actions {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+  .btn-delete-spam-bulk {
+    background: rgba(239, 68, 68, 0.1) !important;
+    border: 1px solid rgba(239, 68, 68, 0.25) !important;
+    color: var(--color-error) !important;
+  }
+  .btn-delete-spam-bulk:hover {
+    background: rgba(239, 68, 68, 0.18) !important;
+    border-color: var(--color-error) !important;
+  }
+
+  /* ─── Controls Row ────────────────────────────────────────────── */
+  .controls-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  /* ─── Filter Tabs ─────────────────────────────────────────────── */
+  .filter-tabs {
+    display: flex;
+    gap: 0.25rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-border);
+    border-radius: var(--radius-sm);
+    padding: 0.3rem;
+    backdrop-filter: blur(8px);
+    flex-shrink: 0;
+  }
+  .tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.85rem;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.84rem;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+  }
+  .tab-btn:hover {
+    color: var(--text-main);
+    background: rgba(156, 163, 175, 0.07);
+  }
+  .tab-btn.active {
+    background: var(--bg-surface-solid);
+    color: var(--primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Tab Counts (badge pills) */
+  .tab-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: rgba(156, 163, 175, 0.1);
+    color: var(--text-dim);
+    line-height: 1;
+  }
+  .tab-btn.active .tab-count {
+    background: var(--primary-light);
+    color: var(--primary);
+  }
+  .tab-count--amber {
+    background: rgba(245, 158, 11, 0.12);
+    color: var(--color-warning);
+  }
+  .tab-count--green {
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--color-success);
+  }
+  .tab-count--red {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--color-error);
+  }
+
+  /* ─── Search Bar ──────────────────────────────────────────────── */
+  .search-input-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 220px;
+    max-width: 380px;
+  }
+  .search-icon {
+    position: absolute;
+    left: 0.8rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-dim);
+    pointer-events: none;
+    z-index: 1;
+  }
+  .search-input-wrap input[type="search"] {
+    width: 100% !important;
+    padding-left: 2.2rem !important;
+    height: 36px !important;
+    font-size: 0.85rem !important;
+  }
+
+  /* ─── Loading State ───────────────────────────────────────────── */
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 5rem 2rem;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+  }
+  .spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid var(--bg-surface-border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* ─── Comments List ───────────────────────────────────────────── */
+  .comments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    margin-bottom: 4rem;
+  }
+
+  /* ─── Comment Card ────────────────────────────────────────────── */
+  .comment-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-border);
+    border-radius: var(--radius-md);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 12px var(--color-shadow);
+    overflow: hidden;
+    transition: var(--transition);
+    animation: slideInCard 0.28s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+    position: relative;
+  }
+  .comment-card:hover {
+    border-color: rgba(99, 102, 241, 0.2);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    transform: translateY(-1px);
+  }
+  .comment-card.is-pending {
+    border-left: 3px solid var(--color-warning);
+  }
+  .comment-card.is-approved {
+    border-left: 3px solid var(--color-success);
+  }
+  .comment-card.is-spam {
+    border-left: 3px solid var(--color-error);
+    opacity: 0.72;
+  }
+  .comment-card.is-removing {
+    animation: slideOutCard 0.3s ease forwards;
+  }
+  @keyframes slideInCard {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slideOutCard {
+    from { opacity: 1; transform: translateY(0) scaleY(1); max-height: 300px; }
+    to   { opacity: 0; transform: translateY(-4px) scaleY(0.9); max-height: 0; margin-bottom: 0; padding: 0; }
+  }
+
+  .comment-card-inner {
+    padding: 1.15rem 1.35rem;
+    display: flex;
+    gap: 1.1rem;
+    align-items: flex-start;
+  }
+
+  /* Avatar */
+  .comment-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary) 0%, #a855f7 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+    letter-spacing: 0;
+    box-shadow: 0 3px 10px rgba(99, 102, 241, 0.25);
+  }
+
+  /* Comment Meta */
+  .comment-meta {
+    flex: 1;
+    min-width: 0;
+  }
+  .comment-meta-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.3rem;
+    flex-wrap: wrap;
+  }
+  .comment-author-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+  .comment-author-name {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+  .comment-author-email {
+    font-size: 0.76rem;
+    color: var(--text-dim);
+    font-weight: 500;
+  }
+  .comment-meta-right {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-shrink: 0;
+  }
+  .comment-date {
+    font-size: 0.76rem;
+    color: var(--text-dim);
+    font-weight: 500;
+  }
+
+  /* Status Badge */
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1;
+  }
+  .status-pill.pending {
+    background: rgba(245, 158, 11, 0.12);
+    color: var(--color-warning);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+  }
+  .status-pill.approved {
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--color-success);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+  }
+  .status-pill.spam {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--color-error);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+  }
+
+  /* Post link */
+  .comment-post-link {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    margin-bottom: 0.6rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .comment-post-link a {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 500;
+    transition: var(--transition);
+  }
+  .comment-post-link a:hover {
+    color: var(--primary-hover);
+    text-decoration: underline;
+  }
+
+  /* Comment Body */
+  .comment-body {
+    font-size: 0.875rem;
+    line-height: 1.65;
+    color: var(--text-muted);
+    background: rgba(8, 12, 20, 0.35);
+    border: 1px solid var(--bg-surface-border);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 1rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  /* Action Buttons Row */
+  .comment-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.85rem;
+    flex-wrap: wrap;
+  }
+  .btn-comment-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: var(--transition);
+    background: transparent;
+    line-height: 1;
+  }
+  .btn-comment-action svg {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+    pointer-events: none;
+  }
+  .btn-comment-approve {
+    border-color: rgba(16, 185, 129, 0.25);
+    color: var(--color-success);
+    background: rgba(16, 185, 129, 0.07);
+  }
+  .btn-comment-approve:hover {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: var(--color-success);
+    transform: translateY(-1px);
+  }
+  .btn-comment-spam {
+    border-color: rgba(245, 158, 11, 0.25);
+    color: var(--color-warning);
+    background: rgba(245, 158, 11, 0.07);
+  }
+  .btn-comment-spam:hover {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: var(--color-warning);
+    transform: translateY(-1px);
+  }
+  .btn-comment-delete {
+    border-color: rgba(239, 68, 68, 0.25);
+    color: var(--color-error);
+    background: rgba(239, 68, 68, 0.07);
+  }
+  .btn-comment-delete:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: var(--color-error);
+    transform: translateY(-1px);
+  }
+  .btn-comment-action:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none !important;
+    pointer-events: none;
+  }
+  .comment-actions-spacer {
+    flex: 1;
+  }
+
+  /* ─── Empty State ─────────────────────────────────────────────── */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 5rem 2rem;
+    text-align: center;
+  }
+  .empty-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: rgba(99, 102, 241, 0.07);
+    border: 1px solid rgba(99, 102, 241, 0.14);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    opacity: 0.7;
+  }
+  .empty-icon svg {
+    width: 36px;
+    height: 36px;
+  }
+  .empty-state h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+  .empty-state p {
+    font-size: 0.875rem;
+    color: var(--text-dim);
+    max-width: 340px;
+    line-height: 1.55;
+  }
+
+  /* ─── Responsive ──────────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .controls-row {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .filter-tabs {
+      overflow-x: auto;
+    }
+    .search-input-wrap {
+      max-width: 100%;
+    }
+    .comments-page-header {
+      flex-direction: column;
+    }
+    .comment-meta-top {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .comment-meta-right {
+      width: 100%;
+      justify-content: space-between;
+    }
+  }
+</style>
+
+<script is:inline>
+  /* ================================================================
+     Blog Comments Moderation — Client Logic
+  ================================================================ */
+
+  let allComments = [];
+  let currentFilter = 'all';
+  let currentSearch = '';
+
+  /* ── Init ─────────────────────────────────────────────────────── */
+  function initComments() {
+    if (document._commentsInited) return;
+    document._commentsInited = true;
+
+    setupFilterTabs();
+    setupSearch();
+    setupBulkActions();
+    fetchComments();
+  }
+
+  /* ── Fetch ────────────────────────────────────────────────────── */
+  async function fetchComments() {
+    showLoading(true);
+    try {
+      const res = await fetch('/api/blog-crud?action=comments', {
+        credentials: 'include'
+      });
+      const data = await res.json();
+
+      if (data.success && Array.isArray(data.comments)) {
+        allComments = data.comments;
+      } else if (Array.isArray(data)) {
+        allComments = data;
+      } else {
+        // Fallback: demo data so page is always useful in dev
+        allComments = [];
+      }
+    } catch (e) {
+      console.warn('[Comments] Fetch failed, using empty state:', e);
+      allComments = [];
+    } finally {
+      showLoading(false);
+      renderCounts();
+      renderComments();
+    }
+  }
+
+  /* ── Render Counts ────────────────────────────────────────────── */
+  function renderCounts() {
+    const total    = allComments.length;
+    const pending  = allComments.filter(c => c.status === 'pending').length;
+    const approved = allComments.filter(c => c.status === 'approved').length;
+    const spam     = allComments.filter(c => c.status === 'spam').length;
+
+    setText('count-all',      total    || '0');
+    setText('count-pending',  pending  || '0');
+    setText('count-approved', approved || '0');
+    setText('count-spam',     spam     || '0');
+  }
+
+  /* ── Render Comments ──────────────────────────────────────────── */
+  function renderComments() {
+    const list = document.getElementById('comments-list');
+    if (!list) return;
+
+    const q = currentSearch.toLowerCase();
+
+    const filtered = allComments.filter(c => {
+      // Status filter
+      if (currentFilter !== 'all' && c.status !== currentFilter) return false;
+      // Search filter
+      if (q) {
+        const inName  = (c.authorName  || '').toLowerCase().includes(q);
+        const inEmail = (c.authorEmail || '').toLowerCase().includes(q);
+        const inBody  = (c.body        || c.content || '').toLowerCase().includes(q);
+        const inPost  = (c.postTitle   || '').toLowerCase().includes(q);
+        if (!inName && !inEmail && !inBody && !inPost) return false;
+      }
+      return true;
+    });
+
+    // Sort: newest first
+    filtered.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+    list.innerHTML = '';
+
+    if (filtered.length === 0) {
+      showEmptyState(true);
+      list.style.display = 'none';
+    } else {
+      showEmptyState(false);
+      list.style.display = 'flex';
+      filtered.forEach((comment, idx) => {
+        const card = buildCommentCard(comment, idx);
+        list.appendChild(card);
+      });
+    }
+  }
+
+  /* ── Build Card ───────────────────────────────────────────────── */
+  function buildCommentCard(c, idx) {
+    const card = document.createElement('div');
+    const status = c.status || 'pending';
+    card.className = `comment-card is-${status}`;
+    card.dataset.id = c.id || c._id || '';
+    card.style.animationDelay = `${idx * 0.04}s`;
+
+    const authorName  = c.authorName  || c.author || 'Anonymous';
+    const authorEmail = c.authorEmail || c.email  || '';
+    const body        = c.body        || c.content || c.text || '';
+    const postTitle   = c.postTitle   || c.post   || 'Untitled Post';
+    const postSlug    = c.postSlug    || c.postId || '#';
+    const createdAt   = c.createdAt   ? formatDate(c.createdAt) : '—';
+    const initials    = getInitials(authorName);
+
+    // Determine which action buttons to show
+    const approveBtn = status !== 'approved' ? `
+      <button class="btn-comment-action btn-comment-approve" data-action="approve" data-id="${card.dataset.id}" title="Approve comment">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        Approve
+      </button>` : '';
+
+    const spamBtn = status !== 'spam' ? `
+      <button class="btn-comment-action btn-comment-spam" data-action="spam" data-id="${card.dataset.id}" title="Mark as spam">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        Spam
+      </button>` : '';
+
+    const statusLabel = {
+      pending:  '<span class="status-pill pending">⏳ Pending</span>',
+      approved: '<span class="status-pill approved">✓ Approved</span>',
+      spam:     '<span class="status-pill spam">⚠ Spam</span>',
+    }[status] || '';
+
+    card.innerHTML = `
+      <div class="comment-card-inner">
+        <div class="comment-avatar" aria-hidden="true">${escapeHtml(initials)}</div>
+        <div class="comment-meta">
+          <div class="comment-meta-top">
+            <div class="comment-author-info">
+              <span class="comment-author-name">${escapeHtml(authorName)}</span>
+              ${authorEmail ? `<span class="comment-author-email">${escapeHtml(authorEmail)}</span>` : ''}
+            </div>
+            <div class="comment-meta-right">
+              <span class="comment-date">${escapeHtml(createdAt)}</span>
+              ${statusLabel}
+            </div>
+          </div>
+          <div class="comment-post-link">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+            In reply to:&nbsp;<a href="/admin/blog/edit?slug=${encodeURIComponent(postSlug)}" title="View post">${escapeHtml(postTitle)}</a>
+          </div>
+          <div class="comment-body">${escapeHtml(body)}</div>
+          <div class="comment-actions">
+            ${approveBtn}
+            ${spamBtn}
+            <div class="comment-actions-spacer"></div>
+            <button class="btn-comment-action btn-comment-delete" data-action="delete" data-id="${card.dataset.id}" title="Delete comment permanently">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Bind action buttons
+    card.querySelectorAll('[data-action]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const action = btn.dataset.action;
+        const id     = btn.dataset.id;
+        if (action === 'approve') handleApprove(id, card);
+        else if (action === 'spam')   handleSpam(id, card);
+        else if (action === 'delete') handleDelete(id, card);
+      });
+    });
+
+    return card;
+  }
+
+  /* ── Actions ──────────────────────────────────────────────────── */
+  async function handleApprove(id, cardEl) {
+    disableCardButtons(cardEl, true);
+    try {
+      const res = await fetch('/api/blog-crud', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'comment', id, status: 'approved' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        updateLocalComment(id, 'approved');
+        showToast('Comment approved! ✓', 'success');
+        animateRemoveCard(cardEl, () => {
+          renderCounts();
+          renderComments();
+        });
+      } else {
+        showToast('Error: ' + (data.error || 'Could not approve.'), 'error');
+        disableCardButtons(cardEl, false);
+      }
+    } catch (e) {
+      showToast('Network error. Please try again.', 'error');
+      disableCardButtons(cardEl, false);
+    }
+  }
+
+  async function handleSpam(id, cardEl) {
+    disableCardButtons(cardEl, true);
+    try {
+      const res = await fetch('/api/blog-crud', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'comment', id, status: 'spam' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        updateLocalComment(id, 'spam');
+        showToast('Marked as spam. ⚠', 'warning');
+        animateRemoveCard(cardEl, () => {
+          renderCounts();
+          renderComments();
+        });
+      } else {
+        showToast('Error: ' + (data.error || 'Could not mark as spam.'), 'error');
+        disableCardButtons(cardEl, false);
+      }
+    } catch (e) {
+      showToast('Network error. Please try again.', 'error');
+      disableCardButtons(cardEl, false);
+    }
+  }
+
+  async function handleDelete(id, cardEl) {
+    if (!confirm('Permanently delete this comment? This cannot be undone.')) return;
+    disableCardButtons(cardEl, true);
+    try {
+      const res = await fetch('/api/blog-crud', {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'comment', id })
+      });
+      const data = await res.json();
+      if (data.success) {
+        removeLocalComment(id);
+        showToast('Comment deleted permanently.', 'error');
+        animateRemoveCard(cardEl, () => {
+          renderCounts();
+          renderComments();
+        });
+      } else {
+        showToast('Error: ' + (data.error || 'Could not delete.'), 'error');
+        disableCardButtons(cardEl, false);
+      }
+    } catch (e) {
+      showToast('Network error. Please try again.', 'error');
+      disableCardButtons(cardEl, false);
+    }
+  }
+
+  /* ── Bulk Actions ─────────────────────────────────────────────── */
+  function setupBulkActions() {
+    const approveAllBtn = document.getElementById('btn-approve-all-pending');
+    const deleteSpamBtn = document.getElementById('btn-delete-all-spam');
+
+    if (approveAllBtn) {
+      approveAllBtn.addEventListener('click', async () => {
+        const pending = allComments.filter(c => c.status === 'pending');
+        if (pending.length === 0) { showToast('No pending comments to approve.', 'warning'); return; }
+        approveAllBtn.disabled = true;
+        approveAllBtn.textContent = `Approving ${pending.length}…`;
+        let successCount = 0;
+        for (const c of pending) {
+          try {
+            const res = await fetch('/api/blog-crud', {
+              method: 'PUT',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'comment', id: c.id || c._id, status: 'approved' })
+            });
+            const data = await res.json();
+            if (data.success) {
+              updateLocalComment(c.id || c._id, 'approved');
+              successCount++;
+            }
+          } catch {}
+        }
+        approveAllBtn.disabled = false;
+        approveAllBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Approve All Pending`;
+        showToast(`${successCount} comment${successCount !== 1 ? 's' : ''} approved! ✓`, 'success');
+        renderCounts();
+        renderComments();
+      });
+    }
+
+    if (deleteSpamBtn) {
+      deleteSpamBtn.addEventListener('click', async () => {
+        const spamList = allComments.filter(c => c.status === 'spam');
+        if (spamList.length === 0) { showToast('No spam comments to delete.', 'warning'); return; }
+        if (!confirm(`Permanently delete all ${spamList.length} spam comment${spamList.length !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+        deleteSpamBtn.disabled = true;
+        deleteSpamBtn.textContent = `Deleting ${spamList.length}…`;
+        let successCount = 0;
+        for (const c of spamList) {
+          try {
+            const res = await fetch('/api/blog-crud', {
+              method: 'DELETE',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'comment', id: c.id || c._id })
+            });
+            const data = await res.json();
+            if (data.success) {
+              removeLocalComment(c.id || c._id);
+              successCount++;
+            }
+          } catch {}
+        }
+        deleteSpamBtn.disabled = false;
+        deleteSpamBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Delete All Spam`;
+        showToast(`${successCount} spam comment${successCount !== 1 ? 's' : ''} permanently removed.`, 'error');
+        renderCounts();
+        renderComments();
+      });
+    }
+  }
+
+  /* ── Filter Tabs ──────────────────────────────────────────────── */
+  function setupFilterTabs() {
+    const tabs = document.querySelectorAll('.tab-btn');
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
+        tab.classList.add('active');
+        tab.setAttribute('aria-selected', 'true');
+        currentFilter = tab.dataset.filter;
+        renderComments();
+      });
+    });
+  }
+
+  /* ── Search ───────────────────────────────────────────────────── */
+  function setupSearch() {
+    const input = document.getElementById('comments-search');
+    if (!input) return;
+    let debounce;
+    input.addEventListener('input', () => {
+      clearTimeout(debounce);
+      debounce = setTimeout(() => {
+        currentSearch = input.value.trim();
+        renderComments();
+      }, 200);
+    });
+  }
+
+  /* ── Helpers ──────────────────────────────────────────────────── */
+  function updateLocalComment(id, newStatus) {
+    const c = allComments.find(x => (x.id || x._id) == id);
+    if (c) c.status = newStatus;
+  }
+  function removeLocalComment(id) {
+    allComments = allComments.filter(x => (x.id || x._id) != id);
+  }
+  function disableCardButtons(cardEl, state) {
+    cardEl.querySelectorAll('[data-action]').forEach(btn => { btn.disabled = state; });
+  }
+  function animateRemoveCard(cardEl, cb) {
+    cardEl.classList.add('is-removing');
+    cardEl.addEventListener('animationend', cb, { once: true });
+    setTimeout(cb, 350); // fallback
+  }
+  function getInitials(name) {
+    const parts = (name || 'An').trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  function formatDate(iso) {
+    try {
+      return new Intl.DateTimeFormat('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      }).format(new Date(iso));
+    } catch { return iso; }
+  }
+  function escapeHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+  function setText(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  }
+  function showLoading(visible) {
+    const el = document.getElementById('loading-state');
+    if (el) el.style.display = visible ? 'flex' : 'none';
+  }
+  function showEmptyState(visible) {
+    const el = document.getElementById('empty-state');
+    if (el) el.style.display = visible ? 'flex' : 'none';
+
+    if (visible) {
+      const titles = {
+        all:      'No comments yet',
+        pending:  'No pending comments',
+        approved: 'No approved comments',
+        spam:     'No spam detected',
+      };
+      const descs = {
+        all:      "When readers leave comments on your blog posts, they'll appear here for moderation.",
+        pending:  'All comments are moderated. None are waiting for review right now.',
+        approved: 'No comments have been approved yet.',
+        spam:     'No comments have been marked as spam. Your inbox is clean!',
+      };
+      setText('empty-title', titles[currentFilter] || titles.all);
+      setText('empty-desc',  descs[currentFilter]  || descs.all);
+    }
+  }
+
+  /* ── Toast ────────────────────────────────────────────────────── */
+  const TOAST_COLORS = {
+    success: 'var(--color-success)',
+    error:   'var(--color-error)',
+    warning: 'var(--color-warning)',
+    info:    'var(--primary)',
+  };
+  let _toastTimer = null;
+  function showToast(message, type = 'success') {
+    const toast   = document.getElementById('toast-notify');
+    const msgEl   = document.getElementById('toast-message');
+    if (!toast || !msgEl) return;
+
+    msgEl.textContent = message;
+    toast.style.borderLeftColor = TOAST_COLORS[type] || TOAST_COLORS.info;
+    toast.classList.remove('active');
+
+    // Force reflow then show
+    void toast.offsetWidth;
+    toast.classList.add('active');
+
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => toast.classList.remove('active'), 3800);
+  }
+
+  /* ── Boot ─────────────────────────────────────────────────────── */
+  function boot() {
+    document._commentsInited = false;
+    initComments();
+  }
+
+  document.addEventListener('DOMContentLoaded', boot);
+  document.addEventListener('astro:page-load', boot);
+  if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    boot();
+  }
+</script>

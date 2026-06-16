@@ -1,0 +1,1035 @@
+---
+import MainLayout from '../../layouts/MainLayout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import { getBlogPosts } from '../../utils/blog';
+import fs from 'node:fs';
+import path from 'node:path';
+
+export const prerender = false;
+
+// ─── Load metadata & settings ────────────────────────────────────────────────
+let meta = { categories: [], tags: [], authors: [], settings: {} };
+try {
+  const metaPath = path.resolve('src/data/blog-meta.json');
+  if (fs.existsSync(metaPath)) {
+    meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+  }
+} catch (e) {
+  console.error("Failed to read blog-meta.json:", e);
+}
+
+const categories = meta.categories || [];
+const tags = meta.tags || [];
+const authors = meta.authors || [];
+const settings = meta.settings || {
+  blogTitle: "Resources & Insights",
+  blogDescription: "Explore the latest insights, strategies, and industry trends from the Tangence team.",
+  postsPerPage: 9,
+  showExcerpt: true,
+  showAuthor: true,
+  showDate: true,
+  showTags: true,
+  showReadingTime: true
+};
+
+// ─── Query Parameters ─────────────────────────────────────────────────────────
+const q = Astro.url.searchParams.get('q') || '';
+const categorySlug = Astro.url.searchParams.get('category') || '';
+const tagSlug = Astro.url.searchParams.get('tag') || '';
+const authorSlug = Astro.url.searchParams.get('author') || '';
+const page = parseInt(Astro.url.searchParams.get('page') || '1', 10);
+const postsPerPage = parseInt(settings.postsPerPage || '9', 10);
+
+// ─── Load & Filter posts ──────────────────────────────────────────────────────
+const allPosts = await getBlogPosts();
+
+// Format posts with actual metadata details
+let posts = allPosts
+  .filter(post => post.data.status === 'published')
+  .map(post => {
+    // Calc reading time if not present
+    const body = post.body || '';
+    const words = body.trim().split(/\s+/).length;
+    const readingTime = Math.max(1, Math.ceil(words / 200));
+
+    // Find category info
+    const catInfo = categories.find((c: any) => c.slug === post.data.category) || {
+      name: "Uncategorized",
+      slug: "uncategorized",
+      color: "#8B3FB8"
+    };
+
+    // Find author info
+    const authorInfo = authors.find((a: any) => a.id === post.data.author) || {
+      name: "Tangence Editor",
+      role: "Editor",
+      avatar: ""
+    };
+
+    return {
+      ...post,
+      readingTime,
+      categoryInfo: catInfo,
+      authorInfo
+    };
+  });
+
+// Sort by publishDate descending
+posts.sort((a, b) => {
+  const dateA = new Date(a.data.publishDate || a.data.updatedDate || 0).getTime();
+  const dateB = new Date(b.data.publishDate || b.data.updatedDate || 0).getTime();
+  return dateB - dateA;
+});
+
+// Apply filters
+if (q) {
+  const query = q.toLowerCase();
+  posts = posts.filter(p => 
+    p.data.title.toLowerCase().includes(query) || 
+    (p.data.excerpt || '').toLowerCase().includes(query) ||
+    (p.body || '').toLowerCase().includes(query)
+  );
+}
+
+if (categorySlug) {
+  posts = posts.filter(p => p.data.category === categorySlug);
+}
+
+if (tagSlug) {
+  posts = posts.filter(p => Array.isArray(p.data.tags) && p.data.tags.includes(tagSlug));
+}
+
+if (authorSlug) {
+  // Author slug needs translation to author ID first
+  const matchingAuthor = authors.find((a: any) => a.slug === authorSlug);
+  if (matchingAuthor) {
+    posts = posts.filter(p => p.data.author === (matchingAuthor as any).id);
+  } else {
+    posts = [];
+  }
+}
+
+// ─── Pagination ──────────────────────────────────────────────────────────────
+const totalPosts = posts.length;
+const totalPages = Math.ceil(totalPosts / postsPerPage) || 1;
+const currentPage = Math.min(Math.max(1, page), totalPages);
+const startIndex = (currentPage - 1) * postsPerPage;
+const paginatedPosts = posts.slice(startIndex, startIndex + postsPerPage);
+
+// Separate featured post (only on page 1 without active filters)
+const showFeatured = currentPage === 1 && !q && !categorySlug && !tagSlug && !authorSlug && posts.length > 0;
+const featuredPost = showFeatured ? posts[0] : null;
+const regularPosts = showFeatured ? paginatedPosts.filter(p => p.slug !== featuredPost?.slug) : paginatedPosts;
+
+// Helper to construct query URL
+function makeUrl(params: Record<string, string | number | null>) {
+  const currentParams = new URLSearchParams(Astro.url.search);
+  Object.entries(params).forEach(([key, val]) => {
+    if (val === null || val === '') {
+      currentParams.delete(key);
+    } else {
+      currentParams.set(key, String(val));
+    }
+  });
+  return `/blog?${currentParams.toString()}`;
+}
+
+const currentCategory = categories.find((c: any) => c.slug === categorySlug);
+const currentTag = tags.find((t: any) => t.slug === tagSlug);
+const currentAuthor = authors.find((a: any) => a.slug === authorSlug);
+---
+
+<MainLayout 
+  title={`${settings.blogTitle || 'Blog'} | Tangence`} 
+  description={settings.blogDescription}
+>
+  <Header />
+
+  <main class="blog-main">
+    <!-- Header Hero Area -->
+    <header class="blog-hero">
+      <div class="container hero-content">
+        <span class="eyebrow">Tangence Insights</span>
+        <h1>{settings.blogTitle}</h1>
+        <p class="subtitle">{settings.blogDescription}</p>
+        
+        <!-- Filter Info Alert if searching / filtering -->
+        {(q || categorySlug || tagSlug || authorSlug) && (
+          <div class="active-filters">
+            <span>
+              Showing results for: 
+              <strong>
+                {q && `Search "${q}"`}
+                {categorySlug && `Category "${currentCategory?.name || categorySlug}"`}
+                {tagSlug && `Tag "#${currentTag?.name || tagSlug}"`}
+                {authorSlug && `Author "${currentAuthor?.name || authorSlug}"`}
+              </strong>
+              ({totalPosts} {totalPosts === 1 ? 'post' : 'posts'} found)
+            </span>
+            <a href="/blog" class="clear-filters">Clear All <i class="fa fa-times"></i></a>
+          </div>
+        )}
+      </div>
+      <div class="hero-bg-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+      </div>
+    </header>
+
+    <!-- Featured Post Section -->
+    {featuredPost && (
+      <section class="featured-section">
+        <div class="container">
+          <div class="featured-card">
+            <div class="featured-image">
+              <a href={`/blog/${featuredPost.slug}`}>
+                <img 
+                  src={featuredPost.data.featuredImage || '/images/default-blog.jpg'} 
+                  alt={featuredPost.data.title}
+                  decoding="async"
+                  fetchpriority="high"
+                  onerror="this.src='https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=1200&auto=format&fit=crop'"
+                />
+              </a>
+              {featuredPost.categoryInfo && (
+                <span class="category-badge" style={`background-color: ${featuredPost.categoryInfo.color || '#6B2E97'}`}>
+                  {featuredPost.categoryInfo.name}
+                </span>
+              )}
+            </div>
+            <div class="featured-content">
+              <div class="meta-row">
+                {settings.showDate && (
+                  <span class="meta-item">
+                    <i class="fa fa-calendar-o"></i> 
+                    {new Date(featuredPost.data.publishDate || "").toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                  </span>
+                )}
+                {settings.showReadingTime && (
+                  <span class="meta-item"><i class="fa fa-clock-o"></i> {featuredPost.readingTime} min read</span>
+                )}
+              </div>
+              <h2>
+                <a href={`/blog/${featuredPost.slug}`}>{featuredPost.data.title}</a>
+              </h2>
+              {settings.showExcerpt && <p>{featuredPost.data.excerpt}</p>}
+              
+              <div class="author-row">
+                {settings.showAuthor && (
+                  <div class="author-info">
+                    <div class="author-avatar-circle">
+                      {featuredPost.authorInfo.avatar ? (
+                        <img src={featuredPost.authorInfo.avatar} alt={featuredPost.authorInfo.name} />
+                      ) : (
+                        <span class="initials-avatar">{featuredPost.authorInfo.name.charAt(0)}</span>
+                      )}
+                    </div>
+                    <div>
+                      <span class="author-name">{featuredPost.authorInfo.name}</span>
+                      <span class="author-role">{featuredPost.authorInfo.role}</span>
+                    </div>
+                  </div>
+                )}
+                <a href={`/blog/${featuredPost.slug}`} class="read-more">Read Article <i class="fa fa-arrow-right"></i></a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    )}
+
+    <!-- Filter & Search Toolbar -->
+    <section class="toolbar-section">
+      <div class="container">
+        <div class="toolbar-wrapper">
+          <!-- Categories list -->
+          <div class="categories-nav">
+            <a href="/blog" class:list={['cat-pill', { active: !categorySlug }]}>All Topics</a>
+            {categories.map((cat: any) => (
+              <a 
+                href={makeUrl({ category: cat.slug, page: 1 })}
+                class:list={['cat-pill', { active: categorySlug === cat.slug }]}
+                style={categorySlug === cat.slug ? `background-color: ${cat.color || '#6B2E97'}; border-color: ${cat.color || '#6B2E97'}; color: white;` : ''}
+              >
+                <span class="color-dot" style={`background-color: ${cat.color || '#6B2E97'}`}></span>
+                {cat.name}
+              </a>
+            ))}
+          </div>
+
+          <!-- Search form -->
+          <form action="/blog" method="GET" class="search-form">
+            {categorySlug && <input type="hidden" name="category" value={categorySlug} />}
+            {tagSlug && <input type="hidden" name="tag" value={tagSlug} />}
+            {authorSlug && <input type="hidden" name="author" value={authorSlug} />}
+            <div class="search-input-wrapper">
+              <input 
+                type="text" 
+                name="q" 
+                placeholder="Search articles..." 
+                value={q}
+                autocomplete="off"
+              />
+              <button type="submit" aria-label="Search"><i class="fa fa-search"></i></button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Posts Grid -->
+    <section class="posts-section">
+      <div class="container">
+        {regularPosts.length === 0 ? (
+          <div class="empty-state">
+            <div class="empty-icon"><i class="fa fa-search"></i></div>
+            <h3>No articles found</h3>
+            <p>We couldn't find any articles matching your filters. Try resetting search query or selecting another category.</p>
+            <a href="/blog" class="btn-reset">Reset Filters</a>
+          </div>
+        ) : (
+          <div class="posts-grid">
+            {regularPosts.map(post => (
+              <article class="post-card">
+                <div class="card-image">
+                  <a href={`/blog/${post.slug}`}>
+                    <img 
+                      src={post.data.featuredImage || '/images/default-blog.jpg'} 
+                      alt={post.data.title}
+                      loading="lazy"
+                      onerror="this.src='https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=600&auto=format&fit=crop'"
+                    />
+                  </a>
+                  {post.categoryInfo && (
+                    <a 
+                      href={makeUrl({ category: post.data.category, page: 1 })}
+                      class="card-category-badge"
+                      style={`background-color: ${post.categoryInfo.color || '#6B2E97'}`}
+                    >
+                      {post.categoryInfo.name}
+                    </a>
+                  )}
+                </div>
+                
+                <div class="card-content">
+                  <div class="card-meta">
+                    {settings.showDate && (
+                      <span class="card-meta-item">
+                        {new Date(post.data.publishDate || "").toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    )}
+                    {settings.showReadingTime && (
+                      <span class="card-meta-divider">•</span>
+                      <span class="card-meta-item">{post.readingTime} min read</span>
+                    )}
+                  </div>
+                  
+                  <h3 class="card-title">
+                    <a href={`/blog/${post.slug}`}>{post.data.title}</a>
+                  </h3>
+                  
+                  {settings.showExcerpt && (
+                    <p class="card-excerpt">{post.data.excerpt || 'Read the full story on Tangence.'}</p>
+                  )}
+                  
+                  <div class="card-footer">
+                    {settings.showAuthor && (
+                      <div class="card-author">
+                        <div class="card-author-avatar">
+                          {post.authorInfo.avatar ? (
+                            <img src={post.authorInfo.avatar} alt={post.authorInfo.name} />
+                          ) : (
+                            <span class="initials-avatar-sm">{post.authorInfo.name.charAt(0)}</span>
+                          )}
+                        </div>
+                        <span class="card-author-name">{post.authorInfo.name}</span>
+                      </div>
+                    )}
+                    <a href={`/blog/${post.slug}`} class="card-link" aria-label={`Read ${post.data.title}`}>
+                      <i class="fa fa-long-arrow-right"></i>
+                    </a>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+
+        <!-- Pagination -->
+        {totalPages > 1 && (
+          <nav class="pagination" aria-label="Blog pagination">
+            <a 
+              href={makeUrl({ page: currentPage - 1 })} 
+              class:list={['pag-btn', 'prev', { disabled: currentPage === 1 }]}
+              aria-label="Previous page"
+            >
+              <i class="fa fa-angle-left"></i> Previous
+            </a>
+            
+            <div class="pag-pages">
+              {Array.from({ length: totalPages }).map((_, idx) => {
+                const pageNum = idx + 1;
+                const isCurrent = pageNum === currentPage;
+                return (
+                  <a 
+                    href={makeUrl({ page: pageNum })} 
+                    class:list={['pag-page-link', { active: isCurrent }]}
+                    aria-current={isCurrent ? 'page' : undefined}
+                  >
+                    {pageNum}
+                  </a>
+                );
+              })}
+            </div>
+            
+            <a 
+              href={makeUrl({ page: currentPage + 1 })} 
+              class:list={['pag-btn', 'next', { disabled: currentPage === totalPages }]}
+              aria-label="Next page"
+            >
+              Next <i class="fa fa-angle-right"></i>
+            </a>
+          </nav>
+        )}
+      </div>
+    </section>
+  </main>
+
+  <Footer />
+</MainLayout>
+
+<style>
+  /* ─── Variables and Structure ──────────────────────────────────────────────── */
+  .blog-main {
+    padding-top: 80px; /* offset for top fixed header */
+    background-color: var(--bg-soft, #FAF6FE);
+    color: var(--ink, #1A1A2E);
+    min-height: 100vh;
+    font-family: "Graphik", "Montserrat", sans-serif;
+  }
+
+  /* ─── Hero Header ────────────────────────────────────────────────────────── */
+  .blog-hero {
+    position: relative;
+    background: var(--gradient-hero, linear-gradient(135deg, #FFE4E1 0%, #F5E1FA 45%, #E8D5F7 100%));
+    padding: 5rem 0 6rem 0;
+    overflow: hidden;
+    text-align: center;
+  }
+  .hero-content {
+    position: relative;
+    z-index: 10;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  .eyebrow {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--purple-700, #6B2E97);
+    margin-bottom: 1rem;
+    display: inline-block;
+  }
+  .blog-hero h1 {
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    line-height: 1.1;
+    font-weight: 800;
+    color: var(--ink, #1A1A2E);
+    margin-bottom: 1.5rem;
+  }
+  .subtitle {
+    font-size: clamp(1.05rem, 2vw, 1.25rem);
+    color: var(--ink-soft, #4A4A5E);
+    line-height: 1.6;
+    margin: 0 auto 2rem auto;
+    max-width: 600px;
+  }
+  
+  /* Active Filters bar */
+  .active-filters {
+    display: inline-flex;
+    align-items: center;
+    gap: 1rem;
+    background: white;
+    border: 1px solid var(--line, #EAE2F2);
+    border-radius: 50px;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 15px rgba(74, 19, 112, 0.04);
+  }
+  .active-filters strong {
+    color: var(--purple-700, #6B2E97);
+    margin: 0 4px;
+  }
+  .clear-filters {
+    color: var(--pink-600, #E91E63);
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    transition: opacity 0.2s ease;
+  }
+  .clear-filters:hover {
+    opacity: 0.8;
+  }
+
+  /* Decorative Background Shapes */
+  .hero-bg-shapes .shape {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    z-index: 1;
+    pointer-events: none;
+  }
+  .shape-1 {
+    top: -10%;
+    left: -5%;
+    width: 300px;
+    height: 300px;
+    background: rgba(243, 59, 123, 0.15);
+  }
+  .shape-2 {
+    bottom: -10%;
+    right: -5%;
+    width: 350px;
+    height: 350px;
+    background: rgba(139, 63, 184, 0.15);
+  }
+
+  /* ─── Featured Post ──────────────────────────────────────────────────────── */
+  .featured-section {
+    margin-top: -3.5rem;
+    position: relative;
+    z-index: 20;
+    padding-bottom: 3.5rem;
+  }
+  .featured-card {
+    background: white;
+    border: 1px solid var(--line, #EAE2F2);
+    border-radius: var(--radius-lg, 24px);
+    box-shadow: 0 10px 40px rgba(74, 19, 112, 0.06);
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .featured-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 15px 50px rgba(74, 19, 112, 0.1);
+  }
+  .featured-image {
+    position: relative;
+    overflow: hidden;
+    min-height: 350px;
+  }
+  .featured-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+  }
+  .featured-card:hover .featured-image img {
+    transform: scale(1.03);
+  }
+  .category-badge {
+    position: absolute;
+    top: 1.5rem;
+    left: 1.5rem;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 0.4rem 0.9rem;
+    border-radius: 30px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  }
+  .featured-content {
+    padding: 3rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .meta-row {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.825rem;
+    color: var(--muted, #707085);
+  }
+  .meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .featured-content h2 {
+    font-size: clamp(1.8rem, 3vw, 2.3rem);
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 1.25rem;
+  }
+  .featured-content h2 a {
+    color: var(--ink, #1A1A2E);
+    transition: color 0.2s ease;
+  }
+  .featured-content h2 a:hover {
+    color: var(--purple-700, #6B2E97);
+  }
+  .featured-content p {
+    color: var(--ink-soft, #4A4A5E);
+    line-height: 1.6;
+    margin-bottom: 2rem;
+    font-size: 1.05rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .author-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: auto;
+    border-top: 1px solid var(--line, #EAE2F2);
+    padding-top: 1.5rem;
+  }
+  .author-info {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+  }
+  .author-avatar-circle {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--purple-500, #8B3FB8) 0%, var(--pink-500, #F33B7B) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid white;
+    box-shadow: 0 2px 8px rgba(74, 19, 112, 0.1);
+  }
+  .author-avatar-circle img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .initials-avatar {
+    color: white;
+    font-weight: 700;
+    font-size: 1.1rem;
+    text-transform: uppercase;
+  }
+  .author-name {
+    display: block;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--ink, #1A1A2E);
+  }
+  .author-role {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--muted, #707085);
+  }
+  .read-more {
+    font-weight: 700;
+    color: var(--purple-700, #6B2E97);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    transition: gap 0.2s ease;
+  }
+  .read-more:hover {
+    gap: 0.75rem;
+    color: var(--pink-600, #E91E63);
+  }
+
+  /* ─── Toolbar (Filters & Search) ────────────────────────────────────────── */
+  .toolbar-section {
+    padding-bottom: 2.5rem;
+  }
+  .toolbar-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    flex-wrap: wrap;
+    background: white;
+    border: 1px solid var(--line, #EAE2F2);
+    padding: 1rem 1.5rem;
+    border-radius: var(--radius-md, 16px);
+    box-shadow: 0 4px 15px rgba(74, 19, 112, 0.02);
+  }
+  .categories-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .cat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    background: var(--bg-soft, #FAF6FE);
+    border: 1px solid var(--line, #EAE2F2);
+    border-radius: 30px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ink-soft, #4A4A5E);
+    transition: all 0.22s ease;
+  }
+  .cat-pill:hover {
+    background: white;
+    border-color: var(--purple-700, #6B2E97);
+    color: var(--purple-700, #6B2E97);
+  }
+  .cat-pill.active {
+    background-color: var(--purple-700, #6B2E97);
+    border-color: var(--purple-700, #6B2E97);
+    color: white;
+  }
+  .color-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .cat-pill.active .color-dot {
+    background-color: white !important;
+  }
+  
+  /* Search Form */
+  .search-form {
+    flex-grow: 1;
+    max-width: 320px;
+  }
+  .search-input-wrapper {
+    position: relative;
+    display: flex;
+    width: 100%;
+  }
+  .search-input-wrapper input {
+    width: 100%;
+    padding: 0.65rem 1rem !important;
+    padding-right: 2.75rem !important;
+    border: 1px solid var(--line, #EAE2F2) !important;
+    border-radius: 30px !important;
+    background-color: var(--bg-soft, #FAF6FE) !important;
+    color: var(--ink, #1A1A2E) !important;
+    font-size: 0.875rem !important;
+    height: 38px !important;
+    transition: all 0.22s ease !important;
+  }
+  .search-input-wrapper input:focus {
+    background-color: white !important;
+    border-color: var(--purple-500, #8B3FB8) !important;
+    box-shadow: 0 0 0 3px rgba(139, 63, 184, 0.1) !important;
+  }
+  .search-input-wrapper button {
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: var(--muted, #707085);
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease;
+  }
+  .search-input-wrapper button:hover {
+    color: var(--purple-700, #6B2E97);
+  }
+
+  /* ─── Regular Posts Grid ────────────────────────────────────────────────── */
+  .posts-section {
+    padding-bottom: 6rem;
+  }
+  .posts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 2.25rem;
+  }
+  .post-card {
+    background: white;
+    border: 1px solid var(--line, #EAE2F2);
+    border-radius: var(--radius-md, 16px);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-shadow: 0 4px 20px rgba(74, 19, 112, 0.02);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .post-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(74, 19, 112, 0.06);
+  }
+  .card-image {
+    position: relative;
+    aspect-ratio: 16/10;
+    overflow: hidden;
+    background: var(--bg-soft, #FAF6FE);
+  }
+  .card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+  }
+  .post-card:hover .card-image img {
+    transform: scale(1.02);
+  }
+  .card-category-badge {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.3rem 0.75rem;
+    border-radius: 20px;
+  }
+  .card-content {
+    padding: 1.75rem;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+  }
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--muted, #707085);
+    margin-bottom: 0.75rem;
+  }
+  .card-meta-divider {
+    font-size: 0.5rem;
+  }
+  .card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.35;
+    margin-bottom: 0.75rem;
+  }
+  .card-title a {
+    color: var(--ink, #1A1A2E);
+    transition: color 0.2s ease;
+  }
+  .card-title a:hover {
+    color: var(--purple-700, #6B2E97);
+  }
+  .card-excerpt {
+    font-size: 0.9rem;
+    color: var(--ink-soft, #4A4A5E);
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: auto;
+    border-top: 1px solid var(--line, #EAE2F2);
+    padding-top: 1.15rem;
+  }
+  .card-author {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+  }
+  .card-author-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--purple-500, #8B3FB8) 0%, var(--pink-500, #F33B7B) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .card-author-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .initials-avatar-sm {
+    color: white;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+  }
+  .card-author-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ink-soft, #4A4A5E);
+  }
+  .card-link {
+    color: var(--muted, #707085);
+    font-size: 1.1rem;
+    transition: all 0.2s ease;
+  }
+  .post-card:hover .card-link {
+    color: var(--purple-700, #6B2E97);
+    transform: translateX(3px);
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 5rem 2rem;
+    background: white;
+    border: 1px solid var(--line, #EAE2F2);
+    border-radius: var(--radius-lg, 24px);
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .empty-icon {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: var(--bg-soft, #FAF6FE);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem auto;
+    font-size: 1.75rem;
+    color: var(--muted, #707085);
+  }
+  .empty-state h3 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+  .empty-state p {
+    color: var(--muted, #707085);
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+  }
+  .btn-reset {
+    display: inline-block;
+    background: var(--purple-700, #6B2E97);
+    color: white;
+    padding: 0.6rem 1.5rem;
+    border-radius: 30px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: background 0.2s ease;
+  }
+  .btn-reset:hover {
+    background: var(--purple-500, #8B3FB8);
+  }
+
+  /* ─── Pagination ────────────────────────────────────────────────────────── */
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 3.5rem;
+    border-top: 1px solid var(--line, #EAE2F2);
+    padding-top: 2rem;
+  }
+  .pag-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 1.15rem;
+    border-radius: 30px;
+    border: 1px solid var(--line, #EAE2F2);
+    background: white;
+    color: var(--ink-soft, #4A4A5E);
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+  }
+  .pag-btn:not(.disabled):hover {
+    border-color: var(--purple-700, #6B2E97);
+    color: var(--purple-700, #6B2E97);
+  }
+  .pag-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  .pag-pages {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .pag-page-link {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--ink-soft, #4A4A5E);
+    transition: all 0.2s ease;
+  }
+  .pag-page-link:hover {
+    background: rgba(139, 63, 184, 0.05);
+    color: var(--purple-700, #6B2E97);
+  }
+  .pag-page-link.active {
+    background: var(--purple-700, #6B2E97);
+    color: white;
+  }
+
+  /* ─── Responsive Adjustments ────────────────────────────────────────────── */
+  @media (max-width: 991px) {
+    .featured-card {
+      grid-template-columns: 1fr;
+    }
+    .featured-image {
+      min-height: 280px;
+    }
+    .featured-content {
+      padding: 2rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .blog-hero {
+      padding: 3.5rem 0 4.5rem 0;
+    }
+    .featured-section {
+      margin-top: -2rem;
+    }
+    .toolbar-wrapper {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 1rem;
+    }
+    .search-form {
+      max-width: 100%;
+    }
+    .pagination {
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .pag-pages {
+      order: -1;
+    }
+  }
+</style>

@@ -34,7 +34,7 @@ const { badge, title, description, image, bullets = [] } = Astro.props;
     {image && (
       <div class="hero-visual-area">
         <div class="image-wrapper">
-          <img src={image} alt="Hero illustration" />
+          <img src={image} alt="Hero illustration" decoding="async" fetchpriority="high" />
           <div class="accent-border"></div>
         </div>
       </div>

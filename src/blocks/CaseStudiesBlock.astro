@@ -30,7 +30,7 @@ const validItems = (items || []).filter(item => item && (item.title || item.imag
           <div class="case-card">
             {item.image && (
               <div class="case-image-box">
-                <img src={item.image} alt={item.title || "Case Study Image"} class="case-img" />
+                <img src={item.image} alt={item.title || "Case Study Image"} class="case-img" loading="lazy" decoding="async" />
                 {item.category && <span class="category-badge">{item.category}</span>}
               </div>
             )}

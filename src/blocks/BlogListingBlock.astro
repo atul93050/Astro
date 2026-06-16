@@ -58,7 +58,7 @@ const articlesToShow = mockArticles.slice(0, limit);
       {articlesToShow.map((article) => (
         <div class="blog-card">
           <div class="card-image-box">
-            <img src={article.image} alt={article.title} class="blog-img" />
+            <img src={article.image} alt={article.title} class="blog-img" loading="lazy" decoding="async" />
             <span class="category">{article.category}</span>
           </div>
           <div class="card-content">

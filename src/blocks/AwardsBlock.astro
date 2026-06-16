@@ -28,7 +28,7 @@ const validItems = (items || []).filter(item => item && (item.title || item.logo
           <div class="award-tile">
             {award.logo && (
               <div class="award-logo-box">
-                <img src={award.logo} alt={award.title || "Award Logo"} class="award-logo" />
+                <img src={award.logo} alt={award.title || "Award Logo"} class="award-logo" loading="lazy" decoding="async" />
               </div>
             )}
             <div class="award-info">

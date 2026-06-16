@@ -56,7 +56,7 @@
   ],
   "redirects": [
     {
-      "from": "/aboutus",
+      "from": "/aboutus-amit",
       "to": "/about-us",
       "type": "301",
       "active": true

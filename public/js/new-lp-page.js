@@ -122,6 +122,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const phone = document.getElementById("phone");
   const budget = document.getElementById("budget");
   // const message = document.getElementById("message");
+
+  if (!name || !email || !phone || !budget) return;
+
   name.addEventListener("input", function () {
     this.value = this.value.replace(/[^a-zA-Z\s]/g, "");
   });

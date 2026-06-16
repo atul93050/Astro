@@ -48,8 +48,42 @@ const contacts = defineCollection({
   }),
 });
 
+// Blog posts collection
+const blog = defineCollection({
+  loader: glob({ pattern: "**/[^_]*.md", base: "./src/content/blog" }),
+  schema: z.object({
+    title: z.string(),
+    slug: z.string(),
+    excerpt: z.string().optional().default(""),
+    author: z.string().optional().default("author-admin"),
+    category: z.string().optional().default("uncategorized"),
+    tags: z.array(z.string()).optional().default([]),
+    featuredImage: z.string().optional().default(""),
+    status: z.enum(["draft", "published", "scheduled", "archived"]).default("draft"),
+    publishDate: z.union([z.string(), z.date()]).optional().transform(v => v ? (typeof v === "string" ? v : v.toISOString()) : ""),
+    scheduledDate: z.union([z.string(), z.date()]).optional().transform(v => v ? (typeof v === "string" ? v : v.toISOString()) : ""),
+    updatedDate: z.union([z.string(), z.date()]).optional().transform(v => v ? (typeof v === "string" ? v : v.toISOString()) : ""),
+    views: z.number().optional().default(0),
+    headerScripts: z.string().optional().default(""),
+    footerScripts: z.string().optional().default(""),
+    customCss: z.string().optional().default(""),
+    customJs: z.string().optional().default(""),
+    seo: z.object({
+      metaTitle: z.string().optional().default(""),
+      metaDescription: z.string().optional().default(""),
+      ogImage: z.string().optional().default(""),
+      focusKeyword: z.string().optional().default(""),
+      canonicalUrl: z.string().optional().default(""),
+      robots: z.string().optional().default("index, follow"),
+      schemaMarkup: z.string().optional().default(""),
+      schemaType: z.enum(["none", "article", "custom"]).optional().default("none"),
+    }).optional().default({}),
+  }),
+});
+
 export const collections = {
   sections,
   pages,
   contacts,
+  blog,
 };

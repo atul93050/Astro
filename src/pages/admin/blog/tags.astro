@@ -1,0 +1,1081 @@
+---
+import AdminLayout from '../../../layouts/admin/AdminLayout.astro';
+
+export const prerender = false;
+---
+
+<AdminLayout title="Blog Tags">
+
+  <!-- Page Header -->
+  <div class="tags-page-header">
+    <div class="tags-header-text">
+      <p class="subtitle">Create and manage tags to organize your blog posts. Click any tag in the cloud to edit it.</p>
+    </div>
+    <div class="tags-header-meta" id="tags-header-meta">
+      <span class="tags-count-badge" id="tags-total-badge">— tags</span>
+    </div>
+  </div>
+
+  <!-- Main Two-Column Layout -->
+  <div class="tags-layout">
+
+    <!-- LEFT COLUMN: Create/Edit Tag Form -->
+    <div class="tags-left-col">
+      <div class="form-card tag-form-card">
+        <div class="card-header">
+          <div class="card-header-inner">
+            <div class="card-header-icon">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                <line x1="7" y1="7" x2="7.01" y2="7"/>
+              </svg>
+            </div>
+            <h3 id="form-title">New Tag</h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <input type="hidden" id="tag-id" value="" />
+
+          <div class="form-group">
+            <label for="tag-name">Tag Name <span style="color:var(--color-error);">*</span></label>
+            <input type="text" id="tag-name" placeholder="e.g. JavaScript, Design, Tutorial" autocomplete="off" />
+          </div>
+
+          <div class="form-group">
+            <label for="tag-slug">Slug</label>
+            <div class="slug-field-wrap">
+              <span class="slug-prefix">/tag/</span>
+              <input type="text" id="tag-slug" placeholder="auto-generated-slug" autocomplete="off" />
+            </div>
+            <span class="field-help">Auto-generated from name. You can customise it.</span>
+          </div>
+
+          <div class="form-group">
+            <label for="tag-description">Description</label>
+            <textarea id="tag-description" rows="3" placeholder="Brief description of this tag (optional)"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Tag Color</label>
+            <div class="color-picker-row">
+              <div class="color-presets" id="color-presets">
+                <!-- preset swatches injected by JS -->
+              </div>
+              <div class="color-custom-wrap">
+                <label class="color-custom-label" for="tag-color-custom">
+                  <span>Custom</span>
+                  <input type="color" id="tag-color-custom" value="#6366F1" />
+                </label>
+              </div>
+            </div>
+            <div class="tag-preview-pill" id="tag-preview-pill">
+              <span id="tag-preview-text">Preview</span>
+            </div>
+          </div>
+
+          <div class="form-actions" id="form-actions">
+            <button class="btn btn-primary" id="btn-save-tag">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              <span id="btn-save-label">Create Tag</span>
+            </button>
+            <button class="btn btn-outline" id="btn-cancel-edit" style="display:none;">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: Tag Cloud + Table -->
+    <div class="tags-right-col">
+
+      <!-- Tag Cloud Visualization -->
+      <div class="form-card tag-cloud-card">
+        <div class="card-header">
+          <div class="card-header-inner">
+            <div class="card-header-icon accent-icon">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="2" y1="12" x2="22" y2="12"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+            </div>
+            <h3>Tag Cloud</h3>
+          </div>
+          <span class="cloud-hint">Click a tag to edit it</span>
+        </div>
+        <div class="card-body">
+          <div class="tag-cloud-container" id="tag-cloud">
+            <div class="cloud-loading" id="cloud-loading">
+              <div class="spinner"></div>
+              <span>Loading tags…</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tags Table -->
+      <div class="admin-table-wrapper" id="tags-table-wrapper" style="margin-top:1.5rem;">
+        <div class="table-header-bar">
+          <div class="table-header-left">
+            <h3 class="table-title">All Tags</h3>
+          </div>
+          <div class="table-header-right">
+            <div class="search-wrap">
+              <svg class="search-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="search" id="tags-search" placeholder="Filter tags…" class="search-input" />
+            </div>
+          </div>
+        </div>
+        <table class="admin-table" id="tags-table">
+          <thead>
+            <tr>
+              <th style="width:44px;">Color</th>
+              <th>Name</th>
+              <th>Slug</th>
+              <th style="width:110px; text-align:center;">Posts</th>
+              <th style="width:110px; text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tags-table-body">
+            <tr id="tags-table-loading">
+              <td colspan="5" class="table-empty-cell">
+                <div class="table-spinner">
+                  <div class="spinner"></div>
+                  <span>Loading…</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast-notification" id="toast-notify">
+    <div class="toast-content">
+      <span class="toast-icon" id="toast-icon">✓</span>
+      <span class="toast-message" id="toast-message">Tag saved successfully!</span>
+    </div>
+  </div>
+
+</AdminLayout>
+
+<style is:global>
+  /* ─── Page Header ─────────────────────────────────────────────── */
+  .tags-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .tags-header-text .subtitle {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin: 0;
+  }
+  .tags-count-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--primary-light);
+    color: var(--primary);
+    border: 1px solid rgba(99,102,241,0.2);
+    border-radius: 20px;
+    padding: 0.3rem 0.9rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+  }
+
+  /* ─── Layout Grid ─────────────────────────────────────────────── */
+  .tags-layout {
+    display: grid;
+    grid-template-columns: 35% 1fr;
+    gap: 1.5rem;
+    align-items: start;
+    margin-bottom: 4rem;
+  }
+  @media (max-width: 1024px) {
+    .tags-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* ─── Card Styles ─────────────────────────────────────────────── */
+  .form-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 15px var(--color-shadow);
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 1.15rem 1.5rem;
+    border-bottom: 1px solid var(--bg-surface-border);
+    background: rgba(156, 163, 175, 0.02);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .card-header-inner {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+  }
+  .card-header-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--primary-light);
+    border: 1px solid rgba(99,102,241,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    flex-shrink: 0;
+  }
+  .card-header-icon.accent-icon {
+    background: rgba(16,185,129,0.1);
+    border-color: rgba(16,185,129,0.15);
+    color: var(--accent);
+  }
+  .card-header h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+  .cloud-hint {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+  .card-body {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.15rem;
+  }
+
+  /* ─── Form Groups ─────────────────────────────────────────────── */
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .slug-field-wrap {
+    display: flex;
+    align-items: center;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    transition: var(--transition);
+  }
+  .slug-field-wrap:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+  }
+  .slug-prefix {
+    padding: 0 0.65rem;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    background: rgba(156,163,175,0.04);
+    border-right: 1px solid var(--input-border);
+    white-space: nowrap;
+    line-height: 38px;
+    flex-shrink: 0;
+    height: 38px;
+    display: flex;
+    align-items: center;
+  }
+  .slug-field-wrap input {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    flex: 1;
+    min-width: 0;
+  }
+  .slug-field-wrap input:focus {
+    box-shadow: none !important;
+    border-color: transparent !important;
+  }
+
+  /* ─── Color Picker ─────────────────────────────────────────────── */
+  .color-picker-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .color-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    flex: 1;
+  }
+  .color-swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2.5px solid transparent;
+    transition: var(--transition);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    flex-shrink: 0;
+  }
+  .color-swatch:hover {
+    transform: scale(1.15);
+  }
+  .color-swatch.selected {
+    border-color: white;
+    transform: scale(1.1);
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.5), 0 3px 10px rgba(0,0,0,0.4);
+  }
+  .color-custom-wrap {
+    flex-shrink: 0;
+  }
+  .color-custom-label {
+    display: flex !important;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    color: var(--text-muted) !important;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius-sm);
+    padding: 0.35rem 0.65rem;
+    transition: var(--transition);
+    margin: 0 !important;
+    height: auto !important;
+  }
+  .color-custom-label:hover {
+    border-color: var(--primary);
+    color: var(--text-main) !important;
+  }
+  input[type="color"] {
+    width: 20px !important;
+    height: 20px !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    border-radius: 50% !important;
+    cursor: pointer !important;
+    outline: none !important;
+  }
+
+  /* ─── Tag Preview Pill ─────────────────────────────────────────── */
+  .tag-preview-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.9rem;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin-top: 0.25rem;
+    align-self: flex-start;
+    transition: var(--transition);
+    cursor: default;
+    user-select: none;
+  }
+
+  /* ─── Form Actions ─────────────────────────────────────────────── */
+  .form-actions {
+    display: flex;
+    gap: 0.75rem;
+    padding-top: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  /* ─── Tag Cloud ─────────────────────────────────────────────────── */
+  .tag-cloud-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    align-items: center;
+    min-height: 80px;
+    padding: 0.5rem 0;
+  }
+  .cloud-loading {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    padding: 1rem 0;
+  }
+  .cloud-tag-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    user-select: none;
+    border: 1.5px solid transparent;
+    white-space: nowrap;
+  }
+  .cloud-tag-pill:hover {
+    transform: translateY(-2px) scale(1.04);
+  }
+  .cloud-tag-pill .pill-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.25);
+    border-radius: 12px;
+    font-size: 0.7em;
+    font-weight: 700;
+    min-width: 18px;
+    padding: 0 4px;
+    line-height: 1.6;
+  }
+  .cloud-empty {
+    text-align: center;
+    padding: 2rem 0;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    width: 100%;
+  }
+
+  /* ─── Table Header Bar ───────────────────────────────────────── */
+  .table-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.15rem 1.5rem;
+    border-bottom: 1px solid var(--bg-surface-border);
+    background: rgba(156, 163, 175, 0.02);
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .table-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+  .search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .search-icon {
+    position: absolute;
+    left: 0.65rem;
+    color: var(--text-dim);
+    pointer-events: none;
+    z-index: 1;
+  }
+  .search-input {
+    padding-left: 2rem !important;
+    width: 200px !important;
+    font-size: 0.83rem !important;
+    height: 32px !important;
+  }
+
+  /* ─── Table Specific Styles ──────────────────────────────────── */
+  .table-empty-cell {
+    text-align: center;
+    padding: 3rem 1.5rem !important;
+    color: var(--text-dim);
+  }
+  .table-spinner,
+  .table-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+  }
+  .color-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .tag-color-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .tag-name-cell {
+    font-weight: 600;
+    color: var(--text-main);
+  }
+  .tag-slug-cell {
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+  }
+  .post-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(16,185,129,0.1);
+    color: var(--accent);
+    border: 1px solid rgba(16,185,129,0.15);
+    border-radius: 12px;
+    padding: 0.2rem 0.65rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    min-width: 32px;
+  }
+  .actions-cell {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.35rem;
+  }
+
+  /* ─── Spinner ─────────────────────────────────────────────────── */
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border: 2.5px solid var(--bg-surface-border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* ─── Tag Form Card accent border on edit ─────────────────────── */
+  .tag-form-card.editing-mode {
+    border-color: rgba(99,102,241,0.25);
+    box-shadow: 0 4px 20px rgba(99,102,241,0.08), 0 0 0 1px rgba(99,102,241,0.08);
+  }
+</style>
+
+<script is:inline>
+  // ──────────────────────────────────────────────────────────────────
+  //  CONSTANTS & STATE
+  // ──────────────────────────────────────────────────────────────────
+  const PRESET_COLORS = [
+    '#6366F1', '#8B5CF6', '#EC4899', '#EF4444', '#F59E0B',
+    '#10B981', '#06B6D4', '#3B82F6', '#84CC16', '#F97316',
+    '#14B8A6', '#A855F7', '#E11D48', '#0EA5E9', '#22C55E'
+  ];
+
+  let allTags = [];
+  let editingTagId = null;
+  let selectedColor = '#6366F1';
+  let slugManuallyEdited = false;
+  let searchQuery = '';
+
+  // ──────────────────────────────────────────────────────────────────
+  //  INIT
+  // ──────────────────────────────────────────────────────────────────
+  function initTagsPage() {
+    const saveBtn = document.getElementById('btn-save-tag');
+    if (!saveBtn || saveBtn.dataset.bound) return;
+    saveBtn.dataset.bound = 'true';
+
+    buildColorPresets();
+    bindFormEvents();
+    loadTags();
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  //  COLOR PRESETS
+  // ──────────────────────────────────────────────────────────────────
+  function buildColorPresets() {
+    const container = document.getElementById('color-presets');
+    if (!container) return;
+    container.innerHTML = PRESET_COLORS.map(c => `
+      <button type="button" class="color-swatch ${c === selectedColor ? 'selected' : ''}"
+        style="background:${c};"
+        data-color="${c}"
+        title="${c}"
+        onclick="selectColor('${c}')"></button>
+    `).join('');
+  }
+
+  window.selectColor = function(color) {
+    selectedColor = color;
+    document.querySelectorAll('.color-swatch').forEach(s => {
+      s.classList.toggle('selected', s.dataset.color === color);
+    });
+    const customPicker = document.getElementById('tag-color-custom');
+    if (customPicker) customPicker.value = color;
+    updatePreviewPill();
+  };
+
+  function updatePreviewPill() {
+    const pill = document.getElementById('tag-preview-pill');
+    const text = document.getElementById('tag-preview-text');
+    const nameInput = document.getElementById('tag-name');
+    if (!pill || !text) return;
+    const label = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : 'Tag Preview';
+    text.textContent = label;
+    const rgb = hexToRgb(selectedColor);
+    pill.style.background = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`;
+    pill.style.color = selectedColor;
+    pill.style.border = `1.5px solid rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.3)`;
+    pill.style.boxShadow = `0 0 12px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.18)`;
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  //  FORM EVENTS
+  // ──────────────────────────────────────────────────────────────────
+  function bindFormEvents() {
+    const nameInput = document.getElementById('tag-name');
+    const slugInput = document.getElementById('tag-slug');
+    const colorCustom = document.getElementById('tag-color-custom');
+    const saveBtn = document.getElementById('btn-save-tag');
+    const cancelBtn = document.getElementById('btn-cancel-edit');
+    const searchInput = document.getElementById('tags-search');
+
+    if (nameInput) {
+      nameInput.addEventListener('input', () => {
+        if (!slugManuallyEdited) {
+          const slug = slugify(nameInput.value);
+          if (slugInput) slugInput.value = slug;
+        }
+        updatePreviewPill();
+      });
+    }
+
+    if (slugInput) {
+      slugInput.addEventListener('input', () => {
+        slugManuallyEdited = true;
+        slugInput.value = slugify(slugInput.value, true);
+      });
+    }
+
+    if (colorCustom) {
+      colorCustom.addEventListener('input', () => {
+        selectedColor = colorCustom.value;
+        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+        updatePreviewPill();
+      });
+    }
+
+    if (saveBtn) {
+      saveBtn.addEventListener('click', handleSaveTag);
+    }
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', resetForm);
+    }
+
+    if (searchInput) {
+      searchInput.addEventListener('input', () => {
+        searchQuery = searchInput.value.toLowerCase();
+        renderTable();
+      });
+    }
+
+    updatePreviewPill();
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  //  API: LOAD TAGS
+  // ──────────────────────────────────────────────────────────────────
+  async function loadTags() {
+    try {
+      const res = await fetch('/api/blog-crud?action=tags', { credentials: 'include' });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.tags)) {
+        allTags = data.tags;
+      } else if (data.success && Array.isArray(data.data)) {
+        allTags = data.data;
+      } else {
+        allTags = [];
+      }
+    } catch (e) {
+      console.error('Failed to load tags:', e);
+      allTags = [];
+    }
+    renderCloud();
+    renderTable();
+    updateCountBadge();
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  //  API: SAVE TAG (Create or Update)
+  // ──────────────────────────────────────────────────────────────────
+  async function handleSaveTag() {
+    const nameInput = document.getElementById('tag-name');
+    const slugInput = document.getElementById('tag-slug');
+    const descInput = document.getElementById('tag-description');
+    const saveBtn = document.getElementById('btn-save-tag');
+    const saveLbl = document.getElementById('btn-save-label');
+
+    const name = nameInput ? nameInput.value.trim() : '';
+    const slug = slugInput ? slugInput.value.trim() : '';
+    const description = descInput ? descInput.value.trim() : '';
+
+    if (!name) {
+      showToast('Please enter a tag name.', 'error');
+      nameInput && nameInput.focus();
+      return;
+    }
+
+    saveBtn.disabled = true;
+    saveLbl.textContent = editingTagId ? 'Updating…' : 'Creating…';
+
+    const payload = {
+      action: 'tag',
+      name,
+      slug: slug || slugify(name),
+      description,
+      color: selectedColor
+    };
+
+    try {
+      let res, data;
+      if (editingTagId) {
+        payload.id = editingTagId;
+        res = await fetch('/api/blog-crud', {
+          method: 'PUT',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        res = await fetch('/api/blog-crud', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      }
+
+      data = await res.json();
+
+      if (data.success) {
+        showToast(editingTagId ? 'Tag updated successfully!' : 'Tag created successfully!', 'success');
+        resetForm();
+        await loadTags();
+      } else {
+        showToast('Error: ' + (data.error || 'Failed to save tag.'), 'error');
+      }
+    } catch (e) {
+      showToast('Network error — could not save tag.', 'error');
+    } finally {
+      saveBtn.disabled = false;
+      saveLbl.textContent = editingTagId ? 'Update Tag' : 'Create Tag';
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  //  API: DELETE TAG
+  // ──────────────────────────────────────────────────────────────────
+  window.deleteTag = function(id) {
+    const tag = allTags.find(t => (t.id || t._id) == id);
+    const name = tag ? tag.name : 'this tag';
+    window.customConfirm
+      ? window.customConfirm(`Delete the tag "${name}"? This cannot be undone.`, async () => { await doDeleteTag(id); })
+      : (confirm(`Delete tag "${name}"?`) && doDeleteTag(id));
+  };
+
+  async function doDeleteTag(id) {
+    try {
+      const res = await fetch('/api/blog-crud', {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'tag', id })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Tag deleted.', 'success');
+        if (editingTagId == id) resetForm();
+        await loadTags();
+      } else {
+        showToast('Error: ' + (data.error || 'Delete failed.'), 'error');
+      }
+    } catch (e) {
+      showToast('Network error — could not delete tag.', 'error');
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  //  EDIT TAG (Load into form)
+  // ──────────────────────────────────────────────────────────────────
+  window.editTag = function(id) {
+    const tag = allTags.find(t => (t.id || t._id) == id);
+    if (!tag) return;
+
+    editingTagId = id;
+    slugManuallyEdited = true;
+
+    const tagId = tag.id || tag._id;
+
+    document.getElementById('tag-id').value = tagId;
+    document.getElementById('tag-name').value = tag.name || '';
+    document.getElementById('tag-slug').value = tag.slug || '';
+    document.getElementById('tag-description').value = tag.description || '';
+
+    selectedColor = tag.color || '#6366F1';
+    document.getElementById('tag-color-custom').value = selectedColor;
+    document.querySelectorAll('.color-swatch').forEach(s => {
+      s.classList.toggle('selected', s.dataset.color === selectedColor);
+    });
+
+    document.getElementById('form-title').textContent = 'Edit Tag';
+    document.getElementById('btn-save-label').textContent = 'Update Tag';
+    document.getElementById('btn-cancel-edit').style.display = '';
+    document.querySelector('.tag-form-card').classList.add('editing-mode');
+
+    updatePreviewPill();
+
+    // Scroll form into view on mobile
+    document.querySelector('.tags-left-col').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('tag-name').focus();
+  };
+
+  // ──────────────────────────────────────────────────────────────────
+  //  RESET FORM
+  // ──────────────────────────────────────────────────────────────────
+  function resetForm() {
+    editingTagId = null;
+    slugManuallyEdited = false;
+    selectedColor = '#6366F1';
+
+    document.getElementById('tag-id').value = '';
+    document.getElementById('tag-name').value = '';
+    document.getElementById('tag-slug').value = '';
+    document.getElementById('tag-description').value = '';
+    document.getElementById('tag-color-custom').value = '#6366F1';
+
+    document.querySelectorAll('.color-swatch').forEach(s => {
+      s.classList.toggle('selected', s.dataset.color === '#6366F1');
+    });
+
+    document.getElementById('form-title').textContent = 'New Tag';
+    document.getElementById('btn-save-label').textContent = 'Create Tag';
+    document.getElementById('btn-cancel-edit').style.display = 'none';
+    document.querySelector('.tag-form-card').classList.remove('editing-mode');
+    document.getElementById('btn-save-tag').disabled = false;
+
+    updatePreviewPill();
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  //  RENDER: TAG CLOUD
+  // ──────────────────────────────────────────────────────────────────
+  function renderCloud() {
+    const container = document.getElementById('tag-cloud');
+    if (!container) return;
+
+    if (allTags.length === 0) {
+      container.innerHTML = '<div class="cloud-empty">No tags yet. Create your first tag →</div>';
+      return;
+    }
+
+    // Determine size tiers based on post_count
+    const counts = allTags.map(t => t.post_count || t.postCount || 0);
+    const maxCount = Math.max(...counts, 1);
+
+    container.innerHTML = allTags.map(tag => {
+      const count = tag.post_count || tag.postCount || 0;
+      const ratio = count / maxCount;
+      const size = ratio > 0.75 ? 'xl' : ratio > 0.5 ? 'lg' : ratio > 0.25 ? 'md' : 'sm';
+      const color = tag.color || '#6366F1';
+      const rgb = hexToRgb(color);
+      const id = tag.id || tag._id;
+
+      const fontSizeMap = { xl: '1.1rem', lg: '0.95rem', md: '0.85rem', sm: '0.78rem' };
+      const paddingMap  = { xl: '0.5rem 1.15rem', lg: '0.42rem 1rem', md: '0.35rem 0.85rem', sm: '0.28rem 0.72rem' };
+
+      const bgColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`;
+      const borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.3)`;
+      const glowColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.2)`;
+
+      return `
+        <button type="button"
+          class="cloud-tag-pill"
+          onclick="editTag(${JSON.stringify(id)})"
+          title="${count} post${count !== 1 ? 's' : ''} · Click to edit"
+          style="
+            background: ${bgColor};
+            color: ${color};
+            border-color: ${borderColor};
+            box-shadow: 0 0 14px ${glowColor}, inset 0 1px 0 rgba(255,255,255,0.06);
+            font-size: ${fontSizeMap[size]};
+            padding: ${paddingMap[size]};
+          ">
+          ${escHtml(tag.name)}
+          ${count > 0 ? `<span class="pill-count">${count}</span>` : ''}
+        </button>
+      `;
+    }).join('');
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  //  RENDER: TABLE
+  // ──────────────────────────────────────────────────────────────────
+  function renderTable() {
+    const tbody = document.getElementById('tags-table-body');
+    if (!tbody) return;
+
+    const filtered = searchQuery
+      ? allTags.filter(t =>
+          (t.name || '').toLowerCase().includes(searchQuery) ||
+          (t.slug || '').toLowerCase().includes(searchQuery) ||
+          (t.description || '').toLowerCase().includes(searchQuery)
+        )
+      : allTags;
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" class="table-empty-cell">
+            <div class="table-empty-state">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4">
+                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                <line x1="7" y1="7" x2="7.01" y2="7"/>
+              </svg>
+              <span>${searchQuery ? 'No tags match your search.' : 'No tags yet. Create one using the form.'}</span>
+            </div>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(tag => {
+      const id = tag.id || tag._id;
+      const color = tag.color || '#6366F1';
+      const count = tag.post_count || tag.postCount || 0;
+      const rgb = hexToRgb(color);
+
+      return `
+        <tr>
+          <td>
+            <div class="tag-color-cell">
+              <span class="color-dot" style="background:${color}; box-shadow: 0 0 6px rgba(${rgb.r},${rgb.g},${rgb.b},0.5);"></span>
+            </div>
+          </td>
+          <td>
+            <span class="tag-name-cell">${escHtml(tag.name || '')}</span>
+            ${tag.description ? `<br><span style="font-size:0.77rem; color:var(--text-dim);">${escHtml(tag.description.substring(0, 60))}${tag.description.length > 60 ? '…' : ''}</span>` : ''}
+          </td>
+          <td>
+            <code class="tag-slug-cell">${escHtml(tag.slug || '')}</code>
+          </td>
+          <td style="text-align:center;">
+            <span class="post-count-badge">${count}</span>
+          </td>
+          <td>
+            <div class="actions-cell">
+              <button type="button" class="btn-action edit-btn"
+                onclick="editTag(${JSON.stringify(id)})"
+                title="Edit Tag">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+              <button type="button" class="btn-action delete-btn"
+                onclick="deleteTag(${JSON.stringify(id)})"
+                title="Delete Tag">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                  <line x1="10" y1="11" x2="10" y2="17"/>
+                  <line x1="14" y1="11" x2="14" y2="17"/>
+                </svg>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  //  UPDATE COUNT BADGE
+  // ──────────────────────────────────────────────────────────────────
+  function updateCountBadge() {
+    const badge = document.getElementById('tags-total-badge');
+    if (badge) badge.textContent = `${allTags.length} tag${allTags.length !== 1 ? 's' : ''}`;
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  //  TOAST NOTIFICATION
+  // ──────────────────────────────────────────────────────────────────
+  function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast-notify');
+    const msgEl = document.getElementById('toast-message');
+    const iconEl = document.getElementById('toast-icon');
+    if (!toast || !msgEl) return;
+
+    const icons = { success: '✓', error: '✕', info: 'ℹ' };
+    const colors = { success: 'var(--color-success)', error: 'var(--color-error)', info: 'var(--color-info)' };
+
+    msgEl.textContent = message;
+    if (iconEl) {
+      iconEl.textContent = icons[type] || '✓';
+      iconEl.style.color = colors[type] || 'var(--color-success)';
+    }
+    toast.style.borderLeftColor = colors[type] || 'var(--primary)';
+    toast.classList.add('active');
+    clearTimeout(toast._toastTimer);
+    toast._toastTimer = setTimeout(() => toast.classList.remove('active'), 3500);
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  //  UTILITIES
+  // ──────────────────────────────────────────────────────────────────
+  function slugify(str, preserveExisting) {
+    if (preserveExisting) {
+      // Allow partial slugify while typing
+      return str
+        .toLowerCase()
+        .replace(/[^a-z0-9-\s]/g, '')
+        .replace(/\s+/g, '-');
+    }
+    return str
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/[\s_]+/g, '-')
+      .replace(/--+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result
+      ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) }
+      : { r: 99, g: 102, b: 241 };
+  }
+
+  function escHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  //  BOOT
+  // ──────────────────────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', initTagsPage);
+  document.addEventListener('astro:page-load', initTagsPage);
+  if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    initTagsPage();
+  }
+</script>

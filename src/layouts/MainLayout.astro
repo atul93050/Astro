@@ -7,6 +7,7 @@ interface Props {
   ogTitle?: string;
   ogDescription?: string;
   ogImage?: string;
+  ogType?: string;
   twitterCard?: string;
   schemaMarkup?: string;
   // Page Specific Scripts
@@ -24,6 +25,7 @@ const {
   ogTitle = '',
   ogDescription = '',
   ogImage = '',
+  ogType = 'website',
   twitterCard = 'summary_large_image',
   schemaMarkup = '',
   headerScripts: pageHeaderScripts = '',
@@ -72,7 +74,7 @@ try {
   <meta property="og:description" content={ogDescription || description} />
   {ogImage && <meta property="og:image" content={ogImage.startsWith('http') ? ogImage : `https://www.tangence.in${ogImage}`} />}
   <meta property="og:url" content={Astro.url.href} />
-  <meta property="og:type" content="website" />
+  <meta property="og:type" content={ogType} />
   <meta property="og:site_name" content="Tangence" />
 
   <!-- Twitter Cards -->
@@ -81,6 +83,8 @@ try {
   <meta name="twitter:description" content={ogDescription || description} />
   {ogImage && <meta name="twitter:image" content={ogImage.startsWith('http') ? ogImage : `https://www.tangence.in${ogImage}`} />}
 
+  <link rel="preconnect" href="https://www.tangence.in" crossorigin />
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
   <link rel="stylesheet" href="https://www.tangence.in/font/stylesheet.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <link rel="stylesheet" href="/css/new-lp-page.css" />
@@ -117,7 +121,7 @@ try {
 
   <slot />
 
-  <script is:inline src="/js/new-lp-page.js"></script>
+  <script is:inline defer src="/js/new-lp-page.js"></script>
 
   <!-- Global Body End Script Injection -->
   {globalSettings.bodyEndScripts && (

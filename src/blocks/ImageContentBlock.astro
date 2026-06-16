@@ -25,7 +25,7 @@ const {
       {image && (
         <div class="image-area">
           <div class="glow-sphere"></div>
-          <img src={image} alt={title || "Featured Image"} class="featured-img" />
+          <img src={image} alt={title || "Featured Image"} class="featured-img" loading="lazy" decoding="async" />
         </div>
       )}
       <div class="content-area">

@@ -122,7 +122,7 @@ if (slug) {
     
     <div class="editor-action-buttons">
       {isEditMode && (
-        <a href={pageData.status === 'published' ? `/${pageData.slug}` : `/${pageData.slug}?preview=true`} target="_blank" class="btn btn-outline btn-sm">
+        <a id="page-preview-btn" href={pageData.status === 'published' ? `/${pageData.slug}` : `/${pageData.slug}?preview=true`} target="_blank" class="btn btn-outline btn-sm">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
           <span>Preview Page</span>
         </a>
@@ -1337,6 +1337,20 @@ if (slug) {
       saveBtn.addEventListener("click", submitPageForm);
     }
 
+    const slugInput = document.getElementById("page-slug");
+    const statusInput = document.getElementById("page-status");
+    const previewBtn = document.getElementById("page-preview-btn");
+
+    function updatePreviewUrl() {
+      if (!previewBtn || !slugInput || !statusInput) return;
+      const slugVal = slugInput.value.trim() || "index";
+      const statusVal = statusInput.value;
+      previewBtn.href = statusVal === 'published' ? `/${slugVal}` : `/${slugVal}?preview=true`;
+    }
+
+    if (slugInput) slugInput.addEventListener("input", updatePreviewUrl);
+    if (statusInput) statusInput.addEventListener("change", updatePreviewUrl);
+
     // SEO inputs event mapping
     const titleInput = document.getElementById("page-title");
     const seoTitleInput = document.getElementById("seo-title");
@@ -1711,6 +1725,7 @@ if (slug) {
   // Expose functions globally
   window.attachSingleSection = attachSingleSection;
   window.previewSection = previewSection;
+  window.addNewBlock = addNewBlock;
 
   // Append new empty block record based on registry defaults
   function addNewBlock(type) {
