@@ -29,6 +29,8 @@ const fieldTypes = [
   "group", "object", "array", "repeater",
   "link"
 ];
+import "../../styles/admin/css/section-defination.css";
+
 ---
 
 <AdminLayout title="Section Definitions — Developer Mode">
@@ -167,7 +169,7 @@ const fieldTypes = [
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
             <div class="form-group">
               <label>Definition Key <span class="req">*</span></label>
-              <input type="text" id="def-key" placeholder="e.g. hero_banner (snake_case)" id="def-key-input" />
+              <input type="text" id="def-key" placeholder="e.g. hero_banner (snake_case)" />
               <span class="field-help">Lowercase letters, numbers, underscores only. Cannot be changed after creation.</span>
               <span id="def-key-err" class="field-err"></span>
             </div>
@@ -184,6 +186,11 @@ const fieldTypes = [
             <div class="form-group">
               <label>Astro Component Path</label>
               <input type="text" id="def-component" placeholder="e.g. src/blocks/MyBlock.astro" />
+            </div>
+            <div class="form-group">
+              <label>Preview Image</label>
+              <input type="text" id="def-preview" placeholder="/admin/previews/hero.png" />
+              <span class="field-help">Path to a thumbnail shown in the Add-Section catalog.</span>
             </div>
             <div class="form-group" style="grid-column: 1/-1;">
               <label>Description</label>
@@ -555,7 +562,7 @@ const fieldTypes = [
     "Date & Time": ["date", "time", "datetime", "month"],
     "Design": ["color", "gradient"],
     "Advanced": ["json", "css", "javascript"],
-    "Structure": ["group", "object", "array", "repeater"],
+    "Structure": ["group", "object", "array", "list", "repeater"],
     "Link": ["link"]
   };
 
@@ -665,6 +672,7 @@ const fieldTypes = [
     document.getElementById('def-name').value = isEdit ? def.name : '';
     document.getElementById('def-category').value = isEdit ? (def.category || 'other') : 'other';
     document.getElementById('def-component').value = isEdit ? (def.componentPath || '') : '';
+    document.getElementById('def-preview').value = isEdit ? (def.previewImage || '') : '';
     document.getElementById('def-description').value = isEdit ? (def.description || '') : '';
 
     renderFieldsBuilder();
@@ -1092,6 +1100,7 @@ const fieldTypes = [
     const name = document.getElementById('def-name').value.trim();
     const category = document.getElementById('def-category').value;
     const componentPath = document.getElementById('def-component').value.trim();
+    const previewImage = document.getElementById('def-preview').value.trim();
     const description = document.getElementById('def-description').value.trim();
 
     document.getElementById('def-key-err').textContent = '';
@@ -1105,7 +1114,7 @@ const fieldTypes = [
 
     const payload = {
       key: editMode ? editingKey : key,
-      name, category, componentPath, description,
+      name, category, componentPath, previewImage, description,
       fields: fieldsData
     };
 

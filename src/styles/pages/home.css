@@ -1,0 +1,8 @@
+/* Home page styles (slug: index → home.css).
+   Auto-loaded by src/pages/[...slug].astro for the homepage only.
+   Put page-specific overrides here — section styling lives in
+   src/styles/sections/. */
+
+.page-builder-content {
+  scroll-behavior: smooth;
+}

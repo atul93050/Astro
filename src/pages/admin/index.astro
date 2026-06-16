@@ -106,6 +106,8 @@ if (fs.existsSync(contactsDir)) {
   
   recentLeads = leads.sort((a, b) => b.rawTime - a.rawTime).slice(0, 3);
 }
+
+import "../../styles/admin/css/dashboard.css"
 ---
 
 <AdminLayout title="CMS Dashboard">

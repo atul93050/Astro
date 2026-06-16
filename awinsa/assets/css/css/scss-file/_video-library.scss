@@ -1,0 +1,85 @@
+
+
+
+.video-library-section {
+    @include section-padding;
+
+    .video-library-list {
+        .video-detail {
+            h2 {font-size: 20px; text-align: center;margin: 15px 5px;}
+            position: relative; height: 100%; border-radius: 8px; overflow: hidden;    margin-bottom: 35px;
+             img {border-radius: 8px;}
+            .video-pop-up {transform: translate(-50%, -50%) !important; width: 50px; height: 50px;
+                color: var(--white); display: flex;justify-content: center; align-items: center;
+                text-decoration: none;border-radius: 50%;  z-index: 9;
+                animation: 1s linear infinite ripple; top: 35%;left: 50%; position: absolute;  
+                
+                
+@keyframes ripple {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255,255,255,.5),0 0 0 2px rgba(255,255,255,.5),0 0 0 5px rgba(255,255,255,.5),0 0 0 15px rgba(255,255,255,.5)
+    }
+
+    100% {
+        box-shadow: 0 0 0 2px rgba(255,255,255,.5),0 0 0 5px rgba(255,255,255,.5),0 0 0 15px rgba(255,255,255,.5),0 0 0 20px rgba(255,255,255,0)
+    }
+}
+
+                .pause-btn {left: 50%;position: absolute; top: 50%;   transform: translate(-50%, -50%);
+
+                }
+            }
+        }
+    }
+}
+
+
+.case-studies-section {
+  @include section-padding;
+    .case-studies-box {
+        border: 1px solid #000;padding: 10px; border-radius: 10px; margin-bottom: 25px;
+        .case-studies-img {
+            img {max-width: 100%;}
+        }
+        h2 { font-size: 20px; line-height: 28px;  text-align: center; margin-top: 20px;min-height: 85px; }
+        .view-all {margin-top: 25px; margin-bottom: 25px;}
+    }
+}
+
+
+
+// responsive
+
+@media screen and (max-width:1199px) {
+.case-studies-section .case-studies-box h2 {font-size: 19px;}
+
+}
+
+
+@media screen and (max-width:1024px) {
+
+.video-library-section .video-library-list .video-detail h2 {font-size: 19px;}
+.case-studies-section .case-studies-box h2 { font-size: 17px;   line-height: 24px;}
+    
+}
+
+
+@media screen and (max-width:990px) {
+
+.video-library-section .video-library-list .video-detail h2 {font-size: 15px;}
+.case-studies-section .case-studies-box h2 { font-size: 14px;line-height: 22px; min-height: 65px;}
+}
+
+
+@media screen and (max-width:767px) {
+
+.video-library-section .video-library-list .video-detail h2 {font-size: 15px;}
+.case-studies-section .case-studies-box h2 { font-size: 15px;line-height: 22px; min-height: 65px;}
+
+}
+
+@media screen and (max-width:575px) {
+
+.case-studies-section .case-studies-box h2 { min-height: auto;}
+
+}

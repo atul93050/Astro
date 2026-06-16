@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="511.793" height="298.799" viewBox="0 0 511.793 298.799">
+  <defs>
+    <clipPath id="clip-path">
+      <rect id="Rectangle_519" data-name="Rectangle 519" width="14.734" height="156.989" transform="translate(268.588 140.71)" fill="none"/>
+    </clipPath>
+    <linearGradient id="linear-gradient" x1="-18.229" y1="1.007" x2="-18.161" y2="1.007" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#231f20"/>
+      <stop offset="0.538" stop-color="#d1d3d4"/>
+      <stop offset="1" stop-color="#231f20"/>
+    </linearGradient>
+    <clipPath id="clip-path-2">
+      <rect id="Rectangle_525" data-name="Rectangle 525" width="511.793" height="298.799" fill="none"/>
+    </clipPath>
+  </defs>
+  <g id="Group_1752" data-name="Group 1752" transform="translate(0 0)">
+    <g id="Group_1749" data-name="Group 1749">
+      <g id="Group_1748" data-name="Group 1748" clip-path="url(#clip-path)">
+        <rect id="Rectangle_518" data-name="Rectangle 518" width="14.734" height="156.989" transform="translate(268.588 140.71)" fill="url(#linear-gradient)"/>
+      </g>
+    </g>
+    <path id="Path_4356" data-name="Path 4356" d="M242.243,0,194.568,47.676V115.1l47.675,47.675h67.423L357.341,115.1V47.676L309.666,0Z" fill="#e51e25"/>
+    <path id="Path_4357" data-name="Path 4357" d="M305.7,9.577H246.21L204.145,51.642v59.489L246.21,153.2H305.7l42.065-42.064V51.642Z" fill="none" stroke="#f5f5f5" stroke-miterlimit="10" stroke-width="1.981"/>
+    <text id="_404" data-name="404" transform="translate(224.247 98.797)" fill="#fff" font-size="49.743" font-family="Montserrat-Bold, Montserrat" font-weight="700"><tspan x="0" y="0">404</tspan></text>
+    <rect id="Rectangle_520" data-name="Rectangle 520" width="42.668" height="2.2" transform="translate(137.08 296.599)"/>
+    <rect id="Rectangle_521" data-name="Rectangle 521" width="42.668" height="2.2" transform="translate(256.512 296.599)"/>
+    <rect id="Rectangle_522" data-name="Rectangle 522" width="63.713" height="2.2" transform="translate(186.274 296.599)"/>
+    <rect id="Rectangle_523" data-name="Rectangle 523" width="42.667" height="2.2" transform="translate(304.853 296.599)"/>
+    <rect id="Rectangle_524" data-name="Rectangle 524" width="63.713" height="2.2" transform="translate(354.046 296.599)"/>
+    <g id="Group_1751" data-name="Group 1751">
+      <g id="Group_1750" data-name="Group 1750" clip-path="url(#clip-path-2)">
+        <path id="Path_4358" data-name="Path 4358" d="M362.313,164.71h32.839a18.493,18.493,0,0,1,28.572-15.485,25.571,25.571,0,0,1,48.877,1.917,18.034,18.034,0,0,1,5.347-.791,18.483,18.483,0,0,1,18.481,18.477h15.364" fill="none" stroke="#000" stroke-miterlimit="10" stroke-width="1.608"/>
+        <line id="Line_32" data-name="Line 32" x2="40.281" transform="translate(385.073 180.784)" fill="none" stroke="#000" stroke-miterlimit="10" stroke-width="1.608"/>
+        <line id="Line_33" data-name="Line 33" x2="53.216" transform="translate(413.634 193.476)" fill="none" stroke="#000" stroke-miterlimit="10" stroke-width="1.608"/>
+        <path id="Path_4359" data-name="Path 4359" d="M499.592,180.786H436.349" fill="none" stroke="#000" stroke-miterlimit="10" stroke-width="1.608"/>
+        <path id="Path_4360" data-name="Path 4360" d="M0,70.627H32.839A18.493,18.493,0,0,1,61.411,55.142a25.571,25.571,0,0,1,48.877,1.917,18.034,18.034,0,0,1,5.347-.791,18.483,18.483,0,0,1,18.481,18.477H149.48" fill="none" stroke="#000" stroke-miterlimit="10" stroke-width="1.608"/>
+        <line id="Line_34" data-name="Line 34" x2="40.281" transform="translate(22.76 86.701)" fill="none" stroke="#000" stroke-miterlimit="10" stroke-width="1.608"/>
+        <line id="Line_35" data-name="Line 35" x2="53.216" transform="translate(51.32 99.394)" fill="none" stroke="#000" stroke-miterlimit="10" stroke-width="1.608"/>
+        <path id="Path_4361" data-name="Path 4361" d="M137.279,86.7H74.036" fill="none" stroke="#000" stroke-miterlimit="10" stroke-width="1.608"/>
+      </g>
+    </g>
+  </g>
+</svg>

@@ -89,8 +89,6 @@ blocks:
     sectionId: roll-section
   - type: industry
     sectionId: industry-section
-  - type: industry
-    sectionId: rajesh
-lastUpdated: 2026-06-02T12:36:43.438Z
+lastUpdated: 2026-06-16T11:59:39.357Z
 ---
 

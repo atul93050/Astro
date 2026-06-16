@@ -10,6 +10,7 @@ interface Props {
   ogType?: string;
   twitterCard?: string;
   schemaMarkup?: string;
+  pageStyleUrl?: string;
   // Page Specific Scripts
   headerScripts?: string;
   footerScripts?: string;
@@ -28,6 +29,7 @@ const {
   ogType = 'website',
   twitterCard = 'summary_large_image',
   schemaMarkup = '',
+  pageStyleUrl = '',
   headerScripts: pageHeaderScripts = '',
   footerScripts: pageFooterScripts = '',
   customCss = '',
@@ -53,6 +55,23 @@ try {
 } catch (e) {
   // Graceful fallback
 }
+
+// Build sitewide Organization JSON-LD from global settings
+const SITE = "https://www.tangence.in";
+const gs: any = globalSettings;
+const absUrl = (u: string) => (u && u.startsWith("http") ? u : `${SITE}${u || ""}`);
+const orgSameAs = Object.values(gs.socialLinks || {}).filter((v: any) => typeof v === "string" && v.trim());
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "Tangence",
+  url: SITE,
+  ...(gs.logo?.headerLogoUrl ? { logo: absUrl(gs.logo.headerLogoUrl) } : {}),
+  ...(gs.contactInfo?.description ? { description: gs.contactInfo.description } : {}),
+  ...(gs.contactInfo?.phone ? { telephone: gs.contactInfo.phone } : {}),
+  ...(gs.contactInfo?.email ? { email: gs.contactInfo.email } : {}),
+  ...(orgSameAs.length ? { sameAs: orgSameAs } : {}),
+};
 ---
 <!DOCTYPE html>
 <html lang="en">
@@ -89,7 +108,13 @@ try {
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <link rel="stylesheet" href="/css/new-lp-page.css" />
 
-  <!-- Custom Schema Markup Injection -->
+  <!-- Centralized per-page stylesheet (src/styles/pages/<slug>.css) -->
+  {pageStyleUrl && <link rel="stylesheet" href={pageStyleUrl} />}
+
+  <!-- Sitewide Organization Schema -->
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(organizationSchema)}></script>
+
+  <!-- Custom Schema Markup Injection (page/post specific) -->
   {schemaMarkup && (
     <script type="application/ld+json" is:inline set:html={schemaMarkup}></script>
   )}

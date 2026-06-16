@@ -1,6 +1,6 @@
 ---
 type: hero
-badge: NEW UPDATE
+badge: NEW UPDATE new
 title: Enterprise Solutions Scaled Fast
 description: We manage ad budgets and build organic conversion search structures
   that outlast hacks.

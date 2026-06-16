@@ -855,31 +855,35 @@ export const prerender = false;
       deleteBtn.addEventListener("click", () => {
         if (!selectedAsset) return;
         window.customConfirm("Are you sure you want to permanently delete this media asset? This will delete the physical file on disk and cannot be undone.", async () => {
-          deleteBtn.disabled = true;
-          deleteBtn.innerText = "Deleting...";
-
-          try {
-            const res = await fetch("/api/media-crud", {
-              method: "DELETE",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ url: selectedAsset.url })
-            });
-            const result = await res.json();
-
-            if (result.success) {
-              showToast("Asset deleted permanently!");
-              closeDrawer();
-              loadMediaCatalog();
-            } else {
-              showToast("Error: Could not delete asset");
-              deleteBtn.disabled = false;
-              deleteBtn.innerText = "Delete Permanently";
+          const restore = () => { deleteBtn.disabled = false; deleteBtn.innerText = "Delete Permanently"; };
+          const doDelete = async (force) => {
+            deleteBtn.disabled = true;
+            deleteBtn.innerText = "Deleting...";
+            try {
+              const res = await fetch("/api/media-crud", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ url: selectedAsset.url, force })
+              });
+              const result = await res.json();
+              if (result.success) {
+                showToast("Asset deleted permanently!");
+                closeDrawer();
+                loadMediaCatalog();
+              } else if (result.requiresConfirmation) {
+                const places = (result.inUse || []).flatMap(t => t.usage).map(u => `• ${u.title} (${u.count}×)`).join("\n");
+                restore();
+                window.customConfirm(`This asset is still in use:\n\n${places}\n\nDelete anyway? This may cause broken images.`, () => doDelete(true));
+              } else {
+                showToast("Error: " + (result.error || "Could not delete asset"));
+                restore();
+              }
+            } catch (e) {
+              showToast("Network Error deleting asset");
+              restore();
             }
-          } catch (e) {
-            showToast("Network Error deleting asset");
-            deleteBtn.disabled = false;
-            deleteBtn.innerText = "Delete Permanently";
-          }
+          };
+          doDelete(false);
         });
       });
     }
@@ -937,28 +941,34 @@ export const prerender = false;
       bulkDeleteBtn.addEventListener("click", () => {
         if (bulkCheckedUrls.size === 0) return;
         window.customConfirm(`Are you sure you want to permanently delete these ${bulkCheckedUrls.size} selected items?`, async () => {
-          bulkDeleteBtn.disabled = true;
-          try {
-            const res = await fetch("/api/media-crud", {
-              method: "DELETE",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                urls: Array.from(bulkCheckedUrls)
-              })
-            });
-            const result = await res.json();
-            if (result.success) {
-              showToast(`Successfully deleted ${bulkCheckedUrls.size} items.`);
-              bulkCheckedUrls.clear();
-              loadMediaCatalog();
-            } else {
-              showToast("Error deleting items.");
+          const count = bulkCheckedUrls.size;
+          const doBulkDelete = async (force) => {
+            bulkDeleteBtn.disabled = true;
+            try {
+              const res = await fetch("/api/media-crud", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ urls: Array.from(bulkCheckedUrls), force })
+              });
+              const result = await res.json();
+              if (result.success) {
+                showToast(`Successfully deleted ${count} items.`);
+                bulkCheckedUrls.clear();
+                loadMediaCatalog();
+              } else if (result.requiresConfirmation) {
+                const n = (result.inUse || []).length;
+                bulkDeleteBtn.disabled = false;
+                window.customConfirm(`${n} of the selected asset(s) are still in use across the site.\n\nDelete anyway? This may cause broken images.`, () => doBulkDelete(true));
+              } else {
+                showToast("Error deleting items.");
+                bulkDeleteBtn.disabled = false;
+              }
+            } catch (e) {
+              showToast("Network error deleting items.");
+              bulkDeleteBtn.disabled = false;
             }
-          } catch (e) {
-            showToast("Network error deleting items.");
-          } finally {
-            bulkDeleteBtn.disabled = false;
-          }
+          };
+          doBulkDelete(false);
         });
       });
     }

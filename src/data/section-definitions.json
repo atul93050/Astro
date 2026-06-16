@@ -1180,5 +1180,54 @@
         "placeholder": "Link"
       }
     ]
+  },
+  {
+    "key": "nagesh_schema",
+    "name": "Nagesh Section Schema",
+    "category": "other",
+    "description": "New Nagesh Section",
+    "componentPath": "src/blocks/nagesh_section.astro",
+    "previewImage": "",
+    "fields": [
+      {
+        "name": "section_title",
+        "label": "Section Title",
+        "type": "text",
+        "required": true,
+        "default": "Atul",
+        "options": [],
+        "repeaterFields": [],
+        "placeholder": "Enter your title here",
+        "helpText": "this is title",
+        "validation": {
+          "min": 2,
+          "minLength": 2
+        }
+      },
+      {
+        "name": "sub_title",
+        "label": "Sub title",
+        "type": "textarea",
+        "required": true,
+        "default": "this is description",
+        "options": [],
+        "repeaterFields": [],
+        "validation": {
+          "max": 300,
+          "maxLength": 300
+        },
+        "placeholder": "Enter sub title description here ",
+        "helpText": "Enter sub title description here "
+      },
+      {
+        "name": "color",
+        "label": "Choose colour",
+        "type": "color",
+        "required": false,
+        "default": "",
+        "options": [],
+        "repeaterFields": []
+      }
+    ]
   }
 ]

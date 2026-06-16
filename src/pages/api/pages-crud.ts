@@ -147,6 +147,13 @@ function splitBlocksToSections(data: any) {
             sectionContentData[field.name] = block[field.name];
           }
         });
+      } else {
+        // No matching definition (e.g. it was deleted): preserve ALL field data
+        // rather than silently dropping it, so saving never destroys content.
+        for (const [k, v] of Object.entries(block)) {
+          if (k === "type" || k === "sectionId") continue;
+          sectionContentData[k] = v;
+        }
       }
 
       // Write section file

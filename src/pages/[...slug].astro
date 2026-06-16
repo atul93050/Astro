@@ -115,6 +115,12 @@ const page = {
   blocks: resolvedBlocks
 };
 
+// Centralized per-page CSS auto-loader: loads src/styles/pages/<slug>.css if present.
+// The homepage (slug "index") maps to home.css.
+const pageStyleSheets = import.meta.glob("/src/styles/pages/*.css", { query: "?url", import: "default", eager: true }) as Record<string, string>;
+const cssSlug = cleanSlug === "index" ? "home" : cleanSlug;
+const pageStyleUrl = pageStyleSheets[`/src/styles/pages/${cssSlug}.css`] || "";
+
 // 4. Draft/Publish Workflow checks
 const isPreview = Astro.url.searchParams.get("preview") === "true";
 if (page.status === "draft" && !isPreview) {
@@ -177,6 +183,7 @@ if (page.seo.schemaMarkup) {
   ogImage={page.seo.ogImage}
   twitterCard={page.seo.twitterCard}
   schemaMarkup={schemaJson}
+  pageStyleUrl={pageStyleUrl}
   headerScripts={page.headerScripts}
   footerScripts={page.footerScripts}
   customCss={page.customCss}

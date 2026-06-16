@@ -45,6 +45,7 @@ if (fs.existsSync(SETTINGS_FILE)) {
     console.error("Error reading settings in settings.astro:", e);
   }
 }
+import "../../styles/admin/css/settings.css"
 ---
 
 <AdminLayout title="Global Settings">
@@ -75,14 +76,14 @@ if (fs.existsSync(SETTINGS_FILE)) {
               <label for="header-logo-url">Header Logo URL</label>
               <div class="input-picker-wrap">
                 <input type="text" id="header-logo-url" value={settings.logo?.headerLogoUrl || "/images/tangence-black.png"} />
-                <button type="button" class="btn btn-outline btn-sm media-picker-trigger" data-target="header-logo-url">Pick</button>
+                <button type="button" class="btn btn-outline  media-picker-trigger" data-target="header-logo-url">Pick</button>
               </div>
             </div>
             <div class="form-group" style="margin-top: 0.75rem;">
               <label for="footer-logo-url">Footer Logo URL</label>
               <div class="input-picker-wrap">
                 <input type="text" id="footer-logo-url" value={settings.logo?.footerLogoUrl || "/images/scroll-logo.svg"} />
-                <button type="button" class="btn btn-outline btn-sm media-picker-trigger" data-target="footer-logo-url">Pick</button>
+                <button type="button" class="btn btn-outline media-picker-trigger" data-target="footer-logo-url">Pick</button>
               </div>
             </div>
 
