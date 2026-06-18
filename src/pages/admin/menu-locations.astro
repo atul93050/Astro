@@ -1,6 +1,7 @@
 ---
 import AdminLayout from "../../layouts/admin/AdminLayout.astro";
 import { getMenuLocations, getAllMenus } from "../../utils/menus";
+import "../../styles/admin/css/menu-locations.css";
 
 export const prerender = false;
 
@@ -70,24 +71,7 @@ const menus = getAllMenus();
 
 </AdminLayout>
 
-<style is:global>
-  .page-header-flex { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:2rem; gap:1rem; }
-  .page-sub { color:var(--text-muted); font-size:0.88rem; margin-top:0.25rem; }
-  .locations-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
-  @media(max-width:900px) { .locations-grid { grid-template-columns:1fr; } }
-  .location-card { background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1.25rem 1.5rem; display:flex; flex-direction:column; gap:1rem; }
-  .location-info { display:flex; gap:0.85rem; align-items:flex-start; }
-  .location-icon { width:36px; height:36px; background:var(--primary-light); color:var(--primary); border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-  .location-label { font-size:0.95rem; font-weight:700; color:var(--text-main); margin-bottom:0.15rem; }
-  .location-desc { font-size:0.78rem; color:var(--text-dim); margin-bottom:0.35rem; }
-  .location-key { font-family:monospace; font-size:0.72rem; color:var(--text-dim); background:rgba(156,163,175,0.07); padding:0.15rem 0.4rem; border-radius:4px; }
-  .location-select-wrap { display:flex; align-items:center; gap:0.75rem; }
-  .location-select { flex:1; }
-  .edit-assigned-link { display:inline-flex; align-items:center; gap:0.3rem; font-size:0.78rem; color:var(--primary); text-decoration:none; white-space:nowrap; flex-shrink:0; }
-  .edit-assigned-link:hover { text-decoration:underline; }
-  .info-banner { display:flex; align-items:center; gap:0.75rem; padding:1rem 1.25rem; background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.2); border-radius:var(--radius-sm); color:#93c5fd; font-size:0.88rem; margin-top:1.5rem; }
-  .info-banner a { color:#60a5fa; text-decoration:underline; }
-</style>
+
 
 <script>
   function init() {

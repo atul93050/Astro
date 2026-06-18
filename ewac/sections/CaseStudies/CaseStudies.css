@@ -1,0 +1,6 @@
+/* =====================
+   CASE STUDIES SECTION
+   Uses .uni-slider-section.case-study variant — base styles in Blogs.css
+   Only CaseStudies-specific overrides go here.
+   ===================== */
+.case-study { margin-bottom: 0px; }

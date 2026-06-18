@@ -171,6 +171,15 @@ if (page.seo.schemaMarkup) {
     });
   }
 }
+
+// 7. Auto-load section specific scripts if they exist in public/assets/js/sections/<type>.js
+const uniqueBlockTypes = [...new Set((page.blocks || []).map((b: any) => b.type))];
+const sectionScripts = uniqueBlockTypes
+  .map(type => `/assets/js/sections/${type}.js`)
+  .filter(scriptUrl => {
+    const filePath = path.resolve(`public/assets/js/sections/${path.basename(scriptUrl)}`);
+    return fs.existsSync(filePath);
+  });
 ---
 
 <MainLayout
@@ -188,6 +197,7 @@ if (page.seo.schemaMarkup) {
   footerScripts={page.footerScripts}
   customCss={page.customCss}
   customJs={page.customJs}
+  sectionScripts={sectionScripts}
 >
   <Header />
 

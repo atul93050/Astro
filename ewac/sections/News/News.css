@@ -1,0 +1,13 @@
+/* =====================
+   NEWS SECTION
+   Uses .uni-slider-section.red-color variant — base styles in Blogs.css
+   Only News-specific overrides go here.
+   ===================== */
+.red-color .uni-men-bg {
+  position: absolute;
+  right: 13%;
+  top: -21%;
+  width: 200px;
+  height: 200px;
+  transform: scale(0.8);
+}

@@ -1,0 +1,104 @@
+/* =====================
+   UNI SLIDER SECTIONS (Blogs / News / Case Studies shared base)
+   ===================== */
+
+.uni-slider-section { position: relative; padding: 48px 0; margin: 70px 0; }
+.services-slider { margin-top: 30px; }
+
+/* Override svc card text colours for white-bg slider context */
+.uni-slider-section .svc-name,
+.uni-slider-section .svc-desc,
+.uni-slider-section a { color: #000; }
+
+.uni-men-bg {
+  position: absolute;
+  right: 4%;
+  top: -128px;
+  width: 20%;
+  transform: translateZ(180px) scaleX(-1);
+}
+.blog .uni-men-bg {
+  position: absolute;
+  right: 0;
+  top: -17%;
+  width: 15%;
+  transform: translateZ(180px) scaleX(-1);
+}
+.blog .uni-men-bg img { width: 100%; }
+
+.heading-back-wrap {
+  height: 40%;
+  width: 40%;
+  top: 0; left: 0;
+  position: absolute;
+  background-color: #004C86;
+  border-radius: 0 24px 0 0;
+  z-index: 0;
+}
+
+.uni-slider-section .services-slider::before { background-color: #004c86; }
+.uni-slider-heading h2 { color: #fff; position: relative; z-index: 1; }
+
+.uni-slider-section .services-slider {
+  margin-top: 0;
+  background-color: #fff;
+  padding: 0;
+  margin-left: -0.5px;
+}
+
+.uni-slider-wrap {
+  background-color: #fff;
+  border-radius: 24px 0 0 24px;
+  border: 1px solid #D9D9D9;
+  padding: 30px 0;
+  position: relative;
+  border-right: 0;
+  padding-bottom: 0;
+}
+.uni-slider-wrap:before {
+  content: '';
+  background: #fff;
+  width: 200%;
+  height: 70%;
+  position: absolute;
+  left: 10%;
+  top: -1px;
+  border-top: 1px solid #D9D9D9;
+}
+.uni-slider-wrap:after {
+  content: '';
+  background: #D9D9D9;
+  width: 200%;
+  height: 1px;
+  position: absolute;
+  left: 10%;
+  bottom: -1px;
+}
+
+.blogs-view-all {
+  border-radius: 117px;
+  background: #004C86;
+  display: block;
+  padding: 10px 30px;
+  align-items: center;
+  color: #fff !important;
+  width: fit-content;
+  margin: 35px auto;
+  outline: none;
+  text-decoration: none;
+}
+
+/* RED COLOR VARIANT (News) */
+.uni-slider-section.red-color .heading-back-wrap { background-color: #C02222; }
+.uni-slider-section.red-color .services-slider::before { background-color: #c02222; }
+.uni-slider-section.red-color .blogs-view-all { background-color: #c02222; }
+
+/* CASE STUDY VARIANT */
+.case-study .uni-men-bg img { width: 100%; }
+.case-study .uni-men-bg {
+  position: absolute;
+  right: 6%;
+  top: -128px;
+  width: 17%;
+  transform: translateZ(180px) scaleX(-1);
+}

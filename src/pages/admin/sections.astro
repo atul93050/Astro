@@ -241,15 +241,15 @@ const categories = ["hero", "content", "marketing", "social", "other"];
     
     <div style="display:flex; flex-direction:column; gap:1.25rem; background:var(--bg-surface); padding:1.5rem; border:1px solid var(--border-color); border-radius:8px; margin-bottom:2rem; max-width:600px;">
       <div class="form-group">
+        <label for="new-section-name">Section Display Name <span class="required">*</span></label>
+        <input type="text" id="new-section-name" placeholder="e.g. Careers Accordion" style="width:100%;" />
+        <span class="field-error" id="new-section-name-err" style="color:var(--color-error); font-size:0.78rem;"></span>
+      </div>
+      <div class="form-group">
         <label for="new-section-id">Unique Section ID <span class="required">*</span></label>
         <input type="text" id="new-section-id" placeholder="e.g. faq-careers" style="width:100%;" />
         <span class="field-help" style="font-size:0.75rem; color:var(--text-dim); display:block; margin-top:0.25rem;">Lowercase letters, numbers, and dashes only.</span>
         <span class="field-error" id="new-section-id-err" style="color:var(--color-error); font-size:0.78rem;"></span>
-      </div>
-      <div class="form-group">
-        <label for="new-section-name">Section Display Name <span class="required">*</span></label>
-        <input type="text" id="new-section-name" placeholder="e.g. Careers Accordion" style="width:100%;" />
-        <span class="field-error" id="new-section-name-err" style="color:var(--color-error); font-size:0.78rem;"></span>
       </div>
     </div>
 
@@ -418,16 +418,16 @@ const categories = ["hero", "content", "marketing", "social", "other"];
       <div class="confirm-modal-body">
         <div class="create-form-wrap" style="display:flex; flex-direction:column; gap:1rem; margin-bottom:1.5rem;">
           <div class="form-group">
+            <label for="create-section-name">Section Display Name <span class="required">*</span></label>
+            <input type="text" id="create-section-name" placeholder="e.g. Careers Accordion" required />
+            <span class="field-error" id="create-section-name-err"></span>
+          </div>
+
+          <div class="form-group">
             <label for="create-section-id">Unique Section ID <span class="required">*</span></label>
             <input type="text" id="create-section-id" placeholder="e.g. faq-careers" required />
             <span class="field-help">Lowercase letters, numbers, and dashes only.</span>
             <span class="field-error" id="create-section-id-err"></span>
-          </div>
-
-          <div class="form-group">
-            <label for="create-section-name">Section Display Name <span class="required">*</span></label>
-            <input type="text" id="create-section-name" placeholder="e.g. Careers Accordion" required />
-            <span class="field-error" id="create-section-name-err"></span>
           </div>
         </div>
 
@@ -1014,6 +1014,7 @@ const categories = ["hero", "content", "marketing", "social", "other"];
   };
   let activeDeleteId = "";
   let selectedBlockType = "";
+  let modalIdManuallyEdited = false;
 
   function selectCatalogType(type) {
     selectedBlockType = type;
@@ -1035,6 +1036,51 @@ const categories = ["hero", "content", "marketing", "social", "other"];
     searchInput.dataset.listenerBound = "true";
 
     searchInput.addEventListener("input", filterAndSortSections);
+
+    // Auto-generate inline Section ID from Section Display Name
+    const inlineIdInput = document.getElementById("new-section-id");
+    const inlineNameInput = document.getElementById("new-section-name");
+    let inlineIdManuallyEdited = false;
+
+    inlineNameInput?.addEventListener("input", () => {
+      if (!inlineIdManuallyEdited) {
+        const generated = inlineNameInput.value
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9-]+/g, '-')
+          .replace(/--+/g, '-')
+          .replace(/(^-|-$)/g, '');
+        if (inlineIdInput) {
+          inlineIdInput.value = generated;
+        }
+      }
+    });
+
+    inlineIdInput?.addEventListener("input", () => {
+      inlineIdManuallyEdited = true;
+    });
+
+    // Auto-generate modal Section ID from Section Display Name
+    const modalIdInput = document.getElementById("create-section-id");
+    const modalNameInput = document.getElementById("create-section-name");
+
+    modalNameInput?.addEventListener("input", () => {
+      if (!modalIdManuallyEdited) {
+        const generated = modalNameInput.value
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9-]+/g, '-')
+          .replace(/--+/g, '-')
+          .replace(/(^-|-$)/g, '');
+        if (modalIdInput) {
+          modalIdInput.value = generated;
+        }
+      }
+    });
+
+    modalIdInput?.addEventListener("input", () => {
+      modalIdManuallyEdited = true;
+    });
 
     const typeFilter = document.getElementById("type-filter");
     if (typeFilter) typeFilter.addEventListener("change", filterAndSortSections);
@@ -1348,6 +1394,7 @@ const categories = ["hero", "content", "marketing", "social", "other"];
         const cnInput = document.getElementById("create-section-name");
         if (ciInput) ciInput.value = "";
         if (cnInput) cnInput.value = "";
+        modalIdManuallyEdited = false;
         createModalOverlay.classList.add("active");
       });
     }
@@ -1699,6 +1746,7 @@ const categories = ["hero", "content", "marketing", "social", "other"];
         const cnInput = document.getElementById("create-section-name");
         if (ciInput) ciInput.value = "";
         if (cnInput) cnInput.value = "";
+        modalIdManuallyEdited = false;
         
         // Show modal
         createModalOverlay.classList.add("active");

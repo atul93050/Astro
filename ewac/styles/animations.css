@@ -1,0 +1,22 @@
+/* =====================
+   KEYFRAME ANIMATIONS
+   Shared across sections — gears, zoom, vertical scroll
+   ===================== */
+
+@keyframes gearCW  { to { transform: rotate(360deg);  } }
+@keyframes gearCCW { to { transform: rotate(-360deg); } }
+
+@keyframes whyZoom {
+  from { transform: scale(1.04); }
+  to   { transform: scale(1); }
+}
+
+@keyframes vsScrollUp {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+
+@keyframes vsScrollDown {
+  0%   { transform: translateY(-50%); }
+  100% { transform: translateY(0); }
+}

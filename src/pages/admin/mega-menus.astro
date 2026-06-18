@@ -1,6 +1,7 @@
 ---
 import AdminLayout from "../../layouts/admin/AdminLayout.astro";
 import { getAllMegaMenus } from "../../utils/menus";
+import "../../styles/admin/css/mega-menus.css";
 
 export const prerender = false;
 
@@ -94,33 +95,7 @@ const megaMenus = getAllMegaMenus();
 
 </AdminLayout>
 
-<style is:global>
-  .page-header-flex { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:2rem; gap:1rem; }
-  .page-sub { color:var(--text-muted); font-size:0.88rem; margin-top:0.25rem; }
-  .empty-state { text-align:center; padding:4rem 2rem; border:1px dashed var(--border-color); border-radius:var(--radius-lg); color:var(--text-dim); }
-  .empty-state h3 { font-size:1.1rem; color:var(--text-muted); margin-bottom:0.5rem; }
-  .mega-cards-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(300px,1fr)); gap:1rem; }
-  .mega-card { background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1.25rem; display:flex; flex-direction:column; gap:0.85rem; }
-  .mega-card__head { display:flex; justify-content:space-between; align-items:center; }
-  .mega-card__head h4 { font-size:0.95rem; font-weight:700; }
-  .mega-card__cols { display:flex; flex-wrap:wrap; gap:0.4rem; }
-  .mega-col-preview { background:rgba(99,102,241,0.07); border:1px solid rgba(99,102,241,0.15); border-radius:6px; padding:0.3rem 0.6rem; display:flex; flex-direction:column; gap:0.15rem; }
-  .col-type-badge { font-size:0.68rem; font-weight:700; text-transform:uppercase; color:var(--primary); }
-  .col-head-preview { font-size:0.75rem; color:var(--text-muted); }
-  .mega-card__foot { display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-color); padding-top:0.75rem; }
-  .mega-col-editor { background:var(--bg-base); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:1rem; }
-  .mega-col-editor .col-fields { display:flex; flex-wrap:wrap; gap:0.75rem; margin-top:0.75rem; }
-  .modal-overlay { position:fixed; inset:0; background:rgba(8,12,20,0.8); backdrop-filter:blur(8px); z-index:9000; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity 0.2s ease; }
-  .modal-overlay.active { opacity:1; pointer-events:auto; }
-  .modal-panel { background:var(--bg-surface-solid); border:1px solid var(--border-color); border-radius:var(--radius-lg); box-shadow:0 20px 50px rgba(0,0,0,0.4); transform:scale(0.95); transition:transform 0.2s ease; }
-  .modal-overlay.active .modal-panel { transform:scale(1); }
-  .modal-head { display:flex; justify-content:space-between; align-items:center; padding:1.25rem 1.5rem; border-bottom:1px solid var(--border-color); }
-  .modal-head h3 { font-size:1.05rem; font-weight:700; }
-  .modal-close { background:none; border:none; color:var(--text-muted); cursor:pointer; padding:0.25rem; border-radius:4px; }
-  .modal-body { padding:1.5rem; }
-  .modal-body .form-field label { display:block; font-size:0.8rem; font-weight:600; color:var(--text-muted); margin-bottom:0.4rem; }
-  .modal-foot { padding:1rem 1.5rem; border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:0.75rem; }
-</style>
+
 
 <script>
   let editingId: string | null = null;

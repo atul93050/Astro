@@ -1,0 +1,15 @@
+/* =====================
+   HERO BANNER SLIDER
+   ===================== */
+.slick-slideshow__slide img { width: 100%; }
+.banner-slider { overflow: hidden; }
+.home-banner #counter {
+  position: relative;
+  margin-top: -70px;
+  left: 44px;
+  display: none;
+}
+.counter { color: #fff; font-size: 14px; }
+.home-banner #counter span { font-size: 14px; color: #fff; font-weight: 300; }
+.home-banner #counter span.number { opacity: 0.4; }
+.banner-mob { display: none !important; }

@@ -1,0 +1,90 @@
+/* =====================
+   INDUSTRIES WE SERVE
+   Background image path is relative to THIS CSS file location
+   ===================== */
+.industries-section {
+  position: relative;
+  padding: 70px 0 80px;
+  background: url("../../assets/images/serve-bg.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  overflow: hidden;
+}
+
+.ind-heading {
+  font-size: clamp(26px, 3.5vw, 40px);
+  font-weight: 400;
+  color: #fff;
+  margin-bottom: 14px;
+}
+.ind-sub {
+  font-size: 16px;
+  line-height: 1.75;
+  color: rgba(255,255,255,0.72);
+  margin-bottom: 25px;
+  font-weight: 300;
+}
+
+.industries-slider-wrap { position: relative; }
+.industries-slider-wrap .container { position: relative; }
+
+/* Arrows */
+.ind-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.50);
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  transition: background 0.2s, border-color 0.2s;
+}
+.ind-arrow:hover { background: #c0392b; border-color: #c0392b; }
+.ind-prev { left: -40px; }
+.ind-next { right: -40px; }
+
+.ind-slide { padding: 0 10px; outline: none; }
+.ind-card {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  aspect-ratio: 3 / 3.5;
+  cursor: pointer;
+}
+.ind-card img {
+  width: 100%; height: 105%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.5s ease;
+  position: relative;
+  top: -3px;
+}
+.ind-card:hover img { transform: scale(1.07); }
+.ind-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.10) 55%, transparent 100%);
+  border-radius: inherit;
+  transition: opacity 0.3s ease;
+}
+.ind-card:hover::after { opacity: 0.7; }
+.ind-label {
+  position: absolute;
+  bottom: 18px; left: 18px; right: 18px;
+  z-index: 2;
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.3;
+  text-align: center;
+}

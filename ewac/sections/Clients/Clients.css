@@ -1,0 +1,48 @@
+/* =====================
+   CLIENTS LOGO SLIDER
+   ===================== */
+.clients-section {
+  background: #fff;
+  padding: 0px 0 70px;
+  overflow: hidden;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.clients-title {
+  text-align: center;
+  font-size: clamp(26px, 3vw, 38px);
+  font-weight: 400;
+  color: #1a1a1a;
+  margin-bottom: 44px;
+}
+
+.clients-row-wrap { overflow: hidden; margin-bottom: 4px; }
+
+.logo-slider-1 .slick-track,
+.logo-slider-2 .slick-track {
+  display: flex;
+  align-items: center;
+}
+
+.logo-slide {
+  height: 90px;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 32px;
+  outline: none;
+}
+.logo-slide img {
+  max-width: 130px;
+  max-height: 58px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  transition: opacity 0.25s, filter 0.25s;
+  display: block;
+}
+.logo-slide:hover img { opacity: 1; filter: grayscale(0%); }
+
+/* Row 2 — flip to reverse scroll direction */
+.logo-slider-2 { transform: scaleX(-1); }
+.logo-slider-2 .logo-slide img { transform: scaleX(-1); }

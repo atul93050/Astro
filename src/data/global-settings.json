@@ -4,8 +4,8 @@
   "bodyEndScripts": "",
   "footerScripts": "",
   "logo": {
-    "headerLogoUrl": "",
-    "footerLogoUrl": ""
+    "headerLogoUrl": "/images/tangence-black.png",
+    "footerLogoUrl": "/images/scroll-logo.svg"
   },
   "socialLinks": {
     "facebook": "",
@@ -14,8 +14,8 @@
     "instagram": ""
   },
   "contactInfo": {
-    "phone": "",
-    "email": "",
+    "phone": "+91-995-812-9810",
+    "email": "info@tangence.com",
     "description": "",
     "offices": [],
     "cities": []

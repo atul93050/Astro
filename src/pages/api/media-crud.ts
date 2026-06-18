@@ -320,10 +320,48 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   ensureMediaCatalog();
   try {
     const formData = await request.formData();
-    const file = formData.get("file");
     const get = (k: string) => formData.get(k)?.toString().trim() || "";
     const action = get("action");
+    const catalog = getCatalog();
 
+    // ── Generate variants action: manually generate thumbnails and responsive variants ──
+    if (action === "generate-variants") {
+      const targetUrl = get("url");
+      const idx = catalog.findIndex((i: any) => i.url === targetUrl);
+      if (idx === -1) return json({ success: false, error: "Target asset not found" }, 404);
+
+      const item = catalog[idx];
+      const filename = path.basename(item.url);
+      const ext = path.extname(filename).toLowerCase();
+      const filePath = path.join(UPLOAD_DIR, filename);
+
+      if (!fs.existsSync(filePath)) {
+        return json({ success: false, error: "Original file not found on disk" }, 404);
+      }
+
+      if (!RASTER_EXT.has(ext)) {
+        return json({ success: false, error: "Only raster images support variant generation" }, 400);
+      }
+
+      const fileBuffer = fs.readFileSync(filePath);
+      const fileBase = path.basename(filename, ext);
+
+      // Delete any existing variant files first to avoid duplicates/leftovers
+      deleteVariantFiles(item);
+
+      // Generate the WebP + responsive variants
+      const variants = await generateVariants(fileBuffer, fileBase, ext);
+
+      item.variants = variants;
+      item.lastModified = new Date().toISOString();
+
+      catalog[idx] = item;
+      saveCatalog(catalog);
+
+      return json({ success: true, media: normalizeItem(item) });
+    }
+
+    const file = formData.get("file");
     if (!file || typeof file !== "object" || !("size" in file) || !("name" in file) || (file as any).size === 0) {
       return json({ success: false, error: "No valid file uploaded" }, 400);
     }
@@ -346,7 +384,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     const hash = sha256(buffer);
-    const catalog = getCatalog();
 
     // ── Replace action: overwrite the file at an existing URL (keeps the URL) ──
     if (action === "replace") {
@@ -359,18 +396,16 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       if (existingExt !== ext) {
         return json({ success: false, error: `Replacement must be the same file type (${existingExt}).` }, 400);
       }
-      // Overwrite physical file + regenerate variants under the same base name
+      // Overwrite physical file + reset variants (do not auto-generate on replace)
       fs.writeFileSync(path.join(UPLOAD_DIR, existingFilename), buffer);
       deleteVariantFiles(catalog[idx]);
-      const fileBase = path.basename(existingFilename, existingExt);
-      const variants = await generateVariants(buffer, fileBase, existingExt);
 
       const updated = normalizeItem({
         ...catalog[idx],
         hash,
         size: buffer.length,
         dimensions: getImageDimensions(buffer, existingExt) || catalog[idx].dimensions,
-        variants,
+        variants: {}, // Reset variants
         lastModified: new Date().toISOString(),
       });
       catalog[idx] = updated;
@@ -391,12 +426,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const baseName = path.basename(uploadedFile.name, ext).replace(/[^a-z0-9-_]/gi, "_").toLowerCase();
     const uniqueName = `${baseName}-${Date.now()}${ext}`;
-    const fileBase = path.basename(uniqueName, ext);
     const filePath = path.join(UPLOAD_DIR, uniqueName);
     fs.writeFileSync(filePath, buffer);
 
-    // Generate WebP + responsive variants (raster images only)
-    const variants = await generateVariants(buffer, fileBase, ext);
+    // Set variants to empty initially (no auto-generation on upload)
+    const variants = {};
 
     const now = new Date().toISOString();
     const newMedia = normalizeItem({

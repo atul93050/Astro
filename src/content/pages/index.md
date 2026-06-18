@@ -8,7 +8,7 @@ footerScripts: ""
 customCss: ""
 customJs: ""
 seo:
-  metaTitle: About Us
+  metaTitle: Home Page
   metaDescription: ""
   canonicalUrl: ""
   robots: index, follow
@@ -22,6 +22,10 @@ seo:
 blocks:
   - type: home_banner
     sectionId: home-banner-section
-lastUpdated: 2026-06-18T07:18:14.517Z
+  - type: about
+    sectionId: about-section
+  - type: casestudy_section
+    sectionId: casestudy-section
+lastUpdated: 2026-06-18T12:43:11.782Z
 ---
 

@@ -289,15 +289,33 @@ export const GET: APIRoute = async ({ url, cookies }) => {
           headers: { "Content-Type": "application/json" },
         });
       }
-      const files = fs.readdirSync(pageRevDir).filter(f => f.endsWith(".md")).sort().reverse();
-      const revisions = files.map(file => {
-        const timestamp = path.basename(file, ".md");
+      // Revisions are either directories (new system) or md files (old system)
+      const items = fs.readdirSync(pageRevDir);
+      const revisions = items.map(item => {
+        const itemPath = path.join(pageRevDir, item);
+        const isDir = fs.statSync(itemPath).isDirectory();
+        let timestamp = item;
+
+        if (isDir) {
+          const pageFile = path.join(itemPath, "page.md");
+          if (!fs.existsSync(pageFile)) {
+            return null; // ignore invalid directories
+          }
+        } else {
+          if (!item.endsWith(".md")) return null;
+          timestamp = path.basename(item, ".md");
+        }
+
         const formattedDate = new Date(parseInt(timestamp)).toLocaleString();
         return {
           timestamp,
           date: formattedDate,
         };
-      });
+      }).filter(Boolean);
+
+      // Sort revisions by timestamp descending
+      revisions.sort((a: any, b: any) => parseInt(b.timestamp) - parseInt(a.timestamp));
+
       return new Response(JSON.stringify({ success: true, revisions }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -312,21 +330,54 @@ export const GET: APIRoute = async ({ url, cookies }) => {
           headers: { "Content-Type": "application/json" },
         });
       }
-      const revFilePath = path.join(revisionsDir, slug, `${timestamp}.md`);
-      if (!fs.existsSync(revFilePath)) {
+
+      const revDir = path.join(revisionsDir, slug, timestamp);
+      const oldRevFile = path.join(revisionsDir, slug, `${timestamp}.md`);
+      const mainFilePath = path.join(pagesDir, `${slug}.md`);
+
+      if (fs.existsSync(revDir) && fs.statSync(revDir).isDirectory()) {
+        const pageFile = path.join(revDir, "page.md");
+        if (!fs.existsSync(pageFile)) {
+          return new Response(JSON.stringify({ success: false, error: "Revision page file not found" }), {
+            status: 404,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        // 1. Overwrite page file
+        const content = fs.readFileSync(pageFile, "utf-8");
+        fs.writeFileSync(mainFilePath, content, "utf-8");
+
+        // 2. Overwrite section files
+        const sectionsDir = path.resolve("src/content/sections");
+        if (!fs.existsSync(sectionsDir)) {
+          fs.mkdirSync(sectionsDir, { recursive: true });
+        }
+        const files = fs.readdirSync(revDir);
+        for (const file of files) {
+          if (file === "page.md" || !file.endsWith(".md")) continue;
+          const srcPath = path.join(revDir, file);
+          const destPath = path.join(sectionsDir, file);
+          fs.copyFileSync(srcPath, destPath);
+        }
+
+        return new Response(JSON.stringify({ success: true, message: "Page structure and sections rolled back successfully!" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      } else if (fs.existsSync(oldRevFile)) {
+        // Fallback for old file-based revisions
+        const content = fs.readFileSync(oldRevFile, "utf-8");
+        fs.writeFileSync(mainFilePath, content, "utf-8");
+        return new Response(JSON.stringify({ success: true, message: "Page structure rolled back successfully! (Old revision - no sections data restored)" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      } else {
         return new Response(JSON.stringify({ success: false, error: "Revision not found" }), {
           status: 404,
           headers: { "Content-Type": "application/json" },
         });
       }
-      const content = fs.readFileSync(revFilePath, "utf-8");
-      // Write back to main file
-      const mainFilePath = path.join(pagesDir, `${slug}.md`);
-      fs.writeFileSync(mainFilePath, content, "utf-8");
-      return new Response(JSON.stringify({ success: true, message: "Page rolled back successfully!" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
     }
 
     return new Response(JSON.stringify({ success: false, error: "Invalid action" }), {
@@ -428,14 +479,39 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    // Backup revision of original page structure
-    const existingContent = fs.readFileSync(originalFilePath, "utf-8");
-    const pageRevDir = path.join(revisionsDir, originalSlug);
-    if (!fs.existsSync(pageRevDir)) {
-      fs.mkdirSync(pageRevDir, { recursive: true });
-    }
+    // Backup revision of original page structure + section content files
     const timestamp = Date.now().toString();
-    fs.writeFileSync(path.join(pageRevDir, `${timestamp}.md`), existingContent, "utf-8");
+    const pageRevDir = path.join(revisionsDir, originalSlug);
+    const revDir = path.join(pageRevDir, timestamp);
+    if (!fs.existsSync(revDir)) {
+      fs.mkdirSync(revDir, { recursive: true });
+    }
+
+    const existingContent = fs.readFileSync(originalFilePath, "utf-8");
+    fs.writeFileSync(path.join(revDir, "page.md"), existingContent, "utf-8");
+
+    // Copy associated section files to revision backup folder
+    const sectionsDir = path.resolve("src/content/sections");
+    try {
+      const ym = existingContent.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+      if (ym) {
+        const sectionIdMatches = ym[1].match(/sectionId\s*:\s*([a-zA-Z0-9_\-]+)/g);
+        if (sectionIdMatches) {
+          for (const match of sectionIdMatches) {
+            const parts = match.split(":");
+            if (parts.length >= 2) {
+              const secId = parts[1].trim();
+              const secFilePath = path.join(sectionsDir, `${secId}.md`);
+              if (fs.existsSync(secFilePath)) {
+                fs.copyFileSync(secFilePath, path.join(revDir, `${secId}.md`));
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to copy section files to page revision:", err);
+    }
 
     // Clean up data to avoid storing originalSlug
     const { originalSlug: _, ...cleanedData } = data;

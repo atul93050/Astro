@@ -1,0 +1,141 @@
+/* =====================
+   WHY CHOOSE EWAC
+   ===================== */
+
+/* Initial hide of dropdown (shown only on mobile via responsive.css) */
+.why-dropdown-wrap { display: none; }
+
+.why-section {
+  position: relative;
+  padding: 80px 0 50px;
+  background: #fff;
+  overflow: hidden;
+}
+
+/* Gear decorations */
+.why-gears {
+  position: absolute;
+  left: -30px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 0;
+  width: 270px;
+  height: 290px;
+}
+.why-gears .gear1 { width: 90px; top: 55px; left: -14px; animation: gearCW 8s linear infinite; position: relative; }
+.why-gears .gear2 { width: 61px; position: relative; left: -22px; top: 88px; }
+.why-gears .gear3 { position: relative; left: -16px; top: 55px; }
+
+/* Intro */
+.why-heading {
+  position: relative;
+  z-index: 1;
+  font-size: clamp(26px, 3.5vw, 40px);
+  font-weight: 400;
+  color: #1a1a1a;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.why-logo-inline { height: 55px; width: auto; display: inline-block; vertical-align: middle; }
+.why-sub {
+  position: relative;
+  z-index: 1;
+  font-size: 15px;
+  line-height: 1.75;
+  color: #7C7C7C;
+  margin-bottom: 36px;
+  font-weight: 300;
+}
+
+/* Tabs wrap */
+.why-tabs-wrap { position: relative; z-index: 1; }
+
+/* Dropdown */
+.why-dropdown-wrap { position: relative; margin-bottom: 16px; }
+.why-dropdown {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 13px 44px 13px 18px;
+  border-radius: 8px;
+  border: 1.5px solid #ddd;
+  background: #f0f0f0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+.why-dropdown:focus { border-color: #c0392b; background: #fff; }
+.why-dropdown-arrow {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #c0392b;
+  font-size: 13px;
+}
+
+/* Tab nav */
+.why-tab-nav {
+  display: flex;
+  background: #f0f0f0;
+  border-radius: 0;
+  overflow: hidden;
+}
+.why-tab {
+  flex: 1;
+  padding: 16px 12px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+  color: #444;
+  line-height: 1.4;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  border-right: 1px solid #ddd;
+}
+.why-tab:last-child { border-right: none; }
+.why-tab:hover { background: #e0e0e0; color: #1a1a1a; }
+.why-tab.active { background: #c0392b; color: #fff; }
+
+/* Pane content */
+.why-tab-content { position: relative; }
+.why-pane { display: none; position: relative; overflow: hidden; }
+.why-pane.active { display: block; }
+.why-pane img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.6s ease;
+}
+.why-pane.active img { animation: whyZoom 0.6s ease forwards; }
+
+/* Text overlay */
+.why-pane-overlay {
+  position: absolute;
+  bottom: 0; left: 0; top: 0;
+  width: 34%;
+  padding: 28px 32px;
+  margin: auto;
+  height: fit-content;
+  z-index: 9;
+}
+.why-pane-overlay p { color: #fff; font-size: 15px; line-height: 1.6; margin: 0; font-weight: 300; }
+.why-pane { position: relative; }
+.why-pane:after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.55) 35%, rgba(0,0,0,0.20) 65%, rgba(0,0,0,0) 100%);
+  z-index: 1;
+}
+#why-quality::after { display: none; }

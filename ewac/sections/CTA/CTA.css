@@ -1,0 +1,44 @@
+/* =====================
+   CTA BANNER
+   Background image path is relative to THIS CSS file location
+   ===================== */
+.cta-banner {
+  position: relative;
+  background: url("../../assets/images/portrait-asian-girl.png") center center / cover no-repeat;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: right top;
+}
+
+.cta-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, rgb(0 0 0) 0%, rgb(0 0 0) 34%, rgb(0 0 0 / 70%) 43%, #00000000 100%);
+  pointer-events: none;
+}
+
+.cta-banner .container { padding-top: 60px; padding-bottom: 60px; }
+
+.cta-heading {
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.25;
+  margin-bottom: 18px;
+}
+.cta-sub { font-size: 20px; color: rgba(255,255,255,0.82); margin-bottom: 32px; }
+.cta-btn {
+  display: inline-block;
+  background: #c0392b;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 13px 30px;
+  border-radius: 50px;
+  text-decoration: none;
+  transition: background 0.2s, transform 0.15s;
+}
+.cta-btn:hover { background: #a93226; color: #fff; transform: translateY(-1px); }

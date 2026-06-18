@@ -1,116 +1,384 @@
 ---
-import fs from "node:fs";
-import path from "node:path";
-import PrimaryNav from "./navigation/PrimaryNav.astro";
-import MobileNav from "./navigation/MobileNav.astro";
-import { getMenuAtLocation } from "../utils/menus";
-
-const currentPath = Astro.url.pathname;
-
-// Load logo from global settings
-let logo = { headerLogoUrl: "/images/tangence-black.png" };
-try {
-  const settingsPath = path.resolve("src/data/global-settings.json");
-  if (fs.existsSync(settingsPath)) {
-    const data = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
-    if (data.logo) logo = data.logo;
-  }
-} catch (e) {}
-
-// CMS-driven menus
-const primaryMenu = getMenuAtLocation("primary-header");
-const mobileMenu  = getMenuAtLocation("mobile-menu") || primaryMenu;
+// Header Component
 ---
 
-<header class="site-header" id="site-header">
-  <div class="container header-inner">
-    <!-- Logo -->
-    <div class="header-logo">
-      <a href="/" aria-label="Go to homepage">
-        <img
-          src={logo.headerLogoUrl || "/images/tangence-black.png"}
-          alt="Tangence"
-          loading="eager"
-          width="160"
-          height="40"
-        />
-      </a>
-    </div>
-
-    <!-- Desktop Primary Nav (hidden on mobile via CSS) -->
-    <div class="header-nav desktop-only">
-      <PrimaryNav menu={primaryMenu} currentPath={currentPath} />
-    </div>
-
-    <!-- CTA + Mobile Toggle -->
-    <div class="header-cta-row">
-      <a href="#book-audit" class="btn-call desktop-only">Book a free audit</a>
-      <MobileNav menu={mobileMenu} />
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="container">
+    <div class="top-header">
+      <span>NEWS</span>
+      <p>WAC at Wire India 2025 — Hall 3, Stall B-42 · Mumbai · Nov 12–14</p>
+      <a href="#">Register Now →</a>
     </div>
   </div>
+</div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo">
+    <a href="/"><img src="/assets/images/ewac.png" alt="EWAC Logo" /></a>
+  </div>
+
+  <nav class="nav">
+    <!-- Products Mega Dropdown -->
+    <div class="nav-item has-dropdown">
+      <a href="#"
+        >Products <span class="nav-arrow"
+          ><img src="/assets/images/expand-arrow.webp" alt="Arrow" /></span
+        ></a
+      >
+      <div class="dropdown dropdown-mega">
+        <div class="mega-inner">
+          <div class="mega-left-panel">
+            <span class="mega-eyebrow">What We Make</span>
+            <h3>Our<br />Products</h3>
+            <p>
+              High-performance welding consumables and wear protection solutions
+              for demanding environments.
+            </p>
+            <a href="#" class="mega-explore-btn"
+              >Explore All <i class="fa fa-arrow-right"></i></a
+            >
+          </div>
+          <div class="mega-cards-grid">
+            <a href="#" class="mic">
+              <div class="mic-icon-industry">
+                <img
+                  src="/assets/images/products1.png"
+                  alt="Maintenance & Repair"
+                />
+              </div>
+              <span class="mic-title">Maintenance & Repair</span>
+            </a>
+            <a href="#" class="mic">
+              <div class="mic-icon-industry">
+                <img
+                  src="/assets/images/products2.png"
+                  alt="Fabrication Products"
+                />
+              </div>
+              <span class="mic-title">Fabrication Products</span>
+            </a>
+            <a href="#" class="mic">
+              <div class="mic-icon-industry">
+                <img src="/assets/images/products3.png" alt="Wear Liners" />
+              </div>
+              <span class="mic-title">Wear Liners</span>
+            </a>
+            <a href="#" class="mic">
+              <div class="mic-icon-industry">
+                <img src="/assets/images/products4.png" alt="Ceramic Liners" />
+              </div>
+              <span class="mic-title">Ceramic Liners</span>
+            </a>
+            <a href="#" class="mic">
+              <div class="mic-icon-industry">
+                <img src="/assets/images/products2.png" alt="Equipment" />
+              </div>
+              <span class="mic-title">Equipment</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Services Mega Dropdown -->
+    <div class="nav-item has-dropdown">
+      <a href="#"
+        >Services <span class="nav-arrow"
+          ><img src="/assets/images/expand-arrow.webp" alt="Arrow" /></span
+        ></a
+      >
+      <div class="dropdown dropdown-mega">
+        <div class="mega-inner">
+          <div class="mega-left-panel">
+            <span class="mega-eyebrow">What We Do</span>
+            <h3>Our<br />Services</h3>
+            <p>
+              Comprehensive on-site and in-house solutions across India's
+              critical industrial sectors.
+            </p>
+            <a href="#" class="mega-explore-btn"
+              >Explore All <i class="fa fa-arrow-right"></i></a
+            >
+          </div>
+          <div class="mega-cards-grid mega-cards-grid--3col">
+            <a href="#">
+              <div class="menu-img-wrap">
+                <img
+                  src="/assets/images/turnkey-solutions1.png"
+                  alt="Turnkey Solutions"
+                />
+              </div>
+              <div class="menu">
+                <p class="menu-title">Turnkey Solutions</p>
+              </div>
+            </a>
+            <a href="#">
+              <div class="menu-img-wrap">
+                <img
+                  src="/assets/images/turnkey-solutions2.png"
+                  alt="Railways"
+                />
+              </div>
+              <div class="menu">
+                <p class="menu-title">Railways</p>
+              </div>
+            </a>
+            <a href="#">
+              <div class="menu-img-wrap">
+                <img
+                  src="/assets/images/turnkey-solutions3.png"
+                  alt="ERF Services"
+                />
+              </div>
+              <div class="menu">
+                <p class="menu-title">ERF Services</p>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Industries Mega Dropdown -->
+    <div class="nav-item has-dropdown">
+      <a href="#"
+        >Industries <span class="nav-arrow"
+          ><img src="/assets/images/expand-arrow.webp" alt="Arrow" /></span
+        ></a
+      >
+      <div class="dropdown dropdown-mega">
+        <div class="mega-inner">
+          <div class="mega-left-panel">
+            <span class="mega-eyebrow">What We Serve</span>
+            <h3>Industries<br />We Serve</h3>
+            <p>
+              Decades of expertise across India's most demanding industrial
+              sectors.
+            </p>
+            <a href="#" class="mega-explore-btn"
+              >Explore All <i class="fa fa-arrow-right"></i></a
+            >
+          </div>
+          <div class="mega-cards-grid">
+            <a href="#" class="mic">
+              <div class="mic-icon-industry">
+                <img src="/assets/images/steel-industry.webp" alt="Steel" />
+              </div>
+              <span class="mic-title">Steel</span>
+            </a>
+            <a href="#" class="mic">
+              <div class="mic-icon-industry">
+                <img src="/assets/images/cement-industry.webp" alt="Cement" />
+              </div>
+              <span class="mic-title">Cement</span>
+            </a>
+            <a href="#" class="mic">
+              <div class="mic-icon-industry">
+                <img src="/assets/images/power-industry.webp" alt="Power" />
+              </div>
+              <span class="mic-title">Power</span>
+            </a>
+            <a href="#" class="mic">
+              <div class="mic-icon-industry">
+                <img src="/assets/images/sugar.webp" alt="Sugar" />
+              </div>
+              <span class="mic-title">Sugar</span>
+            </a>
+            <a href="#" class="mic">
+              <div class="mic-icon-industry">
+                <img src="/assets/images/mining-industry.webp" alt="Mining" />
+              </div>
+              <span class="mic-title">Mining</span>
+            </a>
+            <a href="#" class="mic">
+              <div class="mic-icon-industry">
+                <img
+                  src="/assets/images/oil-&-gas-industry.webp"
+                  alt="Oil & Gas"
+                />
+              </div>
+              <span class="mic-title">Oil & Gas</span>
+            </a>
+            <a href="#" class="mic">
+              <div class="mic-icon-industry">
+                <img src="/assets/images/tyre-industry.webp" alt="Tyre" />
+              </div>
+              <span class="mic-title">Tyre</span>
+            </a>
+            <a href="#" class="mic">
+              <div class="mic-icon-industry">
+                <img src="/assets/images/port.webp" alt="Port" />
+              </div>
+              <span class="mic-title">Port</span>
+            </a>
+            <a href="#" class="mic">
+              <div class="mic-icon-industry">
+                <img
+                  src="/assets/images/road-transport.webp"
+                  alt="Road Transport"
+                />
+              </div>
+              <span class="mic-title">Road Transport</span>
+            </a>
+            <a href="#" class="mic">
+              <div class="mic-icon-industry">
+                <img src="/assets/images/railway.webp" alt="Railways" />
+              </div>
+              <span class="mic-title">Railways</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <a href="#">About</a>
+    <a href="#">Insights</a>
+    <a href="#">Careers</a>
+
+    <button class="search-btn">
+      <svg viewBox="0 0 24 24">
+        <circle cx="10" cy="10" r="6.5" stroke="#d32f2f" stroke-width="1.8"
+        ></circle>
+        <line
+          x1="15"
+          y1="15"
+          x2="20"
+          y2="20"
+          stroke="#d32f2f"
+          stroke-width="1.8"
+          stroke-linecap="round"></line>
+      </svg>
+    </button>
+    <button class="contact-btn">Contact</button>
+  </nav>
+
+  <button class="menu-btn" id="openMenu">☰</button>
 </header>
 
-<style>
-  .site-header {
-    position: sticky;
-    top: 0;
-    z-index: 500;
-    background: rgba(8, 12, 20, 0.92);
-    backdrop-filter: blur(16px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    transition: background 0.3s ease;
-  }
+<!-- MOBILE MENU & OVERLAY -->
+<div class="overlay" id="overlay"></div>
+<div class="mobile-menu" id="mobileMenu">
+  <div class="menu-header">
+    <h2>
+      <img
+        src="/assets/images/logo-m.svg"
+        alt="EWAC Logo"
+        class="why-logo-inline"
+      />
+    </h2>
+    <button class="close-menu" id="closeMenu">×</button>
+  </div>
 
-  .header-inner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 2rem;
-    padding-top: 0.85rem;
-    padding-bottom: 0.85rem;
-  }
+  <ul class="menu">
+    <li><a href="/">Home</a></li>
+    <li class="has-submenu">
+      <a href="#"
+        >Products <span class="arrow"
+          ><img src="/assets/images/expand-arrow.webp" alt="Arrow" /></span
+        ></a
+      >
+      <ul class="submenu">
+        <li class="has-submenu">
+          <a href="#"
+            >Maintenance & Repair Products <span class="arrow"
+              ><img src="/assets/images/expand-arrow.webp" alt="Arrow" /></span
+            ></a
+          >
+          <ul class="submenu">
+            <li><a href="#">Manual Metal Arc Welding</a></li>
+            <li><a href="#">Flux Cored Wires & Wire Feeder</a></li>
+            <li><a href="#">Brazing Alloys & Fluxes</a></li>
+          </ul>
+        </li>
+        <li class="has-submenu">
+          <a href="#"
+            >Fabrication Products <span class="arrow"
+              ><img src="/assets/images/expand-arrow.webp" alt="Arrow" /></span
+            ></a
+          >
+          <ul class="submenu">
+            <li><a href="#">Stainless Steel Electrodes</a></li>
+            <li><a href="#">Mild Steel MIG Wires</a></li>
+            <li><a href="#">TIG Filler Rods</a></li>
+          </ul>
+        </li>
+        <li class="has-submenu">
+          <a href="#"
+            >Wear Liners & Components <span class="arrow"
+              ><img src="/assets/images/expand-arrow.webp" alt="Arrow" /></span
+            ></a
+          >
+          <ul class="submenu">
+            <li><a href="#">Chromium Carbide Plates</a></li>
+            <li><a href="#">Wear Buttons & Tiles</a></li>
+            <li><a href="#">Pipe Elbows & Spools</a></li>
+          </ul>
+        </li>
+        <li class="has-submenu">
+          <a href="#"
+            >Ceramic Liners & Components <span class="arrow"
+              ><img src="/assets/images/expand-arrow.webp" alt="Arrow" /></span
+            ></a
+          >
+          <ul class="submenu">
+            <li><a href="#">Alumina Ceramic Tiles</a></li>
+            <li><a href="#">Rubber-Ceramic Composites</a></li>
+            <li><a href="#">Ceramic Cyclones</a></li>
+          </ul>
+        </li>
+        <li class="has-submenu">
+          <a href="#"
+            >Equipment <span class="arrow"
+              ><img src="/assets/images/expand-arrow.webp" alt="Arrow" /></span
+            ></a
+          >
+          <ul class="submenu">
+            <li><a href="#">MIG Welding Machines</a></li>
+            <li><a href="#">Plasma Spray Systems</a></li>
+            <li><a href="#">PTA Systems</a></li>
+          </ul>
+        </li>
+      </ul>
+    </li>
 
-  .header-logo img {
-    height: 36px;
-    width: auto;
-    display: block;
-  }
+    <li class="has-submenu">
+      <a href="#"
+        >Services <span class="arrow"
+          ><img src="/assets/images/expand-arrow.webp" alt="Arrow" /></span
+        ></a
+      >
+      <ul class="submenu">
+        <li><a href="#">Turnkey Solutions</a></li>
+        <li><a href="#">EWAC Reclamation Facility</a></li>
+        <li><a href="#">Railways</a></li>
+      </ul>
+    </li>
 
-  .header-nav {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-  }
+    <li class="has-submenu">
+      <a href="#"
+        >Industries <span class="arrow"
+          ><img src="/assets/images/expand-arrow.webp" alt="Arrow" /></span
+        ></a
+      >
+      <ul class="submenu">
+        <li><a href="#">Steel</a></li>
+        <li><a href="#">Cement</a></li>
+        <li><a href="#">Power</a></li>
+        <li><a href="#">Sugar</a></li>
+        <li><a href="#">Mining</a></li>
+        <li><a href="#">Oil & Gas</a></li>
+        <li><a href="#">Tyre</a></li>
+        <li><a href="#">Port</a></li>
+        <li><a href="#">Road Transport</a></li>
+        <li><a href="#">Railways</a></li>
+      </ul>
+    </li>
 
-  .header-cta-row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-shrink: 0;
-  }
-
-  .btn-call {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.5rem 1.15rem;
-    background: linear-gradient(135deg, #6366F1 0%, #4f46e5 100%);
-    color: white;
-    font-size: 0.85rem;
-    font-weight: 700;
-    border-radius: 6px;
-    text-decoration: none;
-    white-space: nowrap;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
-    transition: all 0.22s ease;
-  }
-
-  .btn-call:hover {
-    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
-    transform: translateY(-1px);
-  }
-
-  @media (max-width: 768px) {
-    .desktop-only { display: none !important; }
-    .header-inner { gap: 1rem; }
-  }
-</style>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Insights</a></li>
+    <li><a href="#">Careers</a></li>
+    <li><a href="#">Contact</a></li>
+  </ul>
+</div>

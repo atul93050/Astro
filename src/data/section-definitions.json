@@ -45,5 +45,143 @@
         "repeaterFields": []
       }
     ]
+  },
+  {
+    "key": "about",
+    "name": "About & Stats",
+    "category": "other",
+    "description": "Gears background, welding gif, scroll color-changing paragraph, and counting stats row.",
+    "componentPath": "src/blocks/about.astro",
+    "fields": [
+      {
+        "name": "paragraph_text",
+        "label": "Paragraph Text (HTML allowed)",
+        "type": "text",
+        "required": false,
+        "default": "",
+        "options": [],
+        "repeaterFields": []
+      },
+      {
+        "name": "animation_gif",
+        "label": "Animation GIF",
+        "type": "image",
+        "required": false,
+        "default": "",
+        "options": [],
+        "repeaterFields": []
+      },
+      {
+        "name": "stats",
+        "label": "Statistics Counter",
+        "type": "repeater",
+        "required": false,
+        "default": "",
+        "options": [],
+        "repeaterFields": [
+          {
+            "name": "icon",
+            "label": "Stat Icon",
+            "type": "image",
+            "required": false,
+            "default": "",
+            "options": [],
+            "repeaterFields": []
+          },
+          {
+            "name": "target",
+            "label": "Target Number (e.g. 7000)",
+            "type": "text",
+            "required": false,
+            "default": "",
+            "options": [],
+            "repeaterFields": []
+          },
+          {
+            "name": "format",
+            "label": "Format (comma or empty)",
+            "type": "text",
+            "required": false,
+            "default": "",
+            "options": [],
+            "repeaterFields": []
+          },
+          {
+            "name": "label",
+            "label": "Stat Label",
+            "type": "text",
+            "required": false,
+            "default": "",
+            "options": [],
+            "repeaterFields": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "key": "casestudy_section",
+    "name": "CaseStudy Section",
+    "category": "other",
+    "description": "For case study",
+    "componentPath": "src/blocks/casestudy.astro",
+    "previewImage": "/uploads/blog2-1781780521686.png",
+    "fields": [
+      {
+        "name": "section_title",
+        "label": "Section Title",
+        "type": "text",
+        "required": false,
+        "default": "",
+        "options": [],
+        "repeaterFields": []
+      },
+      {
+        "name": "services_slider",
+        "label": "Services Slider",
+        "type": "repeater",
+        "required": false,
+        "default": "",
+        "options": [],
+        "repeaterFields": [
+          {
+            "name": "service_image",
+            "label": "Service Image",
+            "type": "image",
+            "required": false,
+            "default": "",
+            "options": [],
+            "repeaterFields": []
+          },
+          {
+            "name": "service_name",
+            "label": "Service Name",
+            "type": "text",
+            "required": false,
+            "default": "",
+            "options": [],
+            "repeaterFields": []
+          },
+          {
+            "name": "service_button",
+            "label": "Service Button",
+            "type": "link",
+            "required": false,
+            "default": "",
+            "options": [],
+            "repeaterFields": []
+          }
+        ]
+      },
+      {
+        "name": "bottom_cta",
+        "label": "Bottom CTA",
+        "type": "link",
+        "required": false,
+        "default": "",
+        "options": [],
+        "repeaterFields": []
+      }
+    ]
   }
 ]

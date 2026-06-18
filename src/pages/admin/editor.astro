@@ -517,10 +517,10 @@ import "../../styles/admin/css/editor.css";
 </AdminLayout>
 
 
-<script is:inline define:vars={{ pageData, isEditMode, BLOCK_REGISTRY }}>
+<script is:inline define:vars={{ pageData, isEditMode, BLOCK_REGISTRY, urlSlug: slug }}>
   // Hold initial state from server
   let blocks = pageData.blocks || [];
-  let originalSlug = pageData.slug || "";
+  let originalSlug = urlSlug || pageData.slug || "";
   let activeMediaPickerTarget = "";
 
   let attachSectionsData = [];

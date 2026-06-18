@@ -1,0 +1,115 @@
+/* =====================
+   ABOUT / STATS SECTION
+   ===================== */
+.about-section {
+  position: relative;
+  padding: 70px 0 60px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.about-gear-bg {
+  position: absolute;
+  right: 0px;
+  top: 0;
+  bottom: 0;
+  margin: auto;
+  width: 270px;
+  height: 290px;
+  pointer-events: none;
+  z-index: 0;
+  line-height: 0;
+}
+.about-gear-bg img {
+  position: absolute;
+  transform-origin: center center;
+}
+.gear1 {
+  width: 88px;
+  top: 55px;
+  left: 57px;
+  animation: gearCW 8s linear infinite;
+  position: absolute;
+}
+.gear2 {
+  width: 110px;
+  top: 8px;
+  left: 138px;
+  animation: gearCCW 10s linear infinite;
+  position: absolute;
+}
+.gear3 {
+  width: 120px;
+  bottom: auto;
+  left: 107px;
+  animation: gearCW 14.4s linear infinite;
+  top: 119px;
+  position: absolute;
+}
+
+.about-men-bg {
+  position: absolute;
+  left: 0;
+  bottom: -14%;
+  pointer-events: none;
+  z-index: 0;
+  line-height: 0;
+  height: fit-content;
+  width: 13%;
+}
+.about-men-bg img { width: 100%; }
+
+.about-para {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  max-width: 1096px;
+  margin: 0 auto 55px;
+  font-size: 26px;
+  font-style: normal;
+  font-weight: 300;
+  line-height: 38px;
+  color: #B4B4B4;
+  transition: color 0.35s ease;
+}
+.about-para--dark { color: #1a1a1a !important; }
+.about-para strong { color: #1a1a1a; font-weight: 300; }
+
+.stats-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  margin-left: 50px;
+  padding-top: 25px;
+}
+.stat-item { flex: 1; padding: 0 24px; position: relative; }
+.stats-row .stat-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0%;
+  background: #c0392b;
+  height: 70%;
+  display: block;
+  border-left: 3px solid #c0392b;
+}
+.stat-item .count { position: relative; left: -5px; }
+.stat-icon { font-size: 34px; color: #c0c0c0; margin-bottom: 14px; display: block; }
+.stat-number {
+  font-size: 100px;
+  font-weight: 400;
+  color: #c0c0c0;
+  line-height: 1;
+  margin-bottom: 10px;
+  letter-spacing: -1px;
+  margin-top: 10px;
+}
+.stat-label {
+  font-size: 21px;
+  color: #4A4A4A;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+.stat-item img { height: 40px; width: auto; }

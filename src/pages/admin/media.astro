@@ -62,6 +62,12 @@ export const prerender = false;
             <input type="text" id="new-folder-name" placeholder="New folder..." style="padding: 0.35rem 0.65rem; border-radius: 4px; border: 1px solid var(--border-color) || rgba(255,255,255,0.08); font-size: 0.8rem; max-width: 100px; background: var(--input-bg) || #0f172a; color: var(--text-main);" />
             <button type="button" class="btn btn-outline btn-sm" id="create-folder-btn" style="padding:0.35rem 0.5rem; font-size:0.8rem; height:29px;">+</button>
           </div>
+
+          <!-- Items per page selection -->
+          <div style="display:inline-flex; align-items:center; gap:0.35rem;">
+            <span style="font-size:0.8rem; color:var(--text-muted); white-space:nowrap;">Show:</span>
+            <input type="number" id="items-per-page" value="10" min="1" style="width: 58px; padding: 0.35rem 0.5rem; border-radius: 4px; border: 1px solid var(--border-color) || rgba(255,255,255,0.08); font-size: 0.8rem; background: var(--input-bg) || #0f172a; color: var(--text-main); text-align: center;" />
+          </div>
         </div>
       </div>
       
@@ -89,6 +95,13 @@ export const prerender = false;
           <h4>Your Media Library is empty</h4>
           <p>Click Browse above to upload static images and resources.</p>
         </div>
+      </div>
+
+      <!-- Pagination Controls -->
+      <div id="media-pagination" style="display:none; align-items:center; justify-content:center; gap:1rem; margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--border-color) || rgba(255,255,255,0.08);">
+        <button type="button" class="btn btn-outline btn-sm" id="prev-page-btn" style="padding:0.4rem 0.75rem; font-size:0.8rem;">Previous</button>
+        <span id="page-info" style="font-size:0.82rem; font-weight:600; color:var(--text-muted);">Page 1 of 1</span>
+        <button type="button" class="btn btn-outline btn-sm" id="next-page-btn" style="padding:0.4rem 0.75rem; font-size:0.8rem;">Next</button>
       </div>
     </div>
 
@@ -149,6 +162,17 @@ export const prerender = false;
             <div class="input-picker-wrap">
               <input type="text" id="asset-url-readonly" readonly style="font-family:monospace; font-size:0.78rem; opacity:0.85;" />
               <button type="button" class="btn btn-outline btn-sm" id="copy-url-btn">Copy</button>
+            </div>
+          </div>
+
+          <!-- Thumbnails & WebP Generation Section -->
+          <div class="form-group" id="generate-variants-container" style="display:none; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 1rem; flex-direction: column; gap: 0.5rem;">
+            <label style="font-size:0.8rem; font-weight:700; text-transform:uppercase; color:var(--text-muted);">Image Optimization &amp; Variants</label>
+            <p style="font-size:0.75rem; color:var(--text-dim); margin-bottom:0.25rem;">Generate high-performance WebP formats and responsive thumbnails for this image.</p>
+            <div style="display:flex; gap:0.5rem; align-items:center;">
+              <button type="button" class="btn btn-outline btn-sm" id="generate-variants-btn" style="flex:1;">Generate Thumbnails</button>
+            </div>
+            <div id="variants-status-list" style="display:none; flex-direction:column; gap:0.25rem; background:rgba(255,255,255,0.03); padding:0.4rem; border-radius:4px; font-size:0.7rem; font-family:monospace; border:1px solid rgba(255,255,255,0.06); max-height:100px; overflow-y:auto;">
             </div>
           </div>
 
@@ -455,6 +479,8 @@ export const prerender = false;
   let activeType = "all";
   let searchQuery = "";
   let bulkCheckedUrls = new Set();
+  let currentPage = 1;
+  let itemsPerPage = 10;
 
   function initMediaLibrary() {
     const grid = document.getElementById("main-media-grid");
@@ -472,10 +498,12 @@ export const prerender = false;
     const searchInput = document.getElementById("search-input");
     const typeFilter = document.getElementById("type-filter");
     const folderFilter = document.getElementById("folder-filter");
+    const itemsPerPageInput = document.getElementById("items-per-page");
 
     if (searchInput) {
       searchInput.addEventListener("input", (e) => {
         searchQuery = e.target.value.trim();
+        currentPage = 1;
         filterAndRenderMedia();
       });
     }
@@ -483,6 +511,7 @@ export const prerender = false;
     if (typeFilter) {
       typeFilter.addEventListener("change", (e) => {
         activeType = e.target.value;
+        currentPage = 1;
         filterAndRenderMedia();
       });
     }
@@ -490,7 +519,40 @@ export const prerender = false;
     if (folderFilter) {
       folderFilter.addEventListener("change", (e) => {
         activeFolder = e.target.value;
+        currentPage = 1;
         filterAndRenderMedia();
+      });
+    }
+
+    if (itemsPerPageInput) {
+      itemsPerPageInput.addEventListener("input", (e) => {
+        const val = parseInt(e.target.value, 10);
+        if (!isNaN(val) && val > 0) {
+          itemsPerPage = val;
+          currentPage = 1;
+          filterAndRenderMedia();
+        }
+      });
+    }
+
+    // Pagination buttons click handlers
+    const prevBtn = document.getElementById("prev-page-btn");
+    const nextBtn = document.getElementById("next-page-btn");
+    if (prevBtn) {
+      prevBtn.addEventListener("click", () => {
+        if (currentPage > 1) {
+          currentPage--;
+          filterAndRenderMedia();
+        }
+      });
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener("click", () => {
+        const totalPages = Math.ceil(getFilteredCount() / itemsPerPage) || 1;
+        if (currentPage < totalPages) {
+          currentPage++;
+          filterAndRenderMedia();
+        }
       });
     }
 
@@ -525,6 +587,28 @@ export const prerender = false;
         showToast(`Virtual folder "${folderPath}" created! Select items and move them.`);
       });
     }
+  }
+
+  // Helper function to calculate current active filtered items count
+  function getFilteredCount() {
+    const filtered = catalogMedia.filter(item => {
+      if (activeFolder !== "all") {
+        const itemFolder = item.folder || "";
+        if (itemFolder !== activeFolder) return false;
+      }
+      if (activeType !== "all") {
+        if (item.type !== activeType) return false;
+      }
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const titleMatch = (item.title || "").toLowerCase().includes(query);
+        const altMatch = (item.alt || "").toLowerCase().includes(query);
+        const urlMatch = (item.url || "").toLowerCase().includes(query);
+        if (!titleMatch && !altMatch && !urlMatch) return false;
+      }
+      return true;
+    });
+    return filtered.length;
   }
 
   // Load Media from Endpoint API
@@ -624,6 +708,24 @@ export const prerender = false;
 
     if (counter) counter.innerText = `${filtered.length} items`;
 
+    // Pagination calculations
+    const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+    if (currentPage > totalPages) {
+      currentPage = totalPages;
+    }
+
+    const paginationContainer = document.getElementById("media-pagination");
+    const prevBtn = document.getElementById("prev-page-btn");
+    const nextBtn = document.getElementById("next-page-btn");
+    const pageInfo = document.getElementById("page-info");
+
+    if (paginationContainer) {
+      paginationContainer.style.display = filtered.length > 0 ? "flex" : "none";
+    }
+    if (prevBtn) prevBtn.disabled = currentPage <= 1;
+    if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
+    if (pageInfo) pageInfo.innerText = `Page ${currentPage} of ${totalPages}`;
+
     if (filtered.length === 0) {
       if (emptyMsg) emptyMsg.style.display = "block";
       updateBulkActionBar();
@@ -631,7 +733,11 @@ export const prerender = false;
     }
     if (emptyMsg) emptyMsg.style.display = "none";
 
-    filtered.forEach(item => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedItems = filtered.slice(startIndex, endIndex);
+
+    paginatedItems.forEach(item => {
       const card = document.createElement("div");
       card.className = "media-card";
       card.setAttribute("data-url", item.url);
@@ -768,6 +874,28 @@ export const prerender = false;
       assetFolderSelect.value = item.folder || "";
     }
 
+    // Toggle Generate Thumbnails section
+    const genContainer = document.getElementById("generate-variants-container");
+    const genStatus = document.getElementById("variants-status-list");
+    if (genContainer) {
+      if (item.type === "image") {
+        genContainer.style.display = "flex";
+        if (item.variants && Object.keys(item.variants).length > 0) {
+          if (genStatus) {
+            genStatus.style.display = "flex";
+            genStatus.innerHTML = `<strong style="display:block; margin-bottom:0.25rem;">Generated Formats:</strong>` + Object.entries(item.variants).map(([k, v]) => `<div>• ${k}: <a href="${v}" target="_blank" style="color:#6366F1; text-decoration:underline; word-break:break-all;">${v}</a></div>`).join('');
+          }
+        } else {
+          if (genStatus) {
+            genStatus.style.display = "none";
+            genStatus.innerHTML = "";
+          }
+        }
+      } else {
+        genContainer.style.display = "none";
+      }
+    }
+
     // Render Usage Scan List
     const usageList = document.getElementById("media-usage-list");
     if (usageList) {
@@ -800,6 +928,39 @@ export const prerender = false;
   function setupDrawerHandlers() {
     const closeBtn = document.getElementById("close-drawer-btn");
     if (closeBtn) closeBtn.addEventListener("click", closeDrawer);
+
+    // Generate thumbnails & responsive formats click
+    const genBtn = document.getElementById("generate-variants-btn");
+    if (genBtn) {
+      genBtn.onclick = async () => {
+        if (!selectedAsset) return;
+        genBtn.disabled = true;
+        genBtn.innerText = "Generating...";
+        try {
+          const formData = new FormData();
+          formData.append("action", "generate-variants");
+          formData.append("url", selectedAsset.url);
+          const res = await fetch("/api/media-crud", {
+            method: "POST",
+            body: formData
+          });
+          const result = await res.json();
+          if (result.success) {
+            showToast("Thumbnails generated successfully!");
+            selectedAsset = result.media;
+            selectAssetItem(selectedAsset);
+            loadMediaCatalog();
+          } else {
+            showToast("Error: " + (result.error || "Generation failed"));
+          }
+        } catch (e) {
+          showToast("Network error generating thumbnails");
+        } finally {
+          genBtn.disabled = false;
+          genBtn.innerText = "Generate Thumbnails";
+        }
+      };
+    }
 
     // Metadata Save Click
     const saveMetaBtn = document.getElementById("save-asset-meta-btn");
