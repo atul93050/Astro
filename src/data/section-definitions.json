@@ -1,1 +1,49 @@
-[]
+[
+  {
+    "key": "home_banner",
+    "name": "Home Banner",
+    "category": "other",
+    "description": "",
+    "componentPath": "src/blocks/home-banner.astro",
+    "previewImage": "/uploads/asian-1781764320704.webp",
+    "fields": [
+      {
+        "name": "slider_images",
+        "label": "Slider Images",
+        "type": "repeater",
+        "required": false,
+        "default": "",
+        "options": [],
+        "repeaterFields": [
+          {
+            "name": "desktop_image",
+            "label": "Desktop Image",
+            "type": "image",
+            "required": false,
+            "default": "",
+            "options": [],
+            "repeaterFields": []
+          },
+          {
+            "name": "mobile_image",
+            "label": "Mobile Image",
+            "type": "image",
+            "required": false,
+            "default": "",
+            "options": [],
+            "repeaterFields": []
+          }
+        ]
+      },
+      {
+        "name": "counter_text",
+        "label": "Counter Text",
+        "type": "text",
+        "required": false,
+        "default": "",
+        "options": [],
+        "repeaterFields": []
+      }
+    ]
+  }
+]

@@ -189,7 +189,10 @@ import "../../styles/admin/css/section-defination.css";
             </div>
             <div class="form-group">
               <label>Preview Image</label>
-              <input type="text" id="def-preview" placeholder="/admin/previews/hero.png" />
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <input type="text" id="def-preview" placeholder="/admin/previews/hero.png" style="flex: 1;" />
+                <button type="button" class="btn btn-outline btn-sm" id="btn-pick-preview" style="height: 38px; white-space: nowrap;">Browse</button>
+              </div>
               <span class="field-help">Path to a thumbnail shown in the Add-Section catalog.</span>
             </div>
             <div class="form-group" style="grid-column: 1/-1;">
@@ -244,6 +247,19 @@ import "../../styles/admin/css/section-defination.css";
       <div class="modal-foot">
         <button class="btn btn-outline" id="cancel-delete-btn">Cancel</button>
         <button class="btn" style="background:var(--color-error); color:#fff;" id="confirm-delete-btn">Delete Definition</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Media Picker Modal -->
+  <div class="media-modal-overlay" id="media-modal">
+    <div class="media-modal">
+      <div class="media-modal-header">
+        <h4 id="media-modal-title">Select Preview Image</h4>
+        <button type="button" id="close-media-modal-btn" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:1.2rem;">✕</button>
+      </div>
+      <div class="media-grid" id="media-grid">
+        <div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-muted);">Loading media...</div>
       </div>
     </div>
   </div>
@@ -543,6 +559,50 @@ import "../../styles/admin/css/section-defination.css";
   .type-opt-btn:hover {
     background: rgba(99, 102, 241, 0.18) !important;
     color: var(--primary) !important;
+  }
+
+  /* Media picker modal */
+  .media-modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 9000; display: none; align-items: center; justify-content: center;
+  }
+  .media-modal-overlay.open { display: flex; }
+  .media-modal {
+    background: var(--bg-surface-solid);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    width: min(1200px,95vw);
+    height: min(850px,90vh);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  .media-modal-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+  .media-modal-header h4 { font-weight: 700; color: var(--text-main); }
+  .media-grid {
+    display:grid;
+    grid-template-columns: repeat(auto-fill,minmax(180px,1fr));
+    gap:1rem;
+    padding:1rem;
+    overflow-y:auto;
+    overflow-x:hidden;
+    flex:1;
+  }
+  .media-item {
+    position:relative;
+    height:180px;
+    border-radius:var(--radius-sm);
+    overflow:hidden;
+    border:2px solid transparent;
+    cursor:pointer;
+    background:#111827;
+  }
+  .media-item:hover { border-color: var(--primary); }
+  .media-item img {
+    display:block;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    object-position:center;
   }
 </style>
 
@@ -870,13 +930,16 @@ import "../../styles/admin/css/section-defination.css";
     const q = query.toLowerCase().trim();
     let html = '';
     
+    // Escape pathStr to prevent double quotes in JSON array string from breaking the HTML attribute markup
+    const escPathStr = String(pathStr || '').replace(/"/g, '&quot;');
+    
     for (const [groupName, types] of Object.entries(FIELD_GROUPS)) {
       const filteredTypes = types.filter(t => t.toLowerCase().includes(q));
       if (filteredTypes.length > 0) {
         html += `<div style="font-weight:600; color:var(--text-dim); margin-top:0.35rem; margin-bottom:0.15rem; font-size:0.75rem; text-transform:uppercase;">${groupName}</div>`;
         filteredTypes.forEach(t => {
           html += `
-            <button type="button" class="type-opt-btn" onclick="selectFieldType('${pathId}', '${pathStr}', '${t}')" style="display:block; width:100%; text-align:left; background:none; border:none; color:var(--text-main); padding:0.35rem 0.5rem; border-radius:4px; cursor:pointer; font-size:0.8rem; margin-bottom:0.1rem;">
+            <button type="button" class="type-opt-btn" onclick="selectFieldType('${pathId}', '${escPathStr}', '${t}')" style="display:block; width:100%; text-align:left; background:none; border:none; color:var(--text-main); padding:0.35rem 0.5rem; border-radius:4px; cursor:pointer; font-size:0.8rem; margin-bottom:0.1rem;">
               ${t}
             </button>
           `;
@@ -1158,6 +1221,40 @@ import "../../styles/admin/css/section-defination.css";
     setTimeout(() => t.classList.remove('visible'), 3000);
   }
 
+  window.openMediaPicker = async function() {
+    document.getElementById('media-modal').classList.add('open');
+    const gridEl = document.getElementById('media-grid');
+    gridEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-muted);">Loading...</div>';
+    try {
+      const res = await fetch('/api/media-crud', { credentials: 'include' });
+      const data = await res.json();
+      const images = (data.media || data.items || []).filter(item => ['image', 'svg'].includes(item.type));
+      if (!images.length) {
+        gridEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-muted);">No images in media library. Upload some first.</div>';
+        return;
+      }
+      gridEl.innerHTML = images.map(img =>
+        `<div class="media-item" onclick="window.selectMedia('${img.url}')">
+          <img src="${img.url}" alt="${img.title || ''}" loading="lazy" />
+        </div>`
+      ).join('');
+    } catch {
+      gridEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--color-error);">Failed to load media library</div>';
+    }
+  };
+
+  window.closeMediaPicker = function() {
+    document.getElementById('media-modal').classList.remove('open');
+  };
+
+  window.selectMedia = function(url) {
+    const input = document.getElementById('def-preview');
+    if (input) {
+      input.value = url;
+    }
+    closeMediaPicker();
+  };
+
   window.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
     const editKey = params.get('edit');
@@ -1167,5 +1264,9 @@ import "../../styles/admin/css/section-defination.css";
         openModal(true, def);
       }
     }
+
+    // Bind event listeners for the media picker
+    document.getElementById('btn-pick-preview')?.addEventListener('click', window.openMediaPicker);
+    document.getElementById('close-media-modal-btn')?.addEventListener('click', window.closeMediaPicker);
   });
 </script>
