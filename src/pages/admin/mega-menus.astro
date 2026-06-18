@@ -1,0 +1,323 @@
+---
+import AdminLayout from "../../layouts/admin/AdminLayout.astro";
+import { getAllMegaMenus } from "../../utils/menus";
+
+export const prerender = false;
+
+const megaMenus = getAllMegaMenus();
+---
+
+<AdminLayout title="Mega Menus">
+
+  <div class="page-header-flex">
+    <div>
+      <p class="page-sub">Build multi-column mega menu panels. Attach them to navigation items in the <a href="/admin/menus" style="color:var(--primary);">Menu Editor</a> via item type "Mega Menu".</p>
+    </div>
+    <button class="btn btn-primary" id="create-mega-btn">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      New Mega Menu
+    </button>
+  </div>
+
+  {megaMenus.length === 0 ? (
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-dim);margin-bottom:1rem;"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+      <h3>No mega menus yet</h3>
+      <p>Create a mega menu, then attach it to a menu item with type "Mega Menu".</p>
+    </div>
+  ) : (
+    <div class="mega-cards-grid">
+      {megaMenus.map(mega => (
+        <div class="mega-card">
+          <div class="mega-card__head">
+            <h4>{mega.name}</h4>
+            <span class="status-badge" style="background:rgba(99,102,241,0.1); color:var(--primary); border-color:rgba(99,102,241,0.2);">{mega.columns?.length ?? 0} cols</span>
+          </div>
+          <div class="mega-card__cols">
+            {(mega.columns || []).map(col => (
+              <div class="mega-col-preview" title={col.type}>
+                <span class="col-type-badge">{col.type}</span>
+                {col.heading && <span class="col-head-preview">{col.heading}</span>}
+              </div>
+            ))}
+          </div>
+          <div class="mega-card__foot">
+            <span style="font-size:0.75rem; color:var(--text-dim);">Width: {mega.width || '1200px'}</span>
+            <div style="display:flex; gap:0.5rem;">
+              <button class="btn btn-outline btn-sm" data-edit={mega.slug}>
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                Edit
+              </button>
+              <button class="btn btn-sm" data-delete={mega.slug} style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); color:#ef4444;">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+
+  <!-- Mega Menu Editor Modal -->
+  <div class="modal-overlay" id="mega-modal">
+    <div class="modal-panel" style="max-width:900px; width:95vw;">
+      <div class="modal-head">
+        <h3 id="mega-modal-title">New Mega Menu</h3>
+        <button class="modal-close" id="close-mega-modal">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="modal-body" style="max-height:70vh; overflow-y:auto;">
+        <input type="hidden" id="mega-edit-id" value="" />
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem;">
+          <div class="form-field">
+            <label for="mega-name">Mega Menu Name *</label>
+            <input type="text" id="mega-name" placeholder="e.g. Services Mega" />
+          </div>
+          <div class="form-field">
+            <label for="mega-width">Panel Width</label>
+            <input type="text" id="mega-width" value="1200px" placeholder="1200px or 100%" />
+          </div>
+        </div>
+        <h4 style="font-size:0.9rem; font-weight:700; margin-bottom:0.75rem; color:var(--text-main);">Columns</h4>
+        <div id="mega-columns-list" style="display:flex; flex-direction:column; gap:0.75rem;"></div>
+        <button type="button" class="btn btn-outline btn-sm" id="add-mega-col" style="margin-top:0.75rem;">+ Add Column</button>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-outline" id="cancel-mega-modal">Cancel</button>
+        <button class="btn btn-primary" id="save-mega-btn">Save Mega Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-notification" id="mega-toast"><div class="toast-content"><span id="mega-toast-msg"></span></div></div>
+
+</AdminLayout>
+
+<style is:global>
+  .page-header-flex { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:2rem; gap:1rem; }
+  .page-sub { color:var(--text-muted); font-size:0.88rem; margin-top:0.25rem; }
+  .empty-state { text-align:center; padding:4rem 2rem; border:1px dashed var(--border-color); border-radius:var(--radius-lg); color:var(--text-dim); }
+  .empty-state h3 { font-size:1.1rem; color:var(--text-muted); margin-bottom:0.5rem; }
+  .mega-cards-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(300px,1fr)); gap:1rem; }
+  .mega-card { background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1.25rem; display:flex; flex-direction:column; gap:0.85rem; }
+  .mega-card__head { display:flex; justify-content:space-between; align-items:center; }
+  .mega-card__head h4 { font-size:0.95rem; font-weight:700; }
+  .mega-card__cols { display:flex; flex-wrap:wrap; gap:0.4rem; }
+  .mega-col-preview { background:rgba(99,102,241,0.07); border:1px solid rgba(99,102,241,0.15); border-radius:6px; padding:0.3rem 0.6rem; display:flex; flex-direction:column; gap:0.15rem; }
+  .col-type-badge { font-size:0.68rem; font-weight:700; text-transform:uppercase; color:var(--primary); }
+  .col-head-preview { font-size:0.75rem; color:var(--text-muted); }
+  .mega-card__foot { display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-color); padding-top:0.75rem; }
+  .mega-col-editor { background:var(--bg-base); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:1rem; }
+  .mega-col-editor .col-fields { display:flex; flex-wrap:wrap; gap:0.75rem; margin-top:0.75rem; }
+  .modal-overlay { position:fixed; inset:0; background:rgba(8,12,20,0.8); backdrop-filter:blur(8px); z-index:9000; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity 0.2s ease; }
+  .modal-overlay.active { opacity:1; pointer-events:auto; }
+  .modal-panel { background:var(--bg-surface-solid); border:1px solid var(--border-color); border-radius:var(--radius-lg); box-shadow:0 20px 50px rgba(0,0,0,0.4); transform:scale(0.95); transition:transform 0.2s ease; }
+  .modal-overlay.active .modal-panel { transform:scale(1); }
+  .modal-head { display:flex; justify-content:space-between; align-items:center; padding:1.25rem 1.5rem; border-bottom:1px solid var(--border-color); }
+  .modal-head h3 { font-size:1.05rem; font-weight:700; }
+  .modal-close { background:none; border:none; color:var(--text-muted); cursor:pointer; padding:0.25rem; border-radius:4px; }
+  .modal-body { padding:1.5rem; }
+  .modal-body .form-field label { display:block; font-size:0.8rem; font-weight:600; color:var(--text-muted); margin-bottom:0.4rem; }
+  .modal-foot { padding:1rem 1.5rem; border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:0.75rem; }
+</style>
+
+<script>
+  let editingId: string | null = null;
+  let columns: any[] = [];
+
+  function buildColEditor(col: any, idx: number) {
+    const el = document.createElement('div');
+    el.className = 'mega-col-editor';
+    el.dataset.colIdx = String(idx);
+    el.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+        <strong style="font-size:0.85rem;">Column ${idx + 1}</strong>
+        <button type="button" class="btn btn-sm btn-outline" data-remove-col="${idx}">Remove</button>
+      </div>
+      <div class="col-fields">
+        <div class="form-field" style="flex:1; min-width:120px;">
+          <label>Type</label>
+          <select class="col-type-select" data-col="${idx}">
+            <option value="links" ${col.type==='links'?'selected':''}>Links</option>
+            <option value="html" ${col.type==='html'?'selected':''}>Custom HTML</option>
+            <option value="cta" ${col.type==='cta'?'selected':''}>CTA Block</option>
+          </select>
+        </div>
+        <div class="form-field" style="flex:0.5; min-width:90px;">
+          <label>Width</label>
+          <input type="text" class="col-width-input" data-col="${idx}" value="${col.width || '25%'}" placeholder="25%" />
+        </div>
+        <div class="form-field" style="flex:1; min-width:140px;">
+          <label>Heading</label>
+          <input type="text" class="col-heading-input" data-col="${idx}" value="${col.heading || ''}" placeholder="Column Heading" />
+        </div>
+      </div>
+      <div class="col-content-area" data-col="${idx}" style="margin-top:0.75rem;"></div>
+    `;
+
+    el.querySelector('[data-remove-col]')?.addEventListener('click', () => {
+      columns.splice(idx, 1);
+      renderColumns();
+    });
+
+    el.querySelector('.col-type-select')?.addEventListener('change', (e) => {
+      columns[idx].type = (e.target as HTMLSelectElement).value;
+      renderColumns();
+    });
+    el.querySelector('.col-width-input')?.addEventListener('input', (e) => { columns[idx].width = (e.target as HTMLInputElement).value; });
+    el.querySelector('.col-heading-input')?.addEventListener('input', (e) => { columns[idx].heading = (e.target as HTMLInputElement).value; });
+
+    const contentArea = el.querySelector('.col-content-area') as HTMLElement;
+    if (col.type === 'links') {
+      contentArea.innerHTML = `
+        <div class="col-links-list" style="display:flex; flex-direction:column; gap:0.4rem;">
+          ${(col.items||[]).map((item: any, i: number) => `
+            <div class="link-row" style="display:flex; gap:0.5rem; align-items:center;">
+              <input type="text" class="link-label" data-col="${idx}" data-li="${i}" value="${item.label||''}" placeholder="Label" style="flex:0.45;" />
+              <input type="text" class="link-url" data-col="${idx}" data-li="${i}" value="${item.url||''}" placeholder="URL" style="flex:0.55;" />
+              <button type="button" class="btn-action-sm" data-remove-link="${i}" title="Remove">×</button>
+            </div>
+          `).join('')}
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.5rem;" data-add-link="${idx}">+ Add Link</button>
+      `;
+      contentArea.querySelectorAll('[data-remove-link]').forEach(btn => {
+        const li = parseInt((btn as HTMLElement).dataset.removeLink!);
+        btn.addEventListener('click', () => { columns[idx].items.splice(li, 1); renderColumns(); });
+      });
+      contentArea.querySelector('[data-add-link]')?.addEventListener('click', () => {
+        if (!columns[idx].items) columns[idx].items = [];
+        columns[idx].items.push({ label: 'New Link', url: '/' });
+        renderColumns();
+      });
+      contentArea.querySelectorAll('.link-label').forEach(el => {
+        (el as HTMLInputElement).addEventListener('input', (e) => {
+          const li = parseInt((e.target as HTMLInputElement).dataset.li!);
+          columns[idx].items[li].label = (e.target as HTMLInputElement).value;
+        });
+      });
+      contentArea.querySelectorAll('.link-url').forEach(el => {
+        (el as HTMLInputElement).addEventListener('input', (e) => {
+          const li = parseInt((e.target as HTMLInputElement).dataset.li!);
+          columns[idx].items[li].url = (e.target as HTMLInputElement).value;
+        });
+      });
+    } else if (col.type === 'html') {
+      contentArea.innerHTML = `<textarea class="col-html-area" data-col="${idx}" placeholder="Enter custom HTML..." rows="4" style="width:100%; resize:vertical;">${col.html||''}</textarea>`;
+      contentArea.querySelector('.col-html-area')?.addEventListener('input', (e) => { columns[idx].html = (e.target as HTMLTextAreaElement).value; });
+    } else if (col.type === 'cta') {
+      const cta = col.cta || {};
+      contentArea.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:0.5rem;">
+          <input type="text" class="cta-heading" data-col="${idx}" value="${cta.heading||''}" placeholder="CTA Heading" />
+          <input type="text" class="cta-text" data-col="${idx}" value="${cta.text||''}" placeholder="CTA Text" />
+          <input type="text" class="cta-btn-label" data-col="${idx}" value="${cta.buttonLabel||''}" placeholder="Button Label" />
+          <input type="text" class="cta-btn-url" data-col="${idx}" value="${cta.buttonUrl||''}" placeholder="Button URL" />
+          <input type="text" class="cta-image" data-col="${idx}" value="${cta.image||''}" placeholder="Image URL (from media library)" />
+        </div>
+      `;
+      ['cta-heading','cta-text','cta-btn-label','cta-btn-url','cta-image'].forEach(cls => {
+        contentArea.querySelector(`.${cls}`)?.addEventListener('input', (e) => {
+          if (!columns[idx].cta) columns[idx].cta = {};
+          const keyMap: Record<string,string> = {'cta-heading':'heading','cta-text':'text','cta-btn-label':'buttonLabel','cta-btn-url':'buttonUrl','cta-image':'image'};
+          columns[idx].cta[keyMap[cls]] = (e.target as HTMLInputElement).value;
+        });
+      });
+    }
+    return el;
+  }
+
+  function renderColumns() {
+    const list = document.getElementById('mega-columns-list')!;
+    list.innerHTML = '';
+    columns.forEach((col, i) => list.appendChild(buildColEditor(col, i)));
+  }
+
+  function openModal(id?: string) {
+    const modal = document.getElementById('mega-modal')!;
+    const title = document.getElementById('mega-modal-title')!;
+    const idInput = document.getElementById('mega-edit-id') as HTMLInputElement;
+    const nameInput = document.getElementById('mega-name') as HTMLInputElement;
+    const widthInput = document.getElementById('mega-width') as HTMLInputElement;
+
+    if (id) {
+      editingId = id;
+      fetch(`/api/mega-menus-crud?id=${id}`).then(r => r.json()).then(mega => {
+        title.textContent = `Edit: ${mega.name}`;
+        idInput.value = mega.id;
+        nameInput.value = mega.name;
+        widthInput.value = mega.width || '1200px';
+        columns = JSON.parse(JSON.stringify(mega.columns || []));
+        renderColumns();
+      });
+    } else {
+      editingId = null;
+      title.textContent = 'New Mega Menu';
+      idInput.value = '';
+      nameInput.value = '';
+      widthInput.value = '1200px';
+      columns = [];
+      renderColumns();
+    }
+    modal.classList.add('active');
+  }
+
+  function init() {
+    const createBtn = document.getElementById('create-mega-btn');
+    const modal = document.getElementById('mega-modal');
+    const closeBtn = document.getElementById('close-mega-modal');
+    const cancelBtn = document.getElementById('cancel-mega-modal');
+    const saveBtn = document.getElementById('save-mega-btn') as HTMLButtonElement;
+    const addColBtn = document.getElementById('add-mega-col');
+
+    if (createBtn && !(createBtn as HTMLElement).dataset.init) {
+      (createBtn as HTMLElement).dataset.init = 'true';
+      createBtn.addEventListener('click', () => openModal());
+      closeBtn?.addEventListener('click', () => modal?.classList.remove('active'));
+      cancelBtn?.addEventListener('click', () => modal?.classList.remove('active'));
+      modal?.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('active'); });
+      addColBtn?.addEventListener('click', () => { columns.push({ type: 'links', width: '25%', heading: '', items: [] }); renderColumns(); });
+
+      saveBtn?.addEventListener('click', async () => {
+        const name = (document.getElementById('mega-name') as HTMLInputElement).value.trim();
+        const width = (document.getElementById('mega-width') as HTMLInputElement).value.trim() || '1200px';
+        const id = (document.getElementById('mega-edit-id') as HTMLInputElement).value;
+        if (!name) return;
+        saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+        const method = id ? 'PUT' : 'POST';
+        const body = id ? { id, name, width, columns } : { name, width, columns };
+        const res = await fetch('/api/mega-menus-crud', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const data = await res.json();
+        if (data.success) { showToast('Mega menu saved!'); modal?.classList.remove('active'); setTimeout(() => location.reload(), 800); }
+        else showToast(data.error || 'Save failed');
+        saveBtn.disabled = false; saveBtn.textContent = 'Save Mega Menu';
+      });
+
+      document.querySelectorAll('[data-edit]').forEach(btn => {
+        btn.addEventListener('click', function(this: HTMLElement) { openModal(this.dataset.edit); });
+      });
+      document.querySelectorAll('[data-delete]').forEach(btn => {
+        btn.addEventListener('click', function(this: HTMLElement) {
+          const id = this.dataset.delete!;
+          window.customConfirm(`Delete mega menu "${id}"?`, async () => {
+            const res = await fetch('/api/mega-menus-crud', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+            const data = await res.json();
+            if (data.success) location.reload();
+            else showToast(data.error || 'Delete failed');
+          });
+        });
+      });
+    }
+
+    function showToast(msg: string) {
+      const t = document.getElementById('mega-toast');
+      const m = document.getElementById('mega-toast-msg');
+      if (t && m) { m.textContent = msg; t.classList.add('active'); setTimeout(() => t.classList.remove('active'), 3000); }
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('astro:page-load', init);
+  if (document.readyState !== 'loading') init();
+</script>

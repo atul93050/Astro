@@ -1,0 +1,596 @@
+---
+import AdminLayout from "../../layouts/admin/AdminLayout.astro";
+import { getMenu, getAllMegaMenus } from "../../utils/menus";
+import { getCollection } from "astro:content";
+
+export const prerender = false;
+
+const id = Astro.url.searchParams.get('id');
+if (!id) return Astro.redirect('/admin/menus');
+
+const menu = getMenu(id);
+if (!menu) return Astro.redirect('/admin/menus');
+
+const megaMenus = getAllMegaMenus();
+
+// Content sources for "Add from content" panel
+const pages = await getCollection('pages').catch(() => []);
+const posts = await getCollection('blog').catch(() => []);
+---
+
+<AdminLayout title={`Edit: ${menu.name}`}>
+
+  <!-- Top bar -->
+  <div class="editor-topbar">
+    <div class="editor-breadcrumb">
+      <a href="/admin/menus" class="editor-back">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        All Menus
+      </a>
+      <span class="editor-bc-sep">/</span>
+      <span class="editor-bc-current">{menu.name}</span>
+    </div>
+    <div class="editor-topbar-actions">
+      <button class="btn btn-outline btn-sm" id="preview-nav-btn">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        Preview
+      </button>
+      <button class="btn btn-primary" id="save-menu-btn">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline></svg>
+        Save Menu
+      </button>
+    </div>
+  </div>
+
+  <!-- Editor Layout -->
+  <div class="menu-editor-layout">
+
+    <!-- Left Panel: Add Items -->
+    <aside class="add-items-panel">
+      <h3 class="panel-title">Add Items</h3>
+
+      <!-- Quick Add -->
+      <div class="add-section">
+        <h4 class="add-section-title">Custom Link</h4>
+        <div class="form-field"><label>Label</label><input type="text" id="quick-label" placeholder="Menu Label" /></div>
+        <div class="form-field"><label>URL / Link</label><input type="text" id="quick-url" placeholder="/ or https://..." /></div>
+        <div class="form-field"><label>Type</label>
+          <select id="quick-type">
+            <option value="custom-url">Custom URL</option>
+            <option value="external-url">External URL</option>
+            <option value="anchor">Anchor (#id)</option>
+            <option value="phone">Phone</option>
+            <option value="email">Email</option>
+            <option value="button">Button (CTA)</option>
+            <option value="mega-menu">Mega Menu</option>
+          </select>
+        </div>
+        <div class="form-field" id="mega-select-wrap" style="display:none;">
+          <label>Select Mega Menu</label>
+          <select id="quick-mega-id">
+            <option value="">— Choose —</option>
+            {megaMenus.map(m => <option value={m.slug}>{m.name}</option>)}
+          </select>
+        </div>
+        <button class="btn btn-primary" id="quick-add-btn" style="width:100%; margin-top:0.5rem;">Add to Menu</button>
+      </div>
+
+      <!-- From Pages -->
+      <div class="add-section">
+        <h4 class="add-section-title">From Pages</h4>
+        <input type="search" id="pages-search" placeholder="Search pages..." class="add-search" />
+        <div class="add-content-list" id="pages-list">
+          {pages.map(p => (
+            <label class="add-content-item">
+              <input type="checkbox" class="content-check" data-label={p.data.title} data-url={`/${p.data.slug || ''}`} data-type="page" />
+              <span>{p.data.title || p.id}</span>
+            </label>
+          ))}
+          {pages.length === 0 && <span class="add-empty">No pages found.</span>}
+        </div>
+        <button class="btn btn-outline btn-sm add-content-btn" data-source="pages" style="width:100%; margin-top:0.5rem;">Add Selected Pages</button>
+      </div>
+
+      <!-- From Blog Posts -->
+      <div class="add-section">
+        <h4 class="add-section-title">From Blog Posts</h4>
+        <input type="search" id="posts-search" placeholder="Search posts..." class="add-search" />
+        <div class="add-content-list" id="posts-list">
+          {posts.map(p => (
+            <label class="add-content-item">
+              <input type="checkbox" class="content-check" data-label={p.data.title} data-url={`/blog/${p.data.slug || p.id}`} data-type="blog-post" />
+              <span>{p.data.title || p.id}</span>
+            </label>
+          ))}
+          {posts.length === 0 && <span class="add-empty">No posts found.</span>}
+        </div>
+        <button class="btn btn-outline btn-sm add-content-btn" data-source="posts" style="width:100%; margin-top:0.5rem;">Add Selected Posts</button>
+      </div>
+    </aside>
+
+    <!-- Center Panel: Menu Tree -->
+    <main class="menu-tree-panel">
+      <div class="menu-tree-header">
+        <h3 class="panel-title">Menu Structure</h3>
+        <span class="item-count" id="item-count">0 items</span>
+      </div>
+
+      <div id="menu-tree-root" class="menu-tree-root sortable-list">
+        <!-- Rendered by JS -->
+      </div>
+
+      <div id="menu-tree-empty" class="menu-tree-empty" style="display:none;">
+        <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-dim);margin-bottom:0.75rem;"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line></svg>
+        <p>Add items from the left panel to build your menu.</p>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Preview Modal -->
+  <div class="preview-overlay" id="nav-preview-overlay">
+    <div class="preview-modal-wrap">
+      <div class="preview-modal-top">
+        <div class="preview-modal-title"><h4>Navigation Preview — {menu.name}</h4></div>
+        <div class="preview-device-selectors">
+          <button class="device-btn active" data-device="desktop">Desktop</button>
+          <button class="device-btn" data-device="tablet">Tablet</button>
+          <button class="device-btn" data-device="mobile">Mobile</button>
+        </div>
+        <button class="btn btn-outline btn-sm" id="close-preview">Close</button>
+      </div>
+      <div class="preview-modal-body-frame">
+        <div class="device-viewport desktop" id="preview-viewport">
+          <iframe id="preview-iframe" src="/" title="Navigation Preview"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-notification" id="editor-toast"><div class="toast-content"><span id="editor-toast-msg"></span></div></div>
+
+</AdminLayout>
+
+<style is:global>
+  .editor-topbar { display:flex; justify-content:space-between; align-items:center; padding-bottom:1.25rem; border-bottom:1px solid var(--border-color); margin-bottom:1.5rem; }
+  .editor-breadcrumb { display:flex; align-items:center; gap:0.5rem; font-size:0.88rem; }
+  .editor-back { display:flex; align-items:center; gap:0.3rem; color:var(--primary); text-decoration:none; font-weight:600; }
+  .editor-back:hover { text-decoration:underline; }
+  .editor-bc-sep { color:var(--text-dim); }
+  .editor-bc-current { color:var(--text-muted); }
+  .editor-topbar-actions { display:flex; gap:0.75rem; }
+
+  .menu-editor-layout { display:grid; grid-template-columns:280px 1fr; gap:1.5rem; align-items:start; }
+  @media(max-width:900px) { .menu-editor-layout { grid-template-columns:1fr; } }
+
+  /* Add Items Panel */
+  .add-items-panel { background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius-lg); overflow:hidden; position:sticky; top:1.5rem; max-height:calc(100vh - 9rem); overflow-y:auto; }
+  .panel-title { font-size:0.92rem; font-weight:700; color:var(--text-main); padding:1rem 1.25rem; border-bottom:1px solid var(--border-color); background:rgba(156,163,175,0.02); }
+  .add-section { padding:1rem 1.25rem; border-bottom:1px solid var(--border-color); display:flex; flex-direction:column; gap:0.6rem; }
+  .add-section:last-child { border-bottom:none; }
+  .add-section-title { font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-dim); margin-bottom:0.25rem; }
+  .add-search { width:100%; }
+  .add-content-list { max-height:140px; overflow-y:auto; display:flex; flex-direction:column; gap:0.2rem; border:1px solid var(--border-color); border-radius:6px; padding:0.4rem; background:var(--bg-base); }
+  .add-content-item { display:flex; align-items:center; gap:0.5rem; padding:0.3rem 0.4rem; border-radius:4px; cursor:pointer; font-size:0.82rem; color:var(--text-muted); }
+  .add-content-item:hover { background:rgba(99,102,241,0.05); color:var(--text-main); }
+  .add-content-item span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .add-empty { font-size:0.78rem; color:var(--text-dim); padding:0.5rem; text-align:center; }
+
+  /* Menu Tree */
+  .menu-tree-panel { background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius-lg); overflow:hidden; min-height:400px; }
+  .menu-tree-header { display:flex; justify-content:space-between; align-items:center; padding:1rem 1.25rem; border-bottom:1px solid var(--border-color); }
+  .item-count { font-size:0.78rem; color:var(--text-dim); font-weight:600; background:rgba(156,163,175,0.07); padding:0.15rem 0.5rem; border-radius:8px; }
+  .menu-tree-root { padding:1rem; display:flex; flex-direction:column; gap:0.5rem; }
+  .menu-tree-empty { padding:3rem 2rem; text-align:center; color:var(--text-dim); font-size:0.88rem; display:flex; flex-direction:column; align-items:center; }
+
+  /* Menu Item Card */
+  .menu-item-card { background:var(--bg-base); border:1px solid var(--border-color); border-radius:var(--radius-sm); overflow:hidden; }
+  .menu-item-card.is-dragging { opacity:0.5; }
+  .menu-item-row { display:flex; align-items:center; gap:0.5rem; padding:0.65rem 0.85rem; }
+  .menu-item-handle { cursor:grab; color:var(--text-dim); flex-shrink:0; padding:0.15rem; }
+  .menu-item-handle:active { cursor:grabbing; }
+  .menu-item-label { flex:1; font-size:0.88rem; font-weight:600; color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .menu-item-type { font-size:0.68rem; font-weight:700; text-transform:uppercase; color:var(--text-dim); background:rgba(156,163,175,0.07); padding:0.1rem 0.4rem; border-radius:4px; flex-shrink:0; }
+  .menu-item-actions { display:flex; gap:0.25rem; flex-shrink:0; }
+  .menu-item-toggle { width:24px; height:24px; border-radius:4px; background:none; border:none; color:var(--text-dim); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:var(--transition); flex-shrink:0; }
+  .menu-item-toggle:hover { color:var(--text-main); background:rgba(156,163,175,0.08); }
+  .menu-item-settings { padding:1rem; background:rgba(99,102,241,0.03); border-top:1px solid var(--border-color); display:none; }
+  .menu-item-settings.is-open { display:block; }
+  .settings-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; }
+  @media(max-width:600px) { .settings-grid { grid-template-columns:1fr; } }
+  .settings-grid .form-field label { font-size:0.75rem; margin-bottom:0.3rem; }
+
+  /* Nested children */
+  .menu-item-children { padding:0 0.75rem 0.75rem 2rem; display:flex; flex-direction:column; gap:0.4rem; min-height:30px; }
+  .menu-item-children .menu-item-card { border-color:rgba(99,102,241,0.15); border-style:dashed; }
+  .menu-item-children .menu-item-card .menu-item-children { padding-left:1.5rem; }
+
+  /* Drop target hint */
+  .sortable-list .sortable-ghost { opacity:0.3; background:var(--primary-light); border:1px dashed var(--primary); border-radius:var(--radius-sm); }
+</style>
+
+<script define:vars={{ menuData: menu, megaMenusList: megaMenus }}>
+  let items = JSON.parse(JSON.stringify(menuData.items || []));
+
+  // ── Utilities ──────────────────────────────────────────────────────────────
+
+  function uid() {
+    return 'item-' + Math.random().toString(36).substr(2, 9);
+  }
+
+  function countAll(items) {
+    let n = items.length;
+    for (const i of items) n += countAll(i.children || []);
+    return n;
+  }
+
+  function updateCount() {
+    const el = document.getElementById('item-count');
+    if (el) el.textContent = `${countAll(items)} items`;
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('editor-toast');
+    const m = document.getElementById('editor-toast-msg');
+    if (t && m) { m.textContent = msg; t.classList.add('active'); setTimeout(() => t.classList.remove('active'), 3000); }
+  }
+
+  // ── Build item card HTML ────────────────────────────────────────────────────
+
+  function buildItemCard(item, depth = 0) {
+    const card = document.createElement('div');
+    card.className = 'menu-item-card';
+    card.dataset.id = item.id;
+
+    const badgeOpts = '<option value="">None</option><option value="new">New</option><option value="hot">Hot</option><option value="featured">Featured</option><option value="custom">Custom</option>';
+    const targetOpts = `<option value="_self" ${item.target==='_self'?'selected':''}>Same Tab</option><option value="_blank" ${item.target==='_blank'?'selected':''}>New Tab</option>`;
+    const typeOpts = ['custom-url','external-url','page','section','blog-post','blog-category','anchor','phone','email','button','mega-menu']
+      .map(t => `<option value="${t}" ${item.type===t?'selected':''}>${t}</option>`).join('');
+    const megaOpts = `<option value="">— None —</option>` + megaMenusList.map(m => `<option value="${m.slug}" ${item.megaMenuId===m.slug?'selected':''}>${m.name}</option>`).join('');
+
+    card.innerHTML = `
+      <div class="menu-item-row">
+        <div class="menu-item-handle" title="Drag to reorder">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
+        </div>
+        <span class="menu-item-label">${item.label || 'Untitled'}</span>
+        <span class="menu-item-type">${item.type}</span>
+        <div class="menu-item-actions">
+          <button class="menu-item-toggle settings-toggle" title="Item Settings">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          </button>
+          <button class="menu-item-toggle add-child-toggle" title="Add Child Item">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </button>
+          <button class="menu-item-toggle duplicate-toggle" title="Duplicate">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          </button>
+          <button class="menu-item-toggle delete-toggle" title="Delete" style="color:var(--color-error);">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="menu-item-settings">
+        <div class="settings-grid">
+          <div class="form-field">
+            <label>Label *</label>
+            <input type="text" class="field-label" value="${escHtml(item.label)}" placeholder="Menu Label" />
+          </div>
+          <div class="form-field">
+            <label>URL / Link</label>
+            <input type="text" class="field-url" value="${escHtml(item.url)}" placeholder="/ or https://..." />
+          </div>
+          <div class="form-field">
+            <label>Type</label>
+            <select class="field-type">${typeOpts}</select>
+          </div>
+          <div class="form-field">
+            <label>Open In</label>
+            <select class="field-target">${targetOpts}</select>
+          </div>
+          <div class="form-field field-mega-wrap" style="${item.type==='mega-menu'?'':'display:none;'}">
+            <label>Mega Menu Panel</label>
+            <select class="field-mega-id">${megaOpts}</select>
+          </div>
+          <div class="form-field">
+            <label>Badge</label>
+            <select class="field-badge-style">${badgeOpts.replace(`value="${item.badge?.style}"`, `value="${item.badge?.style}" selected`)}</select>
+          </div>
+          <div class="form-field field-badge-text-wrap" style="${item.badge?.style?'':'display:none;'}">
+            <label>Badge Text</label>
+            <input type="text" class="field-badge-text" value="${escHtml(item.badge?.text||'')}" placeholder="NEW" />
+          </div>
+          <div class="form-field">
+            <label>CSS Class</label>
+            <input type="text" class="field-class" value="${escHtml(item.cssClass)}" placeholder="my-custom-class" />
+          </div>
+          <div class="form-field">
+            <label>Icon (Font Awesome class)</label>
+            <input type="text" class="field-icon" value="${item.icon?.value||''}" placeholder="fas fa-star" />
+          </div>
+          <div class="form-field" style="grid-column:1/-1;">
+            <label>Description</label>
+            <input type="text" class="field-description" value="${escHtml(item.description)}" placeholder="Short description shown in dropdown" />
+          </div>
+        </div>
+      </div>
+
+      ${depth < 3 ? `<div class="menu-item-children sortable-list" data-parent="${item.id}"></div>` : ''}
+    `;
+
+    // Wire settings fields
+    wireItemFields(card, item);
+
+    // Render children
+    if (depth < 3) {
+      const childrenContainer = card.querySelector('.menu-item-children');
+      (item.children || []).forEach(child => {
+        childrenContainer.appendChild(buildItemCard(child, depth + 1));
+      });
+      initSortable(childrenContainer, item.children || []);
+    }
+
+    return card;
+  }
+
+  function escHtml(s) { return (s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function wireItemFields(card, item) {
+    card.querySelector('.settings-toggle')?.addEventListener('click', () => {
+      card.querySelector('.menu-item-settings')?.classList.toggle('is-open');
+    });
+
+    card.querySelector('.delete-toggle')?.addEventListener('click', () => {
+      window.customConfirm('Delete this menu item?', () => {
+        removeItemById(items, item.id);
+        renderTree();
+      });
+    });
+
+    card.querySelector('.duplicate-toggle')?.addEventListener('click', () => {
+      const clone = JSON.parse(JSON.stringify(item));
+      clone.id = uid();
+      clone.label += ' (Copy)';
+      const parentArr = findParentArray(items, item.id);
+      const idx = parentArr.findIndex(i => i.id === item.id);
+      parentArr.splice(idx + 1, 0, clone);
+      renderTree();
+    });
+
+    card.querySelector('.add-child-toggle')?.addEventListener('click', () => {
+      const child = { id: uid(), label: 'New Item', type: 'custom-url', url: '/', target: '_self', icon: null, image: null, badge: null, description: '', cssClass: '', customId: '', visibility: { device: 'all', auth: 'all' }, megaMenuId: null, children: [] };
+      if (!item.children) item.children = [];
+      item.children.push(child);
+      renderTree();
+    });
+
+    const labelInput = card.querySelector('.field-label');
+    labelInput?.addEventListener('input', (e) => {
+      item.label = e.target.value;
+      card.querySelector('.menu-item-label').textContent = e.target.value || 'Untitled';
+    });
+
+    card.querySelector('.field-url')?.addEventListener('input', e => { item.url = e.target.value; });
+    card.querySelector('.field-description')?.addEventListener('input', e => { item.description = e.target.value; });
+    card.querySelector('.field-class')?.addEventListener('input', e => { item.cssClass = e.target.value; });
+    card.querySelector('.field-icon')?.addEventListener('input', e => {
+      item.icon = e.target.value ? { type: 'fa', value: e.target.value } : null;
+    });
+
+    const typeSelect = card.querySelector('.field-type');
+    typeSelect?.addEventListener('change', e => {
+      item.type = e.target.value;
+      card.querySelector('.menu-item-type').textContent = item.type;
+      const megaWrap = card.querySelector('.field-mega-wrap');
+      if (megaWrap) megaWrap.style.display = item.type === 'mega-menu' ? '' : 'none';
+    });
+
+    card.querySelector('.field-target')?.addEventListener('change', e => { item.target = e.target.value; });
+    card.querySelector('.field-mega-id')?.addEventListener('change', e => { item.megaMenuId = e.target.value || null; });
+
+    const badgeStyleSelect = card.querySelector('.field-badge-style');
+    badgeStyleSelect?.addEventListener('change', e => {
+      item.badge = e.target.value ? { style: e.target.value, text: item.badge?.text || e.target.value.toUpperCase() } : null;
+      const wrap = card.querySelector('.field-badge-text-wrap');
+      if (wrap) wrap.style.display = e.target.value ? '' : 'none';
+    });
+    card.querySelector('.field-badge-text')?.addEventListener('input', e => {
+      if (item.badge) item.badge.text = e.target.value;
+    });
+  }
+
+  // ── Tree utilities ──────────────────────────────────────────────────────────
+
+  function removeItemById(arr, id) {
+    const idx = arr.findIndex(i => i.id === id);
+    if (idx !== -1) { arr.splice(idx, 1); return true; }
+    for (const item of arr) {
+      if (removeItemById(item.children || [], id)) return true;
+    }
+    return false;
+  }
+
+  function findParentArray(arr, id) {
+    if (arr.some(i => i.id === id)) return arr;
+    for (const item of arr) {
+      const found = findParentArray(item.children || [], id);
+      if (found) return found;
+    }
+    return arr;
+  }
+
+  function addItem(newItem) {
+    items.push(newItem);
+    renderTree();
+  }
+
+  // ── Render entire tree ──────────────────────────────────────────────────────
+
+  function renderTree() {
+    const root = document.getElementById('menu-tree-root');
+    const empty = document.getElementById('menu-tree-empty');
+    if (!root) return;
+    root.innerHTML = '';
+
+    if (items.length === 0) {
+      empty && (empty.style.display = 'flex');
+    } else {
+      empty && (empty.style.display = 'none');
+      items.forEach(item => root.appendChild(buildItemCard(item, 0)));
+    }
+    initSortable(root, items);
+    updateCount();
+  }
+
+  // ── SortableJS drag-and-drop ────────────────────────────────────────────────
+
+  function initSortable(container, itemsArr) {
+    if (!container || !window.Sortable) return;
+    if (container._sortable) container._sortable.destroy();
+    container._sortable = new window.Sortable(container, {
+      group: 'menu-items',
+      animation: 150,
+      handle: '.menu-item-handle',
+      ghostClass: 'sortable-ghost',
+      onEnd(evt) {
+        // Rebuild the items array from DOM order after drag
+        syncFromDOM();
+        updateCount();
+      },
+    });
+  }
+
+  function syncFromDOM() {
+    function readLevel(container) {
+      const result = [];
+      container.querySelectorAll(':scope > .menu-item-card').forEach(card => {
+        const id = card.dataset.id;
+        let item = findById(items, id);
+        if (!item) return;
+        const childContainer = card.querySelector(':scope > .menu-item-children');
+        item = { ...item, children: childContainer ? readLevel(childContainer) : [] };
+        result.push(item);
+      });
+      return result;
+    }
+    function findById(arr, id) {
+      for (const i of arr) {
+        if (i.id === id) return i;
+        const found = findById(i.children || [], id);
+        if (found) return found;
+      }
+      return null;
+    }
+    const root = document.getElementById('menu-tree-root');
+    if (root) items = readLevel(root);
+  }
+
+  // ── Add items panel ─────────────────────────────────────────────────────────
+
+  function initAddPanel() {
+    const quickType = document.getElementById('quick-type');
+    const megaWrap = document.getElementById('mega-select-wrap');
+    quickType?.addEventListener('change', () => {
+      if (megaWrap) megaWrap.style.display = quickType.value === 'mega-menu' ? '' : 'none';
+    });
+
+    document.getElementById('quick-add-btn')?.addEventListener('click', () => {
+      const label = (document.getElementById('quick-label')).value.trim();
+      const url = (document.getElementById('quick-url')).value.trim();
+      const type = (document.getElementById('quick-type')).value;
+      const megaId = (document.getElementById('quick-mega-id'))?.value || null;
+      if (!label) { (document.getElementById('quick-label')).focus(); return; }
+      addItem({ id: uid(), label, url: url||'/', type, target: '_self', icon: null, image: null, badge: null, description: '', cssClass: '', customId: '', visibility: { device: 'all', auth: 'all' }, megaMenuId: megaId, children: [] });
+      (document.getElementById('quick-label')).value = '';
+      (document.getElementById('quick-url')).value = '';
+    });
+
+    document.querySelectorAll('.add-content-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const source = this.dataset.source;
+        const listId = source === 'pages' ? 'pages-list' : 'posts-list';
+        document.querySelectorAll(`#${listId} .content-check:checked`).forEach(chk => {
+          addItem({ id: uid(), label: chk.dataset.label, url: chk.dataset.url, type: chk.dataset.type, target: '_self', icon: null, image: null, badge: null, description: '', cssClass: '', customId: '', visibility: { device: 'all', auth: 'all' }, megaMenuId: null, children: [] });
+          chk.checked = false;
+        });
+      });
+    });
+
+    // Search filters
+    document.getElementById('pages-search')?.addEventListener('input', function() {
+      const q = this.value.toLowerCase();
+      document.querySelectorAll('#pages-list .add-content-item').forEach(item => {
+        item.style.display = item.querySelector('span').textContent.toLowerCase().includes(q) ? '' : 'none';
+      });
+    });
+    document.getElementById('posts-search')?.addEventListener('input', function() {
+      const q = this.value.toLowerCase();
+      document.querySelectorAll('#posts-list .add-content-item').forEach(item => {
+        item.style.display = item.querySelector('span').textContent.toLowerCase().includes(q) ? '' : 'none';
+      });
+    });
+  }
+
+  // ── Save ───────────────────────────────────────────────────────────────────
+
+  function initSave() {
+    document.getElementById('save-menu-btn')?.addEventListener('click', async () => {
+      syncFromDOM();
+      const btn = document.getElementById('save-menu-btn');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      try {
+        const res = await fetch('/api/menus-crud', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: menuData.slug, items }),
+        });
+        const data = await res.json();
+        if (data.success) showToast('Menu saved!');
+        else showToast(data.error || 'Save failed');
+      } catch { showToast('Network error'); }
+      finally { btn.disabled = false; btn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path></svg> Save Menu'; }
+    });
+  }
+
+  // ── Preview ────────────────────────────────────────────────────────────────
+
+  function initPreview() {
+    const overlay = document.getElementById('nav-preview-overlay');
+    document.getElementById('preview-nav-btn')?.addEventListener('click', () => overlay?.classList.add('active'));
+    document.getElementById('close-preview')?.addEventListener('click', () => overlay?.classList.remove('active'));
+    document.querySelectorAll('.device-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.device-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        const vp = document.getElementById('preview-viewport');
+        if (vp) { vp.className = `device-viewport ${this.dataset.device}`; }
+      });
+    });
+  }
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+
+  function init() {
+    const root = document.getElementById('menu-tree-root');
+    if (!root || root.dataset.init === 'true') return;
+    root.dataset.init = 'true';
+
+    renderTree();
+    initAddPanel();
+    initSave();
+    initPreview();
+  }
+
+  // Load SortableJS then init
+  if (!window.Sortable) {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js';
+    script.onload = () => { document.addEventListener('DOMContentLoaded', init); if (document.readyState !== 'loading') init(); };
+    document.head.appendChild(script);
+  } else {
+    document.addEventListener('DOMContentLoaded', init);
+    if (document.readyState !== 'loading') init();
+  }
+  document.addEventListener('astro:page-load', init);
+</script>

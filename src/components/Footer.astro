@@ -2,6 +2,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import footerJson from "../data/footer.json";
+import FooterMenuCol from "./navigation/FooterMenuCol.astro";
+import { getMenuAtLocation } from "../utils/menus";
+
+// CMS-driven footer columns
+const footerCol1 = getMenuAtLocation("footer-col-1");
+const footerCol2 = getMenuAtLocation("footer-col-2");
+const footerCol3 = getMenuAtLocation("footer-col-3");
+const footerBottom = getMenuAtLocation("footer-bottom");
 
 // Dynamic Settings loader
 let footer = {
@@ -9,20 +17,8 @@ let footer = {
   phone: footerJson.phone || "",
   offices: footerJson.offices || [],
   cities: footerJson.cities || [],
-  logo: {
-    footerLogoUrl: "/images/scroll-logo.svg"
-  },
-  socialLinks: {
-    facebook: "",
-    linkedin: "",
-    twitter: "",
-    instagram: ""
-  },
-  navigation: [
-    { text: "Home", link: "/" },
-    { text: "About Us", link: "/about-us" },
-    { text: "Contact", link: "/contact" }
-  ] as Array<{ text: string; link: string; newTab?: boolean }>
+  logo: { footerLogoUrl: "/images/scroll-logo.svg" },
+  socialLinks: { facebook: "", linkedin: "", twitter: "", instagram: "" },
 };
 
 try {
@@ -31,19 +27,17 @@ try {
     const data = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
     if (data.logo) footer.logo = data.logo;
     if (data.socialLinks) footer.socialLinks = data.socialLinks;
-    if (data.footerNavigation) footer.navigation = data.footerNavigation;
-    
-    // Merge contactInfo
     if (data.contactInfo) {
       if (data.contactInfo.description) footer.description = data.contactInfo.description;
       if (data.contactInfo.phone) footer.phone = data.contactInfo.phone;
-      if (data.contactInfo.offices && data.contactInfo.offices.length > 0) footer.offices = data.contactInfo.offices;
-      if (data.contactInfo.cities && data.contactInfo.cities.length > 0) footer.cities = data.contactInfo.cities;
+      if (data.contactInfo.offices?.length) footer.offices = data.contactInfo.offices;
+      if (data.contactInfo.cities?.length) footer.cities = data.contactInfo.cities;
     }
   }
-} catch (e) {
-  // Safe fallback
-}
+} catch (e) {}
+
+// Check if any CMS footer column is assigned
+const hasCmsColumns = footerCol1 || footerCol2 || footerCol3;
 ---
 
 <footer class="site">
@@ -53,132 +47,115 @@ try {
   <div class="footer-gradient footer-gradient-3"></div>
 
   <div class="container">
-
     <div class="foot-grid">
 
+      <!-- Col 1: Brand block -->
       <div class="tangence-detail">
-
         <div class="logo footer-logo">
           <a href="/">
-            <img
-              src={footer.logo.footerLogoUrl || "/images/scroll-logo.svg"}
-              alt="Tangence"
-            />
+            <img src={footer.logo.footerLogoUrl || "/images/scroll-logo.svg"} alt="Tangence" />
           </a>
         </div>
 
-        <p class="footer-description">
-          {footer.description}
-        </p>
+        <p class="footer-description">{footer.description}</p>
 
         <div class="footer-contact" style="display:flex; flex-direction:column; gap:0.5rem;">
-          <a href={`tel:${footer.phone}`}>
-            <i
-              class="fa fa-phone"
-              aria-hidden="true"
-            ></i>
+          {footer.phone && (
+            <a href={`tel:${footer.phone}`}>
+              <i class="fa fa-phone" aria-hidden="true"></i>
+              <span>{footer.phone}</span>
+            </a>
+          )}
 
-            <span>
-              {footer.phone}
-            </span>
-          </a>
-
-          <div class="footer-socials" style="display: flex; gap: 0.75rem; margin-top: 0.5rem; align-items:center;">
+          <div class="footer-socials" style="display:flex; gap:0.75rem; margin-top:0.5rem; align-items:center;">
             {footer.socialLinks.facebook && (
-              <a href={footer.socialLinks.facebook} target="_blank" class="social-icon" title="Facebook" style="color:#9CA3AF; text-decoration:none; transition:all 0.2s ease;">
+              <a href={footer.socialLinks.facebook} target="_blank" class="social-icon" title="Facebook" style="color:#9CA3AF;">
                 <i class="fa fa-facebook" aria-hidden="true" style="font-size:1.15rem;"></i>
               </a>
             )}
             {footer.socialLinks.linkedin && (
-              <a href={footer.socialLinks.linkedin} target="_blank" class="social-icon" title="LinkedIn" style="color:#9CA3AF; text-decoration:none; transition:all 0.2s ease;">
+              <a href={footer.socialLinks.linkedin} target="_blank" class="social-icon" title="LinkedIn" style="color:#9CA3AF;">
                 <i class="fa fa-linkedin" aria-hidden="true" style="font-size:1.15rem;"></i>
               </a>
             )}
             {footer.socialLinks.twitter && (
-              <a href={footer.socialLinks.twitter} target="_blank" class="social-icon" title="Twitter/X" style="color:#9CA3AF; text-decoration:none; transition:all 0.2s ease;">
+              <a href={footer.socialLinks.twitter} target="_blank" class="social-icon" title="Twitter/X" style="color:#9CA3AF;">
                 <i class="fa fa-twitter" aria-hidden="true" style="font-size:1.15rem;"></i>
               </a>
             )}
             {footer.socialLinks.instagram && (
-              <a href={footer.socialLinks.instagram} target="_blank" class="social-icon" title="Instagram" style="color:#9CA3AF; text-decoration:none; transition:all 0.2s ease;">
+              <a href={footer.socialLinks.instagram} target="_blank" class="social-icon" title="Instagram" style="color:#9CA3AF;">
                 <i class="fa fa-instagram" aria-hidden="true" style="font-size:1.15rem;"></i>
               </a>
             )}
           </div>
         </div>
-
       </div>
 
-      <!-- Footer Menu Links -->
-      <div class="footer-links-col" style="display:flex; flex-direction:column; gap:0.75rem;">
-        <h3 style="font-family:var(--font-heading); color:white; font-size:1.1rem; font-weight:700; margin-bottom:0.5rem; text-transform:uppercase; letter-spacing:0.03em;">Quick Links</h3>
-        <div style="display:flex; flex-direction:column; gap:0.65rem;">
-          {footer.navigation.map((item: any) => (
-            <a href={item.link} target={item.newTab ? "_blank" : "_self"} style="color:#9CA3AF; font-size:0.92rem; text-decoration:none; transition:all 0.2s ease;" onmouseover="this.style.color='#6366F1'" onmouseout="this.style.color='#9CA3AF'">
-              {item.text}
-            </a>
+      <!-- CMS Footer Nav Columns (if assigned) or fallback address block -->
+      {hasCmsColumns ? (
+        <>
+          {footerCol1 && (
+            <FooterMenuCol
+              menu={footerCol1}
+              heading={footerCol1.name}
+            />
+          )}
+          {footerCol2 && (
+            <FooterMenuCol
+              menu={footerCol2}
+              heading={footerCol2.name}
+            />
+          )}
+          {footerCol3 && (
+            <FooterMenuCol
+              menu={footerCol3}
+              heading={footerCol3.name}
+            />
+          )}
+        </>
+      ) : (
+        /* Fallback: addresses (existing behaviour when no CMS menus assigned) */
+        <div class="footer-address">
+          {footer.offices.map((office) => (
+            <div class="address-items">
+              <img src={office.icon} alt={office.title} />
+              <div class="head-office">
+                <h3>{office.title}</h3>
+                <p>{office.address}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+    </div>
+
+    <!-- City list -->
+    {footer.cities.length > 0 && (
+      <div class="city-details">
+        <div class="city-details-frts">
+          {footer.cities.map((city, index) => (
+            <>
+              <span>{city}</span>
+              {index < footer.cities.length - 1 && <span> | </span>}
+            </>
           ))}
         </div>
       </div>
-
-      <div class="footer-address">
-
-        {footer.offices.map((office) => (
-
-          <div class="address-items">
-
-            <img
-              src={office.icon}
-              alt={office.title}
-            />
-
-            <div class="head-office">
-
-              <h3>
-                {office.title}
-              </h3>
-
-              <p>
-                {office.address}
-              </p>
-
-            </div>
-
-          </div>
-
-        ))}
-
-      </div>
-
-    </div>
-
-    <div class="city-details">
-
-      <div class="city-details-frts">
-
-        {footer.cities.map((city, index) => (
-
-          <>
-            <span>{city}</span>
-
-            {index < footer.cities.length - 1 && (
-              <span> | </span>
-            )}
-
-          </>
-
-        ))}
-
-      </div>
-
-    </div>
-
+    )}
   </div>
 
+  <!-- Footer bottom bar -->
   <div class="foot-bottom">
-    © {new Date().getFullYear()}
-    {" "}
-    Tangence India. All rights reserved.
+    <span>© {new Date().getFullYear()} Tangence India. All rights reserved.</span>
+    {footerBottom && footerBottom.items.length > 0 && (
+      <nav class="footer-bottom-nav" aria-label="Footer legal links">
+        {footerBottom.items.map(item => (
+          <a href={item.url} target={item.target} class="foot-bottom-link">{item.label}</a>
+        ))}
+      </nav>
+    )}
   </div>
 
 </footer>
@@ -195,8 +172,58 @@ try {
       gap: 30px !important;
     }
   }
-  .footer-links-col a:hover {
-    color: #6366F1 !important;
-    text-decoration: underline !important;
+
+  /* CMS Footer Nav Columns */
+  .footer-nav-col {}
+  .footer-nav-heading {
+    font-family: var(--font-heading, 'Outfit', sans-serif);
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
   }
+  .footer-nav-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+  .footer-nav-link {
+    color: #9CA3AF;
+    font-size: 0.92rem;
+    text-decoration: none;
+    transition: color 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .footer-nav-link:hover { color: #6366F1; }
+
+  /* Footer bottom bar links */
+  .foot-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .footer-bottom-nav {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .foot-bottom-link {
+    color: #6B7280;
+    font-size: 0.8rem;
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+  .foot-bottom-link:hover { color: #9CA3AF; }
+
+  .social-icon:hover { color: #6366F1 !important; text-decoration: none; }
 </style>

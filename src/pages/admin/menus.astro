@@ -1,448 +1,272 @@
 ---
 import AdminLayout from "../../layouts/admin/AdminLayout.astro";
-import fs from "node:fs";
-import path from "node:path";
+import { getAllMenus, getMenuLocations } from "../../utils/menus";
 
 export const prerender = false;
 
-// 1. Fetch current settings
-const SETTINGS_FILE = path.resolve("src/data/global-settings.json");
-let settings = {
-  navigation: [] as any[],
-  footerNavigation: [] as any[]
-};
+const menus = getAllMenus();
+const locations = getMenuLocations();
 
-if (fs.existsSync(SETTINGS_FILE)) {
-  try {
-    const data = fs.readFileSync(SETTINGS_FILE, "utf-8");
-    const parsed = JSON.parse(data);
-    settings.navigation = parsed.navigation || [];
-    settings.footerNavigation = parsed.footerNavigation || [];
-  } catch (e) {
-    console.error("Error reading settings in menus.astro:", e);
+// Build reverse map: menuId → location labels
+const menuLocMap: Record<string, string[]> = {};
+for (const [key, loc] of Object.entries(locations)) {
+  if (loc.menuId) {
+    if (!menuLocMap[loc.menuId]) menuLocMap[loc.menuId] = [];
+    menuLocMap[loc.menuId].push(loc.label);
   }
 }
 ---
 
-<AdminLayout title="Menu Manager">
-  
-  <div class="menus-header">
-    <div class="header-text">
-      <p class="subtitle">Manage header dropdown navigation menus (with submenus parent/child nesting) and footer navigation links lists.</p>
+<AdminLayout title="Menus">
+
+  <div class="page-header-flex">
+    <div>
+      <p class="page-sub">Create and manage all navigation menus. Assign them to locations in <a href="/admin/menu-locations" style="color:var(--primary);">Menu Locations</a>.</p>
     </div>
-    <div class="header-actions">
-      <button class="btn btn-primary" id="save-menus-btn">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-        <span>Save Menus</span>
-      </button>
+    <button class="btn btn-primary" id="create-menu-btn">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      New Menu
+    </button>
+  </div>
+
+  {menus.length === 0 ? (
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-dim); margin-bottom:1rem;"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+      <h3>No menus yet</h3>
+      <p>Click <strong>New Menu</strong> to create your first navigation menu.</p>
+    </div>
+  ) : (
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Menu Name</th>
+            <th>Items</th>
+            <th>Assigned To</th>
+            <th>Last Updated</th>
+            <th style="text-align:right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {menus.map(menu => (
+            <tr>
+              <td>
+                <strong style="color:var(--text-main);">{menu.name}</strong>
+                <div style="font-size:0.78rem; color:var(--text-dim); margin-top:2px; font-family:monospace;">{menu.slug}</div>
+              </td>
+              <td>
+                <span class="status-badge" style="background:rgba(99,102,241,0.1); color:var(--primary); border-color:rgba(99,102,241,0.2);">
+                  {menu.items?.length ?? 0} items
+                </span>
+              </td>
+              <td>
+                {(menuLocMap[menu.slug] || []).length > 0 ? (
+                  <div style="display:flex; flex-wrap:wrap; gap:0.35rem;">
+                    {(menuLocMap[menu.slug] || []).map(loc => (
+                      <span class="loc-tag">{loc}</span>
+                    ))}
+                  </div>
+                ) : (
+                  <span style="color:var(--text-dim); font-size:0.82rem;">— Unassigned</span>
+                )}
+              </td>
+              <td style="color:var(--text-muted); font-size:0.83rem;">
+                {menu.updatedAt ? new Date(menu.updatedAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—'}
+              </td>
+              <td>
+                <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                  <a href={`/admin/menu-editor?id=${menu.slug}`} class="btn btn-outline btn-sm" title="Edit Menu">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    Edit
+                  </a>
+                  <button class="btn btn-outline btn-sm" data-action="duplicate" data-id={menu.slug} data-name={menu.name}>
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    Duplicate
+                  </button>
+                  <button class="btn btn-outline btn-sm" data-action="export" data-id={menu.slug}>
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    Export
+                  </button>
+                  <button class="btn btn-sm" data-action="delete" data-id={menu.slug} style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); color:#ef4444;">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+
+  <!-- Quick links -->
+  <div class="quick-links-grid">
+    <a href="/admin/menu-locations" class="quick-link-card">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+      <div><strong>Menu Locations</strong><small>Assign menus to header, footer, sidebar slots</small></div>
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </a>
+    <a href="/admin/mega-menus" class="quick-link-card">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+      <div><strong>Mega Menus</strong><small>Build multi-column dropdown panels</small></div>
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </a>
+    <a href="/admin/menu-settings" class="quick-link-card">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9z"></path></svg>
+      <div><strong>Menu Settings</strong><small>Global animation, breakpoint, alignment</small></div>
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </a>
+  </div>
+
+  <!-- Create Menu Modal -->
+  <div class="modal-overlay" id="create-modal">
+    <div class="modal-panel">
+      <div class="modal-head">
+        <h3>Create New Menu</h3>
+        <button class="modal-close" id="close-create-modal">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-field">
+          <label for="new-menu-name">Menu Name *</label>
+          <input type="text" id="new-menu-name" placeholder="e.g. Main Navigation" />
+        </div>
+        <div class="form-field">
+          <label for="new-menu-desc">Description</label>
+          <input type="text" id="new-menu-desc" placeholder="Optional description" />
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-outline" id="cancel-create-modal">Cancel</button>
+        <button class="btn btn-primary" id="confirm-create-menu">Create Menu</button>
+      </div>
     </div>
   </div>
 
-  <form id="menus-manager-form" onsubmit="return false;">
-    
-    <div class="menus-layout-grid">
-      
-      <!-- Left Column: Header Dropdown Menu Manager -->
-      <div class="menus-card-wrapper">
-        <div class="form-card">
-          <div class="card-header block-header-flex">
-            <h3>Header Navigation Menu</h3>
-            <button type="button" class="btn btn-outline btn-sm" id="add-header-menu-btn">
-              <span>+ Add Top Item</span>
-            </button>
-          </div>
-          <div class="card-body">
-            <div class="menu-items-tree" id="header-menu-container">
-              <!-- JS Injected dynamic links lists -->
-            </div>
-            <div class="menu-empty-state" id="header-menu-empty" style="display:none;">
-              <p>No header menu items. Click "+ Add Top Item" to begin.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Right Column: Footer Links Menu Manager -->
-      <div class="menus-card-wrapper">
-        <div class="form-card">
-          <div class="card-header block-header-flex">
-            <h3>Footer Quick Links Menu</h3>
-            <button type="button" class="btn btn-outline btn-sm" id="add-footer-menu-btn">
-              <span>+ Add Footer Link</span>
-            </button>
-          </div>
-          <div class="card-body">
-            <div class="menu-items-tree" id="footer-menu-container">
-              <!-- JS Injected dynamic links lists -->
-            </div>
-            <div class="menu-empty-state" id="footer-menu-empty" style="display:none;">
-              <p>No footer links. Click "+ Add Footer Link" to begin.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-
-  </form>
-
-  <!-- Toast Toast Notifications -->
-  <div class="toast-notification" id="toast-notify">
-    <div class="toast-content">
-      <span class="toast-message" id="toast-message">Menus saved successfully!</span>
-    </div>
-  </div>
+  <div class="toast-notification" id="menus-toast"><div class="toast-content"><span id="menus-toast-msg"></span></div></div>
 
 </AdminLayout>
 
 <style is:global>
-  .menus-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 2rem;
-    gap: 1.5rem;
-  }
-  .menus-layout-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
-    align-items: start;
-  }
-  @media (max-width: 1024px) {
-    .menus-layout-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  .menu-items-tree {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .menu-node-card {
-    background: rgba(156, 163, 175, 0.02);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    padding: 1rem;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    transition: var(--transition);
-  }
-  .menu-node-card:hover {
-    border-color: rgba(99, 102, 241, 0.2);
-  }
-
-  .menu-node-controls {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-  }
-  .menu-node-inputs {
-    display: flex;
-    gap: 0.5rem;
-    flex: 1;
-  }
-  @media (max-width: 640px) {
-    .menu-node-inputs {
-      flex-direction: column;
-    }
-  }
-
-  .menu-node-actions {
-    display: flex;
-    gap: 0.25rem;
-    flex-shrink: 0;
-  }
-
-  /* Submenus block */
-  .sub-menu-container {
-    border-left: 2px dashed rgba(99, 102, 241, 0.2);
-    padding-left: 1.25rem;
-    margin-top: 0.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-  .sub-menu-node {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    background: rgba(156, 163, 175, 0.01);
-    border: 1px dashed var(--border-color);
-    border-radius: 6px;
-    padding: 0.65rem;
-  }
-
-  .menu-empty-state {
-    text-align: center;
-    padding: 3rem 1.5rem;
-    color: var(--text-dim);
-    font-size: 0.88rem;
-    border: 1px dashed var(--border-color);
-    border-radius: var(--radius-sm);
-    background: rgba(156, 163, 175, 0.005);
-  }
-
-  /* Icons buttons */
-  .btn-action-sm {
-    width: 26px;
-    height: 26px;
-    border-radius: 4px;
-    border: 1px solid var(--border-color);
-    background: transparent;
-    color: var(--text-muted);
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: var(--transition);
-  }
-  .btn-action-sm:hover {
-    color: var(--text-main);
-    background-color: rgba(156, 163, 175, 0.08);
-  }
-  .btn-delete-node:hover {
-    color: var(--color-error);
-    border-color: rgba(239, 68, 68, 0.2);
-    background-color: rgba(239, 68, 68, 0.05);
-  }
+  .page-header-flex { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:2rem; gap:1rem; }
+  .page-sub { color:var(--text-muted); font-size:0.88rem; margin-top:0.25rem; }
+  .empty-state { text-align:center; padding:4rem 2rem; border:1px dashed var(--border-color); border-radius:var(--radius-lg); color:var(--text-dim); }
+  .empty-state h3 { font-size:1.1rem; color:var(--text-muted); margin-bottom:0.5rem; }
+  .loc-tag { display:inline-block; padding:0.15rem 0.55rem; background:rgba(16,185,129,0.1); color:#10B981; border:1px solid rgba(16,185,129,0.2); border-radius:10px; font-size:0.72rem; font-weight:600; }
+  .quick-links-grid { display:grid; grid-template-columns: repeat(3,1fr); gap:1rem; margin-top:2rem; }
+  @media(max-width:900px) { .quick-links-grid { grid-template-columns:1fr; } }
+  .quick-link-card { display:flex; align-items:center; gap:1rem; padding:1.15rem 1.35rem; background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius-md); transition:var(--transition); text-decoration:none; color:var(--text-main); }
+  .quick-link-card:hover { border-color:var(--primary); background:var(--primary-light); }
+  .quick-link-card > div { flex:1; }
+  .quick-link-card strong { display:block; font-size:0.92rem; }
+  .quick-link-card small { color:var(--text-dim); font-size:0.78rem; }
+  .modal-overlay { position:fixed; inset:0; background:rgba(8,12,20,0.8); backdrop-filter:blur(8px); z-index:9000; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity 0.2s ease; }
+  .modal-overlay.active { opacity:1; pointer-events:auto; }
+  .modal-panel { background:var(--bg-surface-solid); border:1px solid var(--border-color); border-radius:var(--radius-lg); width:90%; max-width:480px; box-shadow:0 20px 50px rgba(0,0,0,0.4); transform:scale(0.95); transition:transform 0.2s ease; }
+  .modal-overlay.active .modal-panel { transform:scale(1); }
+  .modal-head { display:flex; justify-content:space-between; align-items:center; padding:1.25rem 1.5rem; border-bottom:1px solid var(--border-color); }
+  .modal-head h3 { font-size:1.05rem; font-weight:700; }
+  .modal-close { background:none; border:none; color:var(--text-muted); cursor:pointer; padding:0.25rem; border-radius:4px; }
+  .modal-close:hover { color:var(--text-main); }
+  .modal-body { padding:1.5rem; display:flex; flex-direction:column; gap:1rem; }
+  .modal-body .form-field label { display:block; font-size:0.8rem; font-weight:600; color:var(--text-muted); margin-bottom:0.4rem; }
+  .modal-foot { padding:1rem 1.5rem; border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:0.75rem; }
 </style>
 
-<script is:inline define:vars={{ settings }}>
-  let headerMenu = settings.navigation || [];
-  let footerMenu = settings.footerNavigation || [];
+<script>
+  function init() {
+    // Create modal
+    const createBtn = document.getElementById('create-menu-btn');
+    const modal = document.getElementById('create-modal');
+    const closeModal = document.getElementById('close-create-modal');
+    const cancelModal = document.getElementById('cancel-create-modal');
+    const confirmCreate = document.getElementById('confirm-create-menu');
+    const nameInput = document.getElementById('new-menu-name') as HTMLInputElement;
+    const descInput = document.getElementById('new-menu-desc') as HTMLInputElement;
 
-  const ICONS = {
-    arrowUp: `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"></polyline></svg>`,
-    arrowDown: `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>`,
-    delete: `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`,
-    plus: `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`
-  };
+    const openModal = () => { modal?.classList.add('active'); nameInput?.focus(); };
+    const closeModalFn = () => { modal?.classList.remove('active'); if(nameInput) nameInput.value=''; if(descInput) descInput.value=''; };
 
-  function initMenus() {
-    const saveBtn = document.getElementById("save-menus-btn");
-    if (!saveBtn || saveBtn.dataset.listenerBound) return;
-    saveBtn.dataset.listenerBound = "true";
+    createBtn?.addEventListener('click', openModal);
+    closeModal?.addEventListener('click', closeModalFn);
+    cancelModal?.addEventListener('click', closeModalFn);
+    modal?.addEventListener('click', (e) => { if(e.target === modal) closeModalFn(); });
 
-    renderHeaderMenu();
-    renderFooterMenu();
-
-    // Bind triggers
-    saveBtn.addEventListener("click", submitMenusForm);
-    document.getElementById("add-header-menu-btn").addEventListener("click", addTopHeaderItem);
-    document.getElementById("add-footer-menu-btn").addEventListener("click", addFooterItem);
-  }
-
-  // HEADER MENU LOGIC
-  function renderHeaderMenu() {
-    const container = document.getElementById("header-menu-container");
-    const emptyState = document.getElementById("header-menu-empty");
-    if (!container) return;
-    container.innerHTML = "";
-
-    if (headerMenu.length === 0) {
-      emptyState.style.display = "block";
-      return;
-    }
-    emptyState.style.display = "none";
-
-    headerMenu.forEach((item, idx) => {
-      const card = document.createElement("div");
-      card.className = "menu-node-card";
-      
-      const childrenHtml = (item.children || []).map((sub, sIdx) => `
-        <div class="sub-menu-node">
-          <div class="menu-node-inputs">
-            <input type="text" value="${sub.text}" placeholder="Sub Label" oninput="syncSubLink(${idx}, ${sIdx}, 'text', this.value)" style="flex:0.4; font-size:0.8rem; padding:0.4rem 0.6rem;" />
-            <input type="text" value="${sub.link}" placeholder="Sub Destination Link" oninput="syncSubLink(${idx}, ${sIdx}, 'link', this.value)" style="flex:0.6; font-size:0.8rem; padding:0.4rem 0.6rem;" />
-          </div>
-          <div class="menu-node-actions">
-            <button type="button" class="btn-action-sm btn-delete-node" onclick="deleteSubLink(${idx}, ${sIdx})" title="Delete Sub Link">${ICONS.delete}</button>
-          </div>
-        </div>
-      `).join('');
-
-      card.innerHTML = `
-        <div class="menu-node-controls">
-          <div class="menu-node-inputs">
-            <input type="text" value="${item.text}" placeholder="Menu Label" oninput="syncTopLink(${idx}, 'text', this.value)" style="flex:0.4; font-weight:600;" />
-            <input type="text" value="${item.link || ''}" placeholder="Link (e.g. /about-us or #)" oninput="syncTopLink(${idx}, 'link', this.value)" style="flex:0.6;" />
-          </div>
-          <div class="menu-node-actions">
-            <button type="button" class="btn-action-sm" onclick="addHeaderSubItem(${idx})" title="Add Submenu Link" style="color:var(--primary);">${ICONS.plus}</button>
-            <button type="button" class="btn-action-sm" onclick="moveHeaderItem(${idx}, -1)" title="Move Up">${ICONS.arrowUp}</button>
-            <button type="button" class="btn-action-sm" onclick="moveHeaderItem(${idx}, 1)" title="Move Down">${ICONS.arrowDown}</button>
-            <button type="button" class="btn-action-sm btn-delete-node" onclick="deleteHeaderItem(${idx})" title="Delete Menu Item">${ICONS.delete}</button>
-          </div>
-        </div>
-        ${(item.children && item.children.length > 0) ? `<div class="sub-menu-container">${childrenHtml}</div>` : ''}
-      `;
-      container.appendChild(card);
+    confirmCreate?.addEventListener('click', async () => {
+      const name = nameInput?.value.trim();
+      if (!name) { nameInput?.focus(); return; }
+      confirmCreate.textContent = 'Creating…';
+      (confirmCreate as HTMLButtonElement).disabled = true;
+      try {
+        const res = await fetch('/api/menus-crud', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, description: descInput?.value || '' }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          window.location.href = `/admin/menu-editor?id=${data.menu.slug}`;
+        } else {
+          showToast(data.error || 'Failed to create menu');
+          (confirmCreate as HTMLButtonElement).disabled = false;
+          confirmCreate.textContent = 'Create Menu';
+        }
+      } catch { showToast('Network error'); (confirmCreate as HTMLButtonElement).disabled = false; confirmCreate.textContent = 'Create Menu'; }
     });
-  }
 
-  window.syncTopLink = function(idx, field, val) {
-    headerMenu[idx][field] = val;
-  };
-  window.syncSubLink = function(idx, sIdx, field, val) {
-    headerMenu[idx].children[sIdx][field] = val;
-  };
-  window.addHeaderSubItem = function(idx) {
-    if (!headerMenu[idx].children) headerMenu[idx].children = [];
-    headerMenu[idx].children.push({ text: "New Sub Link", link: "/" });
-    renderHeaderMenu();
-  };
-  window.deleteSubLink = function(idx, sIdx) {
-    headerMenu[idx].children.splice(sIdx, 1);
-    renderHeaderMenu();
-  };
-  window.moveHeaderItem = function(idx, dir) {
-    const targetIdx = idx + dir;
-    if (targetIdx < 0 || targetIdx >= headerMenu.length) return;
-    const temp = headerMenu[idx];
-    headerMenu[idx] = headerMenu[targetIdx];
-    headerMenu[targetIdx] = temp;
-    renderHeaderMenu();
-  };
-  window.deleteHeaderItem = function(idx) {
-    window.customConfirm("Delete this Header menu item and all its submenus?", () => {
-      headerMenu.splice(idx, 1);
-      renderHeaderMenu();
-    });
-  };
-  function addTopHeaderItem() {
-    headerMenu.push({ text: "New Link", link: "/", children: [] });
-    renderHeaderMenu();
-  }
+    nameInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') confirmCreate?.click(); });
 
-  // FOOTER MENU LOGIC
-  function renderFooterMenu() {
-    const container = document.getElementById("footer-menu-container");
-    const emptyState = document.getElementById("footer-menu-empty");
-    if (!container) return;
-    container.innerHTML = "";
+    // Row actions
+    document.querySelectorAll('[data-action]').forEach(btn => {
+      btn.addEventListener('click', async function(this: HTMLElement) {
+        const action = this.dataset.action;
+        const id = this.dataset.id!;
 
-    if (footerMenu.length === 0) {
-      emptyState.style.display = "block";
-      return;
-    }
-    emptyState.style.display = "none";
+        if (action === 'delete') {
+          window.customConfirm(`Delete menu "${id}"? This cannot be undone.`, async () => {
+            const res = await fetch('/api/menus-crud', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+            const data = await res.json();
+            if (data.success) window.location.reload();
+            else showToast(data.error || 'Delete failed');
+          });
+        }
 
-    footerMenu.forEach((item, idx) => {
-      const card = document.createElement("div");
-      card.className = "menu-node-card";
-      
-      card.innerHTML = `
-        <div class="menu-node-controls">
-          <div class="menu-node-inputs">
-            <input type="text" value="${item.text}" placeholder="Link Label" oninput="syncFooterLink(${idx}, 'text', this.value)" style="flex:0.3; font-weight:600;" />
-            <input type="text" value="${item.link}" placeholder="Destination URL (e.g. /privacy)" oninput="syncFooterLink(${idx}, 'link', this.value)" style="flex:0.5;" />
-            <div style="display:flex; align-items:center; gap:0.35rem; flex:0.2;">
-              <input type="checkbox" id="foot-tab-${idx}" ${item.newTab ? 'checked' : ''} onchange="syncFooterLink(${idx}, 'newTab', this.checked)" style="width:auto;" />
-              <label for="foot-tab-${idx}" style="cursor:pointer; font-size:0.75rem;">New Tab</label>
-            </div>
-          </div>
-          <div class="menu-node-actions">
-            <button type="button" class="btn-action-sm" onclick="moveFooterItem(${idx}, -1)" title="Move Up">${ICONS.arrowUp}</button>
-            <button type="button" class="btn-action-sm" onclick="moveFooterItem(${idx}, 1)" title="Move Down">${ICONS.arrowDown}</button>
-            <button type="button" class="btn-action-sm btn-delete-node" onclick="deleteFooterItem(${idx})" title="Delete Link">${ICONS.delete}</button>
-          </div>
-        </div>
-      `;
-      container.appendChild(card);
-    });
-  }
+        if (action === 'duplicate') {
+          const newName = `${this.dataset.name} (Copy)`;
+          const getRes = await fetch(`/api/menus-crud?id=${id}`);
+          const original = await getRes.json();
+          const slug = newName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+          const res = await fetch('/api/menus-crud', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: newName, description: original.description, items: original.items }),
+          });
+          const data = await res.json();
+          if (data.success) { showToast('Menu duplicated!'); setTimeout(() => window.location.reload(), 800); }
+          else showToast(data.error || 'Duplicate failed');
+        }
 
-  window.syncFooterLink = function(idx, field, val) {
-    footerMenu[idx][field] = val;
-  };
-  window.moveFooterItem = function(idx, dir) {
-    const targetIdx = idx + dir;
-    if (targetIdx < 0 || targetIdx >= footerMenu.length) return;
-    const temp = footerMenu[idx];
-    footerMenu[idx] = footerMenu[targetIdx];
-    footerMenu[targetIdx] = temp;
-    renderFooterMenu();
-  };
-  window.deleteFooterItem = function(idx) {
-    window.customConfirm("Delete this footer navigation link?", () => {
-      footerMenu.splice(idx, 1);
-      renderFooterMenu();
-    });
-  };
-  function addFooterItem() {
-    footerMenu.push({ text: "Privacy Policy", link: "/privacy", newTab: false });
-    renderFooterMenu();
-  }
-
-  // SAVE MENUS FORM
-  async function submitMenusForm() {
-    const saveBtn = document.getElementById("save-menus-btn");
-    const saveLabel = saveBtn.querySelector("span");
-    saveBtn.disabled = true;
-    saveLabel.innerText = "Saving Menus...";
-
-    try {
-      // 1. Fetch current settings first
-      const getRes = await fetch("/api/settings-update");
-      const getData = await getRes.json();
-      
-      if (!getData.success) {
-        showToast("Error loading current settings payload.");
-        saveBtn.disabled = false;
-        saveLabel.innerText = "Save Menus";
-        return;
-      }
-
-      // 2. Merge modified navigation links
-      const payload = {
-        ...getData.settings,
-        navigation: headerMenu,
-        footerNavigation: footerMenu
-      };
-
-      // 3. POST back to endpoint
-      const postRes = await fetch("/api/settings-update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        if (action === 'export') {
+          const res = await fetch(`/api/menus-crud?id=${id}`);
+          const menu = await res.json();
+          const blob = new Blob([JSON.stringify(menu, null, 2)], { type: 'application/json' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = `menu-${id}.json`;
+          a.click();
+        }
       });
-      const postData = await postRes.json();
+    });
 
-      if (postData.success) {
-        showToast("Header & Footer navigation menus updated!");
-      } else {
-        showToast("Error: " + (postData.error || "Failed to update menus."));
-      }
-    } catch(e) {
-      showToast("Network Error: Settings update failed.");
-    } finally {
-      saveBtn.disabled = false;
-      saveLabel.innerText = "Save Menus";
+    function showToast(msg: string) {
+      const t = document.getElementById('menus-toast');
+      const m = document.getElementById('menus-toast-msg');
+      if (t && m) { m.textContent = msg; t.classList.add('active'); setTimeout(() => t.classList.remove('active'), 3000); }
     }
   }
 
-  function showToast(message) {
-    const notify = document.getElementById("toast-notify");
-    const msgSpan = document.getElementById("toast-message");
-    if (notify && msgSpan) {
-      msgSpan.innerText = message;
-      notify.classList.add("active");
-      setTimeout(() => {
-        notify.classList.remove("active");
-      }, 3000);
-    }
-  }
-
-  document.addEventListener("DOMContentLoaded", initMenus);
-  document.addEventListener("astro:page-load", initMenus);
-  if (document.readyState === "interactive" || document.readyState === "complete") {
-    initMenus();
-  }
+  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('astro:page-load', init);
+  if (document.readyState !== 'loading') init();
 </script>

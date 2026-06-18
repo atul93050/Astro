@@ -1,0 +1,42 @@
+{
+  "primary-header": {
+    "label": "Primary Header",
+    "description": "Main navigation bar in the site header",
+    "menuId": null
+  },
+  "secondary-header": {
+    "label": "Secondary Header",
+    "description": "Utility / top-bar navigation above the main header",
+    "menuId": null
+  },
+  "mobile-menu": {
+    "label": "Mobile Menu",
+    "description": "Navigation shown when the hamburger is open (falls back to Primary Header if unset)",
+    "menuId": null
+  },
+  "footer-col-1": {
+    "label": "Footer Column 1",
+    "description": "First column of footer navigation links",
+    "menuId": null
+  },
+  "footer-col-2": {
+    "label": "Footer Column 2",
+    "description": "Second column of footer navigation links",
+    "menuId": null
+  },
+  "footer-col-3": {
+    "label": "Footer Column 3",
+    "description": "Third column of footer navigation links",
+    "menuId": null
+  },
+  "footer-bottom": {
+    "label": "Footer Bottom Bar",
+    "description": "Copyright / legal links in the footer bottom strip",
+    "menuId": null
+  },
+  "sidebar": {
+    "label": "Sidebar Navigation",
+    "description": "Sidebar menu for blog or interior pages",
+    "menuId": null
+  }
+}

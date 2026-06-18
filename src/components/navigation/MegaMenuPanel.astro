@@ -1,0 +1,72 @@
+---
+/**
+ * MegaMenuPanel.astro — Full-width mega menu dropdown
+ * Renders columns of links, HTML, CMS sections, or CTA blocks
+ */
+import type { MegaMenu } from '../../utils/menus';
+
+interface Props {
+  mega: MegaMenu;
+}
+
+const { mega } = Astro.props;
+---
+
+<div
+  class="mega-menu-panel"
+  style={`--mega-width: ${mega.width || '1200px'};`}
+  role="region"
+  aria-label={`${mega.name} mega menu`}
+>
+  <div class="mega-menu-inner">
+    {mega.columns.map((col) => (
+      <div
+        class="mega-col"
+        style={`flex: 0 0 ${col.width || 'auto'}; max-width: ${col.width || 'auto'};`}
+      >
+        {col.heading && <h3 class="mega-col__heading">{col.heading}</h3>}
+
+        {/* Links column */}
+        {col.type === 'links' && col.items && (
+          <ul class="mega-col__links" role="list">
+            {col.items.map(link => (
+              <li>
+                <a href={link.url} class="mega-col__link">
+                  {link.icon && <i class={`${link.icon} mega-link-icon`} aria-hidden="true"></i>}
+                  <span>
+                    {link.label}
+                    {link.description && <small class="mega-link-desc">{link.description}</small>}
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* HTML column */}
+        {col.type === 'html' && col.html && (
+          <div class="mega-col__html" set:html={col.html} />
+        )}
+
+        {/* CTA column */}
+        {col.type === 'cta' && col.cta && (
+          <div class="mega-col__cta">
+            {col.cta.image && (
+              <img src={col.cta.image} alt={col.cta.heading || ''} class="mega-cta-img" />
+            )}
+            {col.cta.heading && <h4 class="mega-cta-heading">{col.cta.heading}</h4>}
+            {col.cta.text && <p class="mega-cta-text">{col.cta.text}</p>}
+            {col.cta.buttonLabel && (
+              <a
+                href={col.cta.buttonUrl || '#'}
+                class:list={['mega-cta-btn', col.cta.buttonStyle === 'primary' ? 'mega-cta-btn--primary' : 'mega-cta-btn--outline']}
+              >
+                {col.cta.buttonLabel}
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+    ))}
+  </div>
+</div>

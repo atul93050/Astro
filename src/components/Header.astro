@@ -1,145 +1,116 @@
 ---
 import fs from "node:fs";
 import path from "node:path";
+import PrimaryNav from "./navigation/PrimaryNav.astro";
+import MobileNav from "./navigation/MobileNav.astro";
+import { getMenuAtLocation } from "../utils/menus";
 
 const currentPath = Astro.url.pathname;
 
-// Load global settings for menu links & logo
-let headerSettings = {
-  logo: {
-    headerLogoUrl: "/images/tangence-black.png",
-  },
-  navigation: [
-    { text: "Home", link: "/" },
-    { text: "About Us", link: "/about-us" },
-    { text: "Contact", link: "/contact" }
-  ]
-};
-
+// Load logo from global settings
+let logo = { headerLogoUrl: "/images/tangence-black.png" };
 try {
   const settingsPath = path.resolve("src/data/global-settings.json");
   if (fs.existsSync(settingsPath)) {
     const data = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
-    if (data.logo) headerSettings.logo = data.logo;
-    if (data.navigation) headerSettings.navigation = data.navigation;
+    if (data.logo) logo = data.logo;
   }
-} catch (e) {
-  // Safe fallback
-}
+} catch (e) {}
+
+// CMS-driven menus
+const primaryMenu = getMenuAtLocation("primary-header");
+const mobileMenu  = getMenuAtLocation("mobile-menu") || primaryMenu;
 ---
 
-<nav class="top">
-  <div class="container nav-row">
-    <div class="logo">
-      <a href="/">
-        <img src={headerSettings.logo.headerLogoUrl || "/images/tangence-black.png"} alt="Tangence" />
+<header class="site-header" id="site-header">
+  <div class="container header-inner">
+    <!-- Logo -->
+    <div class="header-logo">
+      <a href="/" aria-label="Go to homepage">
+        <img
+          src={logo.headerLogoUrl || "/images/tangence-black.png"}
+          alt="Tangence"
+          loading="eager"
+          width="160"
+          height="40"
+        />
       </a>
     </div>
 
-    <div class="nav-links">
-      {headerSettings.navigation.map((item: any) => {
-        const hasChildren = item.children && item.children.length > 0;
-        const isActive = currentPath === item.link;
-        
-        if (hasChildren) {
-          return (
-            <div class="nav-dropdown-group">
-              <a href="#" class="dropdown-trigger" onclick="return false;">
-                {item.text} <span class="caret">▼</span>
-              </a>
-              <div class="dropdown-menu-list">
-                {item.children.map((sub: any) => (
-                  <a href={sub.link} class:list={{ active: currentPath === sub.link }}>
-                    {sub.text}
-                  </a>
-                ))}
-              </div>
-            </div>
-          );
-        } else {
-          return (
-            <a href={item.link} class:list={{ active: isActive }}>
-              {item.text}
-            </a>
-          );
-        }
-      })}
-      <a href="#book-audit" class="btn-call"> Book a free audit </a>
+    <!-- Desktop Primary Nav (hidden on mobile via CSS) -->
+    <div class="header-nav desktop-only">
+      <PrimaryNav menu={primaryMenu} currentPath={currentPath} />
+    </div>
+
+    <!-- CTA + Mobile Toggle -->
+    <div class="header-cta-row">
+      <a href="#book-audit" class="btn-call desktop-only">Book a free audit</a>
+      <MobileNav menu={mobileMenu} />
     </div>
   </div>
-</nav>
+</header>
 
 <style>
-  /* Header Dropdown Menu Premium Styling */
-  .nav-links {
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 500;
+    background: rgba(8, 12, 20, 0.92);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    transition: background 0.3s ease;
+  }
+
+  .header-inner {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
+    justify-content: space-between;
+    gap: 2rem;
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
   }
-  .nav-dropdown-group {
-    position: relative;
-    display: inline-block;
+
+  .header-logo img {
+    height: 36px;
+    width: auto;
+    display: block;
   }
-  .dropdown-trigger {
+
+  .header-nav {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+  }
+
+  .header-cta-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+  }
+
+  .btn-call {
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
-    color: var(--text-muted);
-    font-weight: 500;
-    transition: var(--transition);
-    cursor: pointer;
+    padding: 0.5rem 1.15rem;
+    background: linear-gradient(135deg, #6366F1 0%, #4f46e5 100%);
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border-radius: 6px;
     text-decoration: none;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+    transition: all 0.22s ease;
   }
-  .dropdown-trigger:hover {
-    color: var(--primary);
+
+  .btn-call:hover {
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+    transform: translateY(-1px);
   }
-  .caret {
-    font-size: 0.65rem;
-    opacity: 0.7;
-    transition: transform 0.2s ease;
-    display: inline-block;
-  }
-  .nav-dropdown-group:hover .caret {
-    transform: rotate(180deg);
-  }
-  .dropdown-menu-list {
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%) translateY(10px);
-    opacity: 0;
-    pointer-events: none;
-    background: #0f172a;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: var(--radius-md);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
-    padding: 0.5rem 0;
-    min-width: 170px;
-    z-index: 100;
-    display: flex;
-    flex-direction: column;
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    backdrop-filter: blur(8px);
-  }
-  .nav-dropdown-group:hover .dropdown-menu-list {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translateX(-50%) translateY(0);
-  }
-  .dropdown-menu-list a {
-    padding: 0.6rem 1.25rem;
-    color: #9CA3AF !important;
-    font-size: 0.85rem !important;
-    text-decoration: none;
-    font-weight: 500;
-    transition: var(--transition);
-    text-align: left;
-    display: block;
-    border-left: 2px solid transparent;
-  }
-  .dropdown-menu-list a:hover, .dropdown-menu-list a.active {
-    color: white !important;
-    background: rgba(99, 102, 241, 0.08);
-    border-left-color: var(--primary);
+
+  @media (max-width: 768px) {
+    .desktop-only { display: none !important; }
+    .header-inner { gap: 1rem; }
   }
 </style>

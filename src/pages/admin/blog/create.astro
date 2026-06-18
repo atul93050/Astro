@@ -551,12 +551,16 @@ export const prerender = false;
     </div>
   </div>
 
-  <!-- Media Picker Modal -->
+  <!-- Media Picker Modal (dual mode: featured image + inline image) -->
   <div class="media-modal-overlay" id="media-modal">
     <div class="media-modal">
       <div class="media-modal-header">
-        <h4>Select Featured Image</h4>
-        <button type="button" onclick="closeMediaPicker()" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:1.2rem;">✕</button>
+        <h4 id="media-modal-title">Select Featured Image</h4>
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          <input type="text" id="inline-img-url" placeholder="Or paste image URL…" style="background:var(--input-bg);border:1px solid var(--input-border);border-radius:var(--radius-sm);color:var(--text-main);padding:0.4rem 0.75rem;font-size:0.8rem;width:260px;outline:none;display:none;" />
+          <button type="button" id="inline-img-url-btn" style="background:var(--primary);border:none;color:#fff;border-radius:var(--radius-sm);padding:0.4rem 0.75rem;font-size:0.8rem;cursor:pointer;font-weight:600;display:none;">Insert</button>
+          <button type="button" onclick="closeMediaPicker()" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:1.2rem;">✕</button>
+        </div>
       </div>
       <div class="media-grid" id="media-grid">
         <div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-muted);">Loading media...</div>
@@ -576,28 +580,53 @@ export const prerender = false;
     let currentTags = [];
     let quillEditor = null;
     let availableTags = [];
+    let mediaPickerMode = 'featured'; // 'featured' or 'inline'
 
     // ── Init ───────────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', async () => {
-      // Initialize Quill
+      // Initialize Quill with custom image handler
       quillEditor = new Quill('#quill-editor', {
         theme: 'snow',
         placeholder: 'Write your post content here…',
         modules: {
-          toolbar: [
-            [{ header: [1, 2, 3, 4, false] }],
-            ['bold', 'italic', 'underline', 'strike'],
-            [{ color: [] }, { background: [] }],
-            ['blockquote', 'code-block'],
-            [{ list: 'ordered' }, { list: 'bullet' }],
-            [{ indent: '-1' }, { indent: '+1' }],
-            ['link', 'image'],
-            ['clean'],
-          ],
+          toolbar: {
+            container: [
+              [{ header: [1, 2, 3, 4, false] }],
+              ['bold', 'italic', 'underline', 'strike'],
+              [{ color: [] }, { background: [] }],
+              ['blockquote', 'code-block'],
+              [{ list: 'ordered' }, { list: 'bullet' }],
+              [{ indent: '-1' }, { indent: '+1' }],
+              ['link', 'image'],
+              ['clean'],
+            ],
+            handlers: {
+              image: function() {
+                // Override default base64 handler — open media picker instead
+                mediaPickerMode = 'inline';
+                openMediaPicker();
+              }
+            }
+          }
         },
       });
 
       quillEditor.on('text-change', updateWordCount);
+
+      // Inline URL insert button
+      document.getElementById('inline-img-url-btn').addEventListener('click', function() {
+        const url = document.getElementById('inline-img-url').value.trim();
+        if (url && mediaPickerMode === 'inline' && quillEditor) {
+          const range = quillEditor.getSelection(true);
+          quillEditor.insertEmbed(range ? range.index : 0, 'image', url);
+          if (range) quillEditor.setSelection(range.index + 1);
+        } else if (url && mediaPickerMode === 'featured') {
+          selectMedia(url);
+          return;
+        }
+        document.getElementById('inline-img-url').value = '';
+        closeMediaPicker();
+      });
 
       // Load metadata
       await Promise.all([loadAuthors(), loadCategories(), loadTagsSuggestions()]);
@@ -765,32 +794,56 @@ export const prerender = false;
 
     // ── Media picker ───────────────────────────────────────────────────────────
     async function openMediaPicker() {
+      // Update modal UI based on mode
+      const titleEl = document.getElementById('media-modal-title');
+      const urlInput = document.getElementById('inline-img-url');
+      const urlBtn = document.getElementById('inline-img-url-btn');
+      if (mediaPickerMode === 'inline') {
+        titleEl.textContent = 'Insert Image';
+        urlInput.style.display = 'block';
+        urlBtn.style.display = 'block';
+      } else {
+        titleEl.textContent = 'Select Featured Image';
+        urlInput.style.display = 'none';
+        urlBtn.style.display = 'none';
+      }
+      urlInput.value = '';
       document.getElementById('media-modal').classList.add('open');
       const gridEl = document.getElementById('media-grid');
       gridEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-muted);">Loading...</div>';
       try {
-        const res = await fetch('/api/media-crud?action=list', { credentials: 'include' });
+        const res = await fetch('/api/media-crud', { credentials: 'include' });
         const data = await res.json();
         const images = (data.media || data.items || []).filter(item => ['image', 'svg'].includes(item.type));
         if (!images.length) {
-          gridEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-muted);">No images in media library</div>';
+          gridEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-muted);">No images in media library. Upload some first.</div>';
           return;
         }
         gridEl.innerHTML = images.map(img =>
           `<div class="media-item" onclick="selectMedia('${img.url}')">
-            <img src="${img.url}" alt="${img.name}" loading="lazy" />
+            <img src="${img.url}" alt="${img.title || ''}" loading="lazy" />
           </div>`
         ).join('');
       } catch {
-        gridEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--color-error);">Failed to load media</div>';
+        gridEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--color-error);">Failed to load media library</div>';
       }
     }
 
     function closeMediaPicker() {
       document.getElementById('media-modal').classList.remove('open');
+      mediaPickerMode = 'featured'; // Reset to default
     }
 
     function selectMedia(url) {
+      if (mediaPickerMode === 'inline' && quillEditor) {
+        // Insert as inline image in the editor
+        const range = quillEditor.getSelection(true);
+        quillEditor.insertEmbed(range ? range.index : 0, 'image', url);
+        if (range) quillEditor.setSelection(range.index + 1);
+        closeMediaPicker();
+        return;
+      }
+      // Default: set as featured image
       document.getElementById('post-featured-image').value = url;
       const preview = document.getElementById('feat-img-preview');
       const placeholder = document.getElementById('feat-img-placeholder');

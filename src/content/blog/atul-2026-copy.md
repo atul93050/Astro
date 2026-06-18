@@ -1,13 +1,12 @@
 ---
-title: atul 2026 (Copy) Updated
+title: Duplicate Test Updated
 slug: atul-2026-copy
-excerpt: this is a test updated excerpt
+excerpt: test exc
 author: author-admin
 category: uncategorized
-tags:
-  - web-development
+tags: []
 featuredImage: ""
-status: archived
+status: draft
 publishDate: 2026-06-10T17:57
 scheduledDate: ""
 views: 13
@@ -16,15 +15,15 @@ footerScripts: ""
 customCss: ""
 customJs: ""
 seo:
-  metaTitle: Hello Atul Updated
-  metaDescription: Helo des Updated
+  metaTitle: Test SEO
+  metaDescription: desc
   ogImage: ""
   focusKeyword: ""
-  canonicalUrl: Service
-  robots: index, nofollow
+  canonicalUrl: ""
+  robots: index, follow
   schemaMarkup: ""
-  schemaType: custom
-updatedDate: 2026-06-10T13:36:14.024Z
+  schemaType: none
+updatedDate: 2026-06-18T04:59:34.164Z
 ---
 
-<p>Lorem 3000 Updated</p>
+<p>test content</p>

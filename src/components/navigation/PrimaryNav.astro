@@ -1,0 +1,212 @@
+---
+/**
+ * PrimaryNav.astro — Desktop navigation bar
+ * Supports: dropdowns, mega menus, badges, icons, buttons, all item types
+ */
+import type { Menu, MenuItem } from '../../utils/menus';
+import { getMegaMenu, resolveItemUrl } from '../../utils/menus';
+import MegaMenuPanel from './MegaMenuPanel.astro';
+
+interface Props {
+  menu: Menu | null;
+  currentPath?: string;
+}
+
+const { menu, currentPath = Astro.url.pathname } = Astro.props;
+const items = menu?.items ?? [];
+
+// Collect all mega menus needed for this nav
+const megaMenuIds = items
+  .filter(i => i.type === 'mega-menu' && i.megaMenuId)
+  .map(i => i.megaMenuId!);
+const megaMenuMap: Record<string, ReturnType<typeof getMegaMenu>> = {};
+for (const id of megaMenuIds) {
+  megaMenuMap[id] = getMegaMenu(id);
+}
+
+function badgeHtml(badge: MenuItem['badge']) {
+  if (!badge) return '';
+  const colors: Record<string, string> = {
+    new: 'badge-new',
+    hot: 'badge-hot',
+    featured: 'badge-featured',
+    custom: 'badge-custom',
+  };
+  return `<span class="nav-badge ${colors[badge.style] || 'badge-custom'}" ${badge.color ? `style="background:${badge.color}"` : ''}>${badge.text}</span>`;
+}
+
+function iconHtml(icon: MenuItem['icon']) {
+  if (!icon) return '';
+  if (icon.type === 'fa') return `<i class="${icon.value} nav-item-icon" aria-hidden="true"></i>`;
+  if (icon.type === 'svg') return `<span class="nav-item-icon" aria-hidden="true">${icon.value}</span>`;
+  if (icon.type === 'upload') return `<img src="${icon.value}" class="nav-item-icon nav-item-icon-img" alt="" aria-hidden="true" />`;
+  return '';
+}
+---
+
+<nav class="primary-nav" aria-label="Primary Navigation" role="navigation">
+  <ul class="primary-nav__list" role="list">
+    {items.map((item) => {
+      const hasChildren = item.children && item.children.length > 0;
+      const isMega = item.type === 'mega-menu' && item.megaMenuId;
+      const isButton = item.type === 'button';
+      const isActive = currentPath === item.url || (item.url !== '/' && currentPath.startsWith(item.url));
+      const href = resolveItemUrl(item);
+
+      return (
+        <li
+          class:list={[
+            'primary-nav__item',
+            hasChildren && 'has-dropdown',
+            isMega && 'has-mega',
+            isActive && 'is-active',
+            item.cssClass,
+          ]}
+          role="none"
+          data-item-id={item.id}
+        >
+          {isButton ? (
+            <a
+              href={href}
+              target={item.target}
+              class="primary-nav__link primary-nav__link--button"
+              id={item.customId || undefined}
+              aria-label={item.description || item.label}
+            >
+              <Fragment set:html={iconHtml(item.icon)} />
+              {item.label}
+              <Fragment set:html={badgeHtml(item.badge)} />
+            </a>
+          ) : (hasChildren || isMega) ? (
+            <button
+              class:list={['primary-nav__link primary-nav__trigger', isActive && 'is-active']}
+              aria-expanded="false"
+              aria-haspopup="true"
+              id={item.customId || undefined}
+            >
+              <Fragment set:html={iconHtml(item.icon)} />
+              {item.label}
+              <Fragment set:html={badgeHtml(item.badge)} />
+              <svg class="nav-chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+          ) : (
+            <a
+              href={href}
+              target={item.target}
+              class:list={['primary-nav__link', isActive && 'is-active']}
+              id={item.customId || undefined}
+              aria-label={item.description || undefined}
+              aria-current={isActive ? 'page' : undefined}
+            >
+              <Fragment set:html={iconHtml(item.icon)} />
+              {item.label}
+              <Fragment set:html={badgeHtml(item.badge)} />
+            </a>
+          )}
+
+          {/* Standard Dropdown */}
+          {hasChildren && !isMega && (
+            <ul class="primary-nav__dropdown" role="list" aria-label={`${item.label} submenu`}>
+              {item.children.map((child) => {
+                const childHref = resolveItemUrl(child);
+                const childActive = currentPath === child.url;
+                return (
+                  <li class:list={['primary-nav__dropdown-item', childActive && 'is-active', child.cssClass]} role="none">
+                    <a
+                      href={childHref}
+                      target={child.target}
+                      class:list={['primary-nav__dropdown-link', childActive && 'is-active']}
+                      aria-current={childActive ? 'page' : undefined}
+                    >
+                      <Fragment set:html={iconHtml(child.icon)} />
+                      <span class="dropdown-link-text">
+                        {child.label}
+                        {child.description && <small class="dropdown-link-desc">{child.description}</small>}
+                      </span>
+                      <Fragment set:html={badgeHtml(child.badge)} />
+                    </a>
+                    {/* 3rd level dropdown */}
+                    {child.children?.length > 0 && (
+                      <ul class="primary-nav__dropdown primary-nav__dropdown--level3" role="list">
+                        {child.children.map((grand) => (
+                          <li role="none">
+                            <a href={resolveItemUrl(grand)} target={grand.target} class="primary-nav__dropdown-link">
+                              {grand.label}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          {/* Mega Menu */}
+          {isMega && megaMenuMap[item.megaMenuId!] && (
+            <MegaMenuPanel mega={megaMenuMap[item.megaMenuId!]!} />
+          )}
+        </li>
+      );
+    })}
+  </ul>
+</nav>
+
+<script>
+  function initPrimaryNav() {
+    const nav = document.querySelector('.primary-nav');
+    if (!nav || (nav as HTMLElement).dataset.init === 'true') return;
+    (nav as HTMLElement).dataset.init = 'true';
+
+    const triggers = nav.querySelectorAll<HTMLButtonElement>('.primary-nav__trigger');
+
+    triggers.forEach(trigger => {
+      const item = trigger.closest('.primary-nav__item') as HTMLElement;
+
+      // Hover intent for desktop
+      let hoverTimer: ReturnType<typeof setTimeout>;
+      item.addEventListener('mouseenter', () => {
+        clearTimeout(hoverTimer);
+        hoverTimer = setTimeout(() => openItem(item, trigger), 100);
+      });
+      item.addEventListener('mouseleave', () => {
+        clearTimeout(hoverTimer);
+        hoverTimer = setTimeout(() => closeItem(item, trigger), 150);
+      });
+
+      // Click for keyboard / touch
+      trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = trigger.getAttribute('aria-expanded') === 'true';
+        closeAll();
+        if (!isOpen) openItem(item, trigger);
+      });
+
+      trigger.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeAll();
+      });
+    });
+
+    document.addEventListener('click', closeAll);
+
+    function openItem(item: HTMLElement, trigger: HTMLButtonElement) {
+      item.classList.add('is-open');
+      trigger.setAttribute('aria-expanded', 'true');
+    }
+    function closeItem(item: HTMLElement, trigger: HTMLButtonElement) {
+      item.classList.remove('is-open');
+      trigger.setAttribute('aria-expanded', 'false');
+    }
+    function closeAll() {
+      triggers.forEach(t => {
+        const li = t.closest('.primary-nav__item') as HTMLElement;
+        closeItem(li, t);
+      });
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', initPrimaryNav);
+  document.addEventListener('astro:page-load', initPrimaryNav);
+  if (document.readyState !== 'loading') initPrimaryNav();
+</script>

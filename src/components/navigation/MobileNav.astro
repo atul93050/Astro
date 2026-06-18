@@ -1,0 +1,185 @@
+---
+/**
+ * MobileNav.astro — Hamburger toggle + slide-in drawer
+ * Accordion multi-level, badges, icons, CTA buttons
+ */
+import type { Menu, MenuItem } from '../../utils/menus';
+import { resolveItemUrl } from '../../utils/menus';
+
+interface Props {
+  menu: Menu | null;
+}
+
+const { menu } = Astro.props;
+const items = menu?.items ?? [];
+---
+
+<!-- Hamburger Toggle Button -->
+<button
+  class="mobile-nav-toggle"
+  id="mobile-nav-toggle"
+  aria-label="Toggle mobile navigation"
+  aria-expanded="false"
+  aria-controls="mobile-nav-drawer"
+>
+  <span class="hamburger-line"></span>
+  <span class="hamburger-line"></span>
+  <span class="hamburger-line"></span>
+</button>
+
+<!-- Backdrop -->
+<div class="mobile-nav-backdrop" id="mobile-nav-backdrop" aria-hidden="true"></div>
+
+<!-- Slide Drawer -->
+<nav
+  class="mobile-nav-drawer"
+  id="mobile-nav-drawer"
+  aria-label="Mobile Navigation"
+  aria-hidden="true"
+>
+  <div class="mobile-nav-header">
+    <span class="mobile-nav-title">Menu</span>
+    <button class="mobile-nav-close" id="mobile-nav-close" aria-label="Close navigation">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+  </div>
+
+  <ul class="mobile-nav-list" role="list">
+    {items.map((item) => {
+      const hasChildren = item.children && item.children.length > 0;
+      const isButton = item.type === 'button';
+      const href = resolveItemUrl(item);
+
+      return (
+        <li class:list={['mobile-nav-item', hasChildren && 'has-children', item.cssClass]}>
+          {hasChildren ? (
+            <div class="mobile-nav-row">
+              <a href={href} class="mobile-nav-link">{item.label}
+                {item.badge && <span class={`nav-badge badge-${item.badge.style}`}>{item.badge.text}</span>}
+              </a>
+              <button class="mobile-nav-toggle-child" aria-expanded="false" aria-label={`Expand ${item.label}`}>
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+            </div>
+          ) : isButton ? (
+            <a href={href} target={item.target} class="mobile-nav-link mobile-nav-link--button">
+              {item.label}
+            </a>
+          ) : (
+            <a href={href} target={item.target} class="mobile-nav-link">
+              {item.label}
+              {item.badge && <span class={`nav-badge badge-${item.badge.style}`}>{item.badge.text}</span>}
+            </a>
+          )}
+
+          {hasChildren && (
+            <ul class="mobile-nav-sub" role="list" hidden>
+              {item.children.map((child) => {
+                const childHref = resolveItemUrl(child);
+                const childHasChildren = child.children?.length > 0;
+                return (
+                  <li class:list={['mobile-nav-item', childHasChildren && 'has-children']}>
+                    {childHasChildren ? (
+                      <div class="mobile-nav-row">
+                        <a href={childHref} class="mobile-nav-link">{child.label}</a>
+                        <button class="mobile-nav-toggle-child" aria-expanded="false" aria-label={`Expand ${child.label}`}>
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </button>
+                      </div>
+                    ) : (
+                      <a href={childHref} target={child.target} class="mobile-nav-link">{child.label}</a>
+                    )}
+                    {childHasChildren && (
+                      <ul class="mobile-nav-sub mobile-nav-sub--level3" role="list" hidden>
+                        {child.children.map(grand => (
+                          <li>
+                            <a href={resolveItemUrl(grand)} target={grand.target} class="mobile-nav-link">{grand.label}</a>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </li>
+      );
+    })}
+  </ul>
+</nav>
+
+<script>
+  function initMobileNav() {
+    const toggle = document.getElementById('mobile-nav-toggle');
+    const drawer = document.getElementById('mobile-nav-drawer');
+    const backdrop = document.getElementById('mobile-nav-backdrop');
+    const close = document.getElementById('mobile-nav-close');
+    if (!toggle || !drawer) return;
+    if ((toggle as HTMLElement).dataset.init === 'true') return;
+    (toggle as HTMLElement).dataset.init = 'true';
+
+    function openNav() {
+      drawer!.classList.add('is-open');
+      drawer!.setAttribute('aria-hidden', 'false');
+      toggle!.setAttribute('aria-expanded', 'true');
+      toggle!.classList.add('is-open');
+      document.body.style.overflow = 'hidden';
+      if (backdrop) { backdrop.classList.add('is-visible'); }
+    }
+
+    function closeNav() {
+      drawer!.classList.remove('is-open');
+      drawer!.setAttribute('aria-hidden', 'true');
+      toggle!.setAttribute('aria-expanded', 'false');
+      toggle!.classList.remove('is-open');
+      document.body.style.overflow = '';
+      if (backdrop) { backdrop.classList.remove('is-visible'); }
+    }
+
+    toggle.addEventListener('click', () => {
+      const isOpen = drawer!.classList.contains('is-open');
+      isOpen ? closeNav() : openNav();
+    });
+
+    if (close) close.addEventListener('click', closeNav);
+    if (backdrop) backdrop.addEventListener('click', closeNav);
+
+    // Accordion children
+    drawer.querySelectorAll<HTMLButtonElement>('.mobile-nav-toggle-child').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const item = btn.closest('.mobile-nav-item') as HTMLElement;
+        const sub = item?.querySelector<HTMLElement>('.mobile-nav-sub');
+        if (!sub) return;
+        const isOpen = !sub.hidden;
+        // Close siblings
+        const parent = item.closest('.mobile-nav-list, .mobile-nav-sub') as HTMLElement;
+        parent?.querySelectorAll<HTMLElement>('.mobile-nav-sub').forEach(s => {
+          if (s !== sub) {
+            s.hidden = true;
+            const sibBtn = s.closest('.mobile-nav-item')?.querySelector<HTMLButtonElement>('.mobile-nav-toggle-child');
+            if (sibBtn) sibBtn.setAttribute('aria-expanded', 'false');
+          }
+        });
+        sub.hidden = isOpen;
+        btn.setAttribute('aria-expanded', String(!isOpen));
+        item.classList.toggle('sub-open', !isOpen);
+      });
+    });
+
+    // Close on nav link click (page navigation)
+    drawer.querySelectorAll('.mobile-nav-link:not(.has-children .mobile-nav-link)').forEach(link => {
+      link.addEventListener('click', closeNav);
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeNav();
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', initMobileNav);
+  document.addEventListener('astro:page-load', initMobileNav);
+  if (document.readyState !== 'loading') initMobileNav();
+</script>

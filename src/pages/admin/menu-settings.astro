@@ -1,0 +1,164 @@
+---
+import AdminLayout from "../../layouts/admin/AdminLayout.astro";
+---
+
+<AdminLayout title="Menu Settings">
+
+  <div class="page-header-flex">
+    <div>
+      <p class="page-sub">Global defaults applied to all menus unless overridden per-menu in the Menu Editor.</p>
+    </div>
+    <button class="btn btn-primary" id="save-menu-settings-btn">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+      Save Settings
+    </button>
+  </div>
+
+  <div class="settings-sections-grid">
+
+    <div class="form-card">
+      <div class="card-header"><h3>Dropdown Behaviour</h3></div>
+      <div class="card-body settings-fields">
+        <div class="form-field">
+          <label for="dropdown-animation">Dropdown Animation</label>
+          <select id="dropdown-animation">
+            <option value="fade">Fade</option>
+            <option value="slide">Slide Down</option>
+            <option value="scale">Scale</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="hover-delay">Hover Open Delay (ms)</label>
+          <input type="number" id="hover-delay" value="150" min="0" max="1000" step="50" />
+        </div>
+        <div class="form-field">
+          <label for="dropdown-width">Default Dropdown Width</label>
+          <input type="text" id="dropdown-width" value="240px" placeholder="240px" />
+        </div>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <div class="card-header"><h3>Alignment & Layout</h3></div>
+      <div class="card-body settings-fields">
+        <div class="form-field">
+          <label for="nav-alignment">Navigation Alignment</label>
+          <select id="nav-alignment">
+            <option value="left">Left</option>
+            <option value="center">Center</option>
+            <option value="right">Right</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="mobile-breakpoint">Mobile Breakpoint (px)</label>
+          <input type="number" id="mobile-breakpoint" value="768" min="320" max="1400" />
+        </div>
+        <div class="form-field form-field--inline">
+          <input type="checkbox" id="sticky-header" />
+          <label for="sticky-header" style="display:inline!important; margin:0!important;">Enable Sticky Header</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <div class="card-header"><h3>Mobile Menu</h3></div>
+      <div class="card-body settings-fields">
+        <div class="form-field">
+          <label for="mobile-style">Mobile Menu Style</label>
+          <select id="mobile-style">
+            <option value="drawer-left">Drawer — Slide from Left</option>
+            <option value="drawer-right">Drawer — Slide from Right</option>
+            <option value="fullscreen">Full Screen Overlay</option>
+            <option value="dropdown">Dropdown Below Header</option>
+          </select>
+        </div>
+        <div class="form-field form-field--inline">
+          <input type="checkbox" id="mobile-backdrop" checked />
+          <label for="mobile-backdrop" style="display:inline!important; margin:0!important;">Show backdrop overlay</label>
+        </div>
+        <div class="form-field form-field--inline">
+          <input type="checkbox" id="mobile-close-on-link" checked />
+          <label for="mobile-close-on-link" style="display:inline!important; margin:0!important;">Close drawer on link click</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <div class="card-header"><h3>Accessibility & SEO</h3></div>
+      <div class="card-body settings-fields">
+        <div class="form-field form-field--inline">
+          <input type="checkbox" id="aria-labels" checked />
+          <label for="aria-labels" style="display:inline!important; margin:0!important;">Auto-generate aria-labels</label>
+        </div>
+        <div class="form-field form-field--inline">
+          <input type="checkbox" id="aria-expanded" checked />
+          <label for="aria-expanded" style="display:inline!important; margin:0!important;">Manage aria-expanded states</label>
+        </div>
+        <div class="form-field form-field--inline">
+          <input type="checkbox" id="keyboard-nav" checked />
+          <label for="keyboard-nav" style="display:inline!important; margin:0!important;">Enable keyboard navigation</label>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="toast-notification" id="ms-toast"><div class="toast-content"><span id="ms-toast-msg">Settings saved!</span></div></div>
+
+</AdminLayout>
+
+<style is:global>
+  .page-header-flex { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:2rem; gap:1rem; }
+  .page-sub { color:var(--text-muted); font-size:0.88rem; margin-top:0.25rem; }
+  .settings-sections-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; }
+  @media(max-width:900px) { .settings-sections-grid { grid-template-columns:1fr; } }
+  .form-card { background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius-lg); overflow:hidden; }
+  .card-header { padding:1.1rem 1.5rem; border-bottom:1px solid var(--border-color); background:rgba(156,163,175,0.02); }
+  .card-header h3 { font-size:0.95rem; font-weight:700; }
+  .card-body { padding:1.5rem; }
+  .settings-fields { display:flex; flex-direction:column; gap:1rem; }
+  .form-field--inline { display:flex; align-items:center; gap:0.5rem; }
+</style>
+
+<script>
+  function init() {
+    const saveBtn = document.getElementById('save-menu-settings-btn') as HTMLButtonElement;
+    if (!saveBtn || saveBtn.dataset.init === 'true') return;
+    saveBtn.dataset.init = 'true';
+
+    // Load from localStorage for persistence
+    const saved = JSON.parse(localStorage.getItem('cms-menu-settings') || '{}');
+    if (saved.dropdownAnimation) (document.getElementById('dropdown-animation') as HTMLSelectElement).value = saved.dropdownAnimation;
+    if (saved.hoverDelay !== undefined) (document.getElementById('hover-delay') as HTMLInputElement).value = saved.hoverDelay;
+    if (saved.dropdownWidth) (document.getElementById('dropdown-width') as HTMLInputElement).value = saved.dropdownWidth;
+    if (saved.alignment) (document.getElementById('nav-alignment') as HTMLSelectElement).value = saved.alignment;
+    if (saved.mobileBreakpoint) (document.getElementById('mobile-breakpoint') as HTMLInputElement).value = saved.mobileBreakpoint;
+    if (saved.stickyHeader !== undefined) (document.getElementById('sticky-header') as HTMLInputElement).checked = saved.stickyHeader;
+    if (saved.mobileStyle) (document.getElementById('mobile-style') as HTMLSelectElement).value = saved.mobileStyle;
+
+    saveBtn.addEventListener('click', () => {
+      const settings = {
+        dropdownAnimation: (document.getElementById('dropdown-animation') as HTMLSelectElement).value,
+        hoverDelay: (document.getElementById('hover-delay') as HTMLInputElement).value,
+        dropdownWidth: (document.getElementById('dropdown-width') as HTMLInputElement).value,
+        alignment: (document.getElementById('nav-alignment') as HTMLSelectElement).value,
+        mobileBreakpoint: (document.getElementById('mobile-breakpoint') as HTMLInputElement).value,
+        stickyHeader: (document.getElementById('sticky-header') as HTMLInputElement).checked,
+        mobileStyle: (document.getElementById('mobile-style') as HTMLSelectElement).value,
+        mobileBackdrop: (document.getElementById('mobile-backdrop') as HTMLInputElement).checked,
+        mobileCloseOnLink: (document.getElementById('mobile-close-on-link') as HTMLInputElement).checked,
+        ariaLabels: (document.getElementById('aria-labels') as HTMLInputElement).checked,
+        ariaExpanded: (document.getElementById('aria-expanded') as HTMLInputElement).checked,
+        keyboardNav: (document.getElementById('keyboard-nav') as HTMLInputElement).checked,
+      };
+      localStorage.setItem('cms-menu-settings', JSON.stringify(settings));
+      const t = document.getElementById('ms-toast');
+      if (t) { t.classList.add('active'); setTimeout(() => t.classList.remove('active'), 3000); }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('astro:page-load', init);
+  if (document.readyState !== 'loading') init();
+</script>

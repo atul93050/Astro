@@ -1,0 +1,45 @@
+---
+/**
+ * FooterMenuCol.astro — Renders a single footer navigation column
+ * Pass heading="" to suppress the column heading
+ */
+import type { Menu } from '../../utils/menus';
+import { resolveItemUrl } from '../../utils/menus';
+
+interface Props {
+  menu: Menu | null;
+  heading?: string;
+  class?: string;
+}
+
+const { menu, heading, class: className = '' } = Astro.props;
+const items = menu?.items ?? [];
+---
+
+{(items.length > 0 || heading) && (
+  <div class={`footer-nav-col ${className}`}>
+    {heading && <h3 class="footer-nav-heading">{heading}</h3>}
+    {items.length > 0 && (
+      <ul class="footer-nav-list" role="list">
+        {items.map(item => {
+          const href = resolveItemUrl(item);
+          return (
+            <li>
+              <a
+                href={href}
+                target={item.target}
+                class="footer-nav-link"
+                aria-label={item.description || undefined}
+              >
+                {item.label}
+                {item.badge && (
+                  <span class={`nav-badge badge-${item.badge.style}`}>{item.badge.text}</span>
+                )}
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    )}
+  </div>
+)}
