@@ -55,6 +55,13 @@ function loadDefinitions(): any[] {
 function validatePageData(data: any): Record<string, string> {
   const errors: Record<string, string> = {};
 
+  if (typeof data.slug === "string") {
+    data.slug = data.slug.trim().toLowerCase();
+    if (data.slug === "/" || data.slug === "") {
+      data.slug = "index";
+    }
+  }
+
   if (!data.title || typeof data.title !== "string" || !data.title.trim()) {
     errors.title = "Page Title is required";
   }
@@ -69,15 +76,18 @@ function validatePageData(data: any): Record<string, string> {
     errors.status = "Status must be either 'draft' or 'published'";
   }
 
-  // SEO validations
+  // SEO validations - auto fill if empty and remove required validation blocks
   if (!data.seo) {
-    errors["seo.global"] = "SEO settings are required";
+    data.seo = {
+      metaTitle: (data.title || "").trim(),
+      metaDescription: ""
+    };
   } else {
     if (!data.seo.metaTitle || !data.seo.metaTitle.trim()) {
-      errors["seo.metaTitle"] = "SEO Meta Title is required";
+      data.seo.metaTitle = (data.title || "").trim();
     }
-    if (!data.seo.metaDescription || !data.seo.metaDescription.trim()) {
-      errors["seo.metaDescription"] = "SEO Meta Description is required";
+    if (!data.seo.metaDescription) {
+      data.seo.metaDescription = "";
     }
   }
 

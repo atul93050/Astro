@@ -156,9 +156,9 @@ import "../../styles/admin/css/editor.css";
               
               <div class="form-group col-6">
                 <label for="page-slug">URL Slug <span class="required">*</span></label>
-                <input type="text" id="page-slug" value={pageData.slug} placeholder="e.g., performance-seo" required disabled={isEditMode} />
+                <input type="text" id="page-slug" value={pageData.slug === 'index' ? '/' : pageData.slug} placeholder="e.g., performance-seo" required />
                 <span class="field-error" id="err-slug"></span>
-                <span class="field-help">Only lowercase letters, numbers, dashes, and underscores.</span>
+                <span class="field-help">Only lowercase letters, numbers, dashes, and underscores. Use / or index for home.</span>
               </div>
 
               <div class="form-group col-6">
@@ -274,15 +274,15 @@ import "../../styles/admin/css/editor.css";
           </div>
 
           <div class="form-group">
-            <label for="seo-title">Meta Title <span class="required">*</span></label>
-            <input type="text" id="seo-title" value={pageData.seo.metaTitle} placeholder="50-60 characters ideal" required />
+            <label for="seo-title">Meta Title</label>
+            <input type="text" id="seo-title" value={pageData.seo.metaTitle} placeholder="50-60 characters ideal" />
             <span class="length-counter" id="cnt-seo-title">0 chars</span>
             <span class="field-error" id="err-seo-title"></span>
           </div>
 
           <div class="form-group">
-            <label for="seo-description">Meta Description <span class="required">*</span></label>
-            <textarea id="seo-description" rows="3" placeholder="120-160 characters ideal" required>{pageData.seo.metaDescription}</textarea>
+            <label for="seo-description">Meta Description</label>
+            <textarea id="seo-description" rows="3" placeholder="120-160 characters ideal">{pageData.seo.metaDescription}</textarea>
             <span class="length-counter" id="cnt-seo-description">0 chars</span>
             <span class="field-error" id="err-seo-description"></span>
           </div>
@@ -1766,7 +1766,10 @@ import "../../styles/admin/css/editor.css";
   // Save changes via API
   async function submitPageForm() {
     const title = document.getElementById("page-title").value.trim();
-    const slugVal = document.getElementById("page-slug").value.trim();
+    let slugVal = document.getElementById("page-slug").value.trim().toLowerCase();
+    if (slugVal === "/" || slugVal === "") {
+      slugVal = "index";
+    }
     const status = document.getElementById("page-status").value;
     const body = document.getElementById("page-body").value.trim();
     
@@ -1796,14 +1799,7 @@ import "../../styles/admin/css/editor.css";
       document.getElementById("err-slug").innerText = "Slug is required";
       hasClientErrors = true;
     }
-    if (!metaTitle) {
-      document.getElementById("err-seo-title").innerText = "Meta Title is required";
-      hasClientErrors = true;
-    }
-    if (!metaDescription) {
-      document.getElementById("err-seo-description").innerText = "Meta Description is required";
-      hasClientErrors = true;
-    }
+    // Meta Title and Meta Description are now optional and not strict validation blockers
 
     if (hasClientErrors) {
       showToast("Please fix the validation errors.");
@@ -1831,7 +1827,7 @@ import "../../styles/admin/css/editor.css";
       customCss,
       customJs,
       seo: {
-        metaTitle,
+        metaTitle: metaTitle.trim() || title.trim(),
         metaDescription,
         canonicalUrl,
         robots,
