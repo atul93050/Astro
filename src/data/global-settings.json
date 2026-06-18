@@ -4,8 +4,8 @@
   "bodyEndScripts": "",
   "footerScripts": "",
   "logo": {
-    "headerLogoUrl": "/images/tangence-black.png",
-    "footerLogoUrl": "/images/scroll-logo.svg"
+    "headerLogoUrl": "",
+    "footerLogoUrl": ""
   },
   "socialLinks": {
     "facebook": "",
@@ -14,52 +14,13 @@
     "instagram": ""
   },
   "contactInfo": {
-    "phone": "+91-995-812-9810",
-    "email": "info@tangence.com",
-    "description": "Performance marketing built to outlast algorithm changes, recessions, and growth-hack fads. Since 2006.",
+    "phone": "",
+    "email": "",
+    "description": "",
     "offices": [],
     "cities": []
   },
-  "navigation": [
-    {
-      "text": "Home",
-      "link": "/",
-      "children": []
-    },
-    {
-      "text": "About Us",
-      "link": "/about-us",
-      "children": []
-    },
-    {
-      "text": "Contact",
-      "link": "/contact",
-      "children": []
-    }
-  ],
-  "footerNavigation": [
-    {
-      "text": "Home",
-      "link": "/",
-      "newTab": false
-    },
-    {
-      "text": "About Us",
-      "link": "/about-us",
-      "newTab": false
-    },
-    {
-      "text": "Contact",
-      "link": "/contact",
-      "newTab": false
-    }
-  ],
-  "redirects": [
-    {
-      "from": "/aboutus-amit",
-      "to": "/about-us",
-      "type": "301",
-      "active": true
-    }
-  ]
+  "navigation": [],
+  "footerNavigation": [],
+  "redirects": []
 }

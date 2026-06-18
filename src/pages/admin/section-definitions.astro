@@ -943,6 +943,13 @@ import "../../styles/admin/css/section-defination.css";
       const needsOptions = ['select', 'multiselect', 'radio', 'button-group'].includes(field.type);
       const hasSubfields = ['repeater', 'group', 'object', 'array'].includes(field.type);
 
+      // Pre-escape path strings for safe embedding inside onclick="..." HTML attributes.
+      // JSON.stringify of paths that contain string keys (e.g. "repeaterFields") produces
+      // double-quoted values like [0,"repeaterFields"] which break double-quoted HTML attributes.
+      const ePstr    = escHtml(pathStr);
+      const ePpstr   = escHtml(parentPathStr);
+      const eSubPath = escHtml(JSON.stringify([...currentPath, 'repeaterFields']));
+
       row.innerHTML = `
         <!-- Header Bar -->
         <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); margin-bottom: 0.5rem;">
@@ -953,10 +960,10 @@ import "../../styles/admin/css/section-defination.css";
             </div>
             <!-- Up/Down buttons -->
             <div style="display: flex; gap: 0.25rem;">
-              <button type="button" class="btn btn-outline" style="padding: 2px; height: 24px; min-width: 26px; display: flex; align-items: center; justify-content: center;" onclick="moveFieldAtPath('${parentPathStr}', ${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>
+              <button type="button" class="btn btn-outline" style="padding: 2px; height: 24px; min-width: 26px; display: flex; align-items: center; justify-content: center;" onclick="moveFieldAtPath('${ePpstr}', ${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>
                 <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"></polyline></svg>
               </button>
-              <button type="button" class="btn btn-outline" style="padding: 2px; height: 24px; min-width: 26px; display: flex; align-items: center; justify-content: center;" onclick="moveFieldAtPath('${parentPathStr}', ${idx}, 1)" ${idx === fields.length - 1 ? 'disabled' : ''}>
+              <button type="button" class="btn btn-outline" style="padding: 2px; height: 24px; min-width: 26px; display: flex; align-items: center; justify-content: center;" onclick="moveFieldAtPath('${ePpstr}', ${idx}, 1)" ${idx === fields.length - 1 ? 'disabled' : ''}>
                 <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"></polyline></svg>
               </button>
             </div>
@@ -969,7 +976,7 @@ import "../../styles/admin/css/section-defination.css";
           <div style="display: flex; align-items: center; gap: 1rem;">
             <!-- Required checkbox -->
             <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; font-weight: 600; cursor: pointer; margin: 0; user-select: none;">
-              <input type="checkbox" id="req-${pathId}" ${field.required ? 'checked' : ''} onchange="updateFieldAtPath('${pathStr}', 'required', this.checked)" style="width: auto; margin: 0;" />
+              <input type="checkbox" id="req-${pathId}" ${field.required ? 'checked' : ''} onchange="updateFieldAtPath('${ePstr}', 'required', this.checked)" style="width: auto; margin: 0;" />
               <span>Required Field</span>
             </label>
             
@@ -978,10 +985,10 @@ import "../../styles/admin/css/section-defination.css";
               <button type="button" class="btn btn-outline btn-sm" style="height: 28px; padding: 0 0.5rem; font-size: 0.75rem;" onclick="toggleAdvSettings('${pathId}')" title="Configure Validation & Visibility">
                 ⚙️ Settings
               </button>
-              <button type="button" class="btn btn-outline btn-sm" style="height: 28px; padding: 0 0.5rem; font-size: 0.75rem;" onclick="duplicateFieldAtPath('${parentPathStr}', ${idx})" title="Duplicate field">
+              <button type="button" class="btn btn-outline btn-sm" style="height: 28px; padding: 0 0.5rem; font-size: 0.75rem;" onclick="duplicateFieldAtPath('${ePpstr}', ${idx})" title="Duplicate field">
                 Duplicate
               </button>
-              <button type="button" class="btn btn-sm btn-outline" style="height: 28px; width: 28px; min-width: unset; padding: 0; display: flex; align-items: center; justify-content: center; color: var(--color-error); border-color: rgba(239, 68, 68, 0.2);" onclick="removeFieldAtPath('${parentPathStr}', ${idx})" title="Delete field">
+              <button type="button" class="btn btn-sm btn-outline" style="height: 28px; width: 28px; min-width: unset; padding: 0; display: flex; align-items: center; justify-content: center; color: var(--color-error); border-color: rgba(239, 68, 68, 0.2);" onclick="removeFieldAtPath('${ePpstr}', ${idx})" title="Delete field">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
               </button>
             </div>
@@ -992,11 +999,11 @@ import "../../styles/admin/css/section-defination.css";
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;">
           <div class="form-group" style="margin: 0;">
             <label style="font-size: 0.75rem; font-weight: 600;">Field Name / Key <span class="req" style="color: var(--color-error);">*</span></label>
-            <input type="text" class="code-font" style="font-family: monospace; font-size: 0.85rem;" value="${escHtml(field.name)}" placeholder="e.g. title_text" oninput="updateFieldAtPath('${pathStr}', 'name', this.value)" />
+            <input type="text" class="code-font" style="font-family: monospace; font-size: 0.85rem;" value="${escHtml(field.name)}" placeholder="e.g. title_text" oninput="updateFieldAtPath('${ePstr}', 'name', this.value)" />
           </div>
           <div class="form-group" style="margin: 0;">
             <label style="font-size: 0.75rem; font-weight: 600;">Display Label</label>
-            <input type="text" value="${escHtml(field.label)}" placeholder="e.g. Section Title" oninput="updateFieldAtPath('${pathStr}', 'label', this.value)" />
+            <input type="text" value="${escHtml(field.label)}" placeholder="e.g. Section Title" oninput="updateFieldAtPath('${ePstr}', 'label', this.value)" />
           </div>
           <div class="form-group" style="position: relative; margin: 0;">
             <label style="font-size: 0.75rem; font-weight: 600;">Field Type</label>
@@ -1006,7 +1013,7 @@ import "../../styles/admin/css/section-defination.css";
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
               </button>
               <div class="type-picker-dropdown" id="type-picker-${pathId}" style="display: none; position: absolute; left: 0; right: 0; top: 105%; z-index: 2000; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.5rem; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
-                <input type="text" class="type-picker-search-input" placeholder="Search type..." oninput="filterTypeOptions('${pathId}', '${pathStr}', this.value)" style="margin-bottom: 0.5rem; padding: 0.35rem 0.5rem; font-size: 0.8rem; width: 100%; height: auto;" />
+                <input type="text" class="type-picker-search-input" placeholder="Search type..." oninput="filterTypeOptions('${pathId}', '${ePstr}', this.value)" style="margin-bottom: 0.5rem; padding: 0.35rem 0.5rem; font-size: 0.8rem; width: 100%; height: auto;" />
                 <div class="type-picker-options" style="max-height: 160px; overflow-y: auto; font-size: 0.8rem;">
                 </div>
               </div>
@@ -1017,53 +1024,53 @@ import "../../styles/admin/css/section-defination.css";
         ${needsOptions ? `
           <div class="form-group" style="margin-top:0.25rem;">
             <label style="font-size:0.75rem;">Select Options (comma-separated list, or format: val:Label)</label>
-            <input type="text" value="${escHtml((field.options || []).map(o => typeof o === 'object' ? `${o.value}:${o.label}` : String(o)).join(', '))}" placeholder="e.g. left, center, right OR active:Active State, inactive:Inactive State" oninput="updateFieldOptions('${pathStr}', this.value)" />
+            <input type="text" value="${escHtml((field.options || []).map(o => typeof o === 'object' ? `${o.value}:${o.label}` : String(o)).join(', '))}" placeholder="e.g. left, center, right OR active:Active State, inactive:Inactive State" oninput="updateFieldOptions('${ePstr}', this.value)" />
           </div>
         ` : ''}
 
         <div class="advanced-settings-panel" id="adv-settings-${pathId}" style="display:none; margin-top:0.4rem; background:rgba(0,0,0,0.15); border:1px solid var(--border-color); padding:0.85rem; border-radius:6px; grid-template-columns:1fr 1fr; gap:0.65rem;">
           <div class="form-group">
             <label style="font-size:0.7rem;">Placeholder text</label>
-            <input type="text" value="${escHtml(field.placeholder)}" oninput="updateFieldAtPath('${pathStr}', 'placeholder', this.value)" />
+            <input type="text" value="${escHtml(field.placeholder)}" oninput="updateFieldAtPath('${ePstr}', 'placeholder', this.value)" />
           </div>
           <div class="form-group">
             <label style="font-size:0.7rem;">Help Text / description</label>
-            <input type="text" value="${escHtml(field.helpText)}" oninput="updateFieldAtPath('${pathStr}', 'helpText', this.value)" />
+            <input type="text" value="${escHtml(field.helpText)}" oninput="updateFieldAtPath('${ePstr}', 'helpText', this.value)" />
           </div>
           <div class="form-group">
             <label style="font-size:0.7rem;">Default Value</label>
-            <input type="text" value="${escHtml(typeof field.default === 'object' ? JSON.stringify(field.default) : String(field.default ?? ''))}" oninput="updateFieldAtPath('${pathStr}', 'default', this.value)" />
+            <input type="text" value="${escHtml(typeof field.default === 'object' ? JSON.stringify(field.default) : String(field.default ?? ''))}" oninput="updateFieldAtPath('${ePstr}', 'default', this.value)" />
           </div>
           <div class="form-group">
             <label style="font-size:0.7rem;">Validation RegEx regex</label>
-            <input type="text" value="${escHtml(field.validation?.regex)}" placeholder="e.g. ^[A-Za-z]+$" oninput="updateValidationAtPath('${pathStr}', 'regex', this.value)" />
+            <input type="text" value="${escHtml(field.validation?.regex)}" placeholder="e.g. ^[A-Za-z]+$" oninput="updateValidationAtPath('${ePstr}', 'regex', this.value)" />
           </div>
           <div class="form-group">
             <label style="font-size:0.7rem;">Min Value / Min Length</label>
-            <input type="number" value="${field.validation?.min !== undefined ? field.validation.min : (field.validation?.minLength !== undefined ? field.validation.minLength : '')}" placeholder="e.g. 3" oninput="updateValidationAtPath('${pathStr}', 'min', this.value)" />
+            <input type="number" value="${field.validation?.min !== undefined ? field.validation.min : (field.validation?.minLength !== undefined ? field.validation.minLength : '')}" placeholder="e.g. 3" oninput="updateValidationAtPath('${ePstr}', 'min', this.value)" />
           </div>
           <div class="form-group">
             <label style="font-size:0.7rem;">Max Value / Max Length</label>
-            <input type="number" value="${field.validation?.max !== undefined ? field.validation.max : (field.validation?.maxLength !== undefined ? field.validation.maxLength : '')}" placeholder="e.g. 100" oninput="updateValidationAtPath('${pathStr}', 'max', this.value)" />
+            <input type="number" value="${field.validation?.max !== undefined ? field.validation.max : (field.validation?.maxLength !== undefined ? field.validation.maxLength : '')}" placeholder="e.g. 100" oninput="updateValidationAtPath('${ePstr}', 'max', this.value)" />
           </div>
           <div class="form-group" style="grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; border-top:1px solid var(--border-color); padding-top:0.5rem;">
             <div>
               <label style="font-size:0.7rem; color:var(--text-dim);">Show If Field (Dependency)</label>
-              <input type="text" value="${escHtml(field.showIf?.field)}" placeholder="e.g. enable_cta" oninput="updateShowHideAtPath('${pathStr}', 'showIf', 'field', this.value)" />
+              <input type="text" value="${escHtml(field.showIf?.field)}" placeholder="e.g. enable_cta" oninput="updateShowHideAtPath('${ePstr}', 'showIf', 'field', this.value)" />
             </div>
             <div>
               <label style="font-size:0.7rem; color:var(--text-dim);">Show If Equals Value</label>
-              <input type="text" value="${escHtml(field.showIf?.value !== undefined ? String(field.showIf.value) : '')}" placeholder="e.g. true" oninput="updateShowHideAtPath('${pathStr}', 'showIf', 'value', this.value)" />
+              <input type="text" value="${escHtml(field.showIf?.value !== undefined ? String(field.showIf.value) : '')}" placeholder="e.g. true" oninput="updateShowHideAtPath('${ePstr}', 'showIf', 'value', this.value)" />
             </div>
           </div>
           <div class="form-group" style="grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
             <div>
               <label style="font-size:0.7rem; color:var(--text-dim);">Hide If Field (Dependency)</label>
-              <input type="text" value="${escHtml(field.hideIf?.field)}" placeholder="e.g. hide_image" oninput="updateShowHideAtPath('${pathStr}', 'hideIf', 'field', this.value)" />
+              <input type="text" value="${escHtml(field.hideIf?.field)}" placeholder="e.g. hide_image" oninput="updateShowHideAtPath('${ePstr}', 'hideIf', 'field', this.value)" />
             </div>
             <div>
               <label style="font-size:0.7rem; color:var(--text-dim);">Hide If Equals Value</label>
-              <input type="text" value="${escHtml(field.hideIf?.value !== undefined ? String(field.hideIf.value) : '')}" placeholder="e.g. true" oninput="updateShowHideAtPath('${pathStr}', 'hideIf', 'value', this.value)" />
+              <input type="text" value="${escHtml(field.hideIf?.value !== undefined ? String(field.hideIf.value) : '')}" placeholder="e.g. true" oninput="updateShowHideAtPath('${ePstr}', 'hideIf', 'value', this.value)" />
             </div>
           </div>
         </div>
@@ -1072,7 +1079,7 @@ import "../../styles/admin/css/section-defination.css";
           <div style="background:rgba(99,102,241,0.03); border:1px dashed rgba(99,102,241,0.25); border-radius:6px; padding:0.85rem; margin-top:0.4rem;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
               <span style="font-size:0.7rem; font-weight:600; color:var(--text-muted); text-transform:uppercase;">Sub-fields (${field.type})</span>
-              <button type="button" class="btn btn-outline btn-sm" onclick="addFieldAtPath('${JSON.stringify([...currentPath, 'repeaterFields'])}')">+ Add Sub-field</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="addFieldAtPath('${eSubPath}')">+ Add Sub-field</button>
             </div>
             <div id="subfields-container-${pathId}">
             </div>

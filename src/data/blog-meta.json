@@ -1,50 +1,10 @@
 {
-  "categories": [
-    {
-      "id": "cat-uncategorized",
-      "name": "Uncategorized",
-      "slug": "uncategorized",
-      "description": "Default category for posts",
-      "color": "#6366F1",
-      "createdAt": "2026-06-01T00:00:00.000Z"
-    }
-  ],
-  "tags": [
-    {
-      "id": "tag-web-development",
-      "name": "Web Development",
-      "slug": "web-development",
-      "description": "Articles about modern web development trends and practices.",
-      "color": "#10B981",
-      "createdAt": "2026-06-01T00:00:00.000Z"
-    },
-    {
-      "id": "tag-insights",
-      "name": "Insights",
-      "slug": "insights",
-      "description": "Strategic insights and reviews from industry leaders.",
-      "color": "#F59E0B",
-      "createdAt": "2026-06-01T00:00:00.000Z"
-    }
-  ],
-  "authors": [
-    {
-      "id": "author-admin",
-      "name": "Admin",
-      "slug": "admin",
-      "email": "admin@tangence.in",
-      "bio": "Site Administrator",
-      "avatar": "",
-      "role": "Administrator",
-      "website": "",
-      "twitter": "",
-      "linkedin": "",
-      "createdAt": "2026-06-01T00:00:00.000Z"
-    }
-  ],
+  "categories": [],
+  "tags": [],
+  "authors": [],
   "settings": {
     "blogTitle": "Blog",
-    "blogDescription": "Insights, news, and thought leadership from Tangence.",
+    "blogDescription": "",
     "postsPerPage": 9,
     "showExcerpt": true,
     "showAuthor": true,
@@ -56,9 +16,9 @@
     "commentsEnabled": true,
     "commentsModeration": true,
     "rssEnabled": true,
-    "rssFeedTitle": "Tangence Blog RSS Feed",
-    "defaultAuthor": "author-admin",
-    "defaultCategory": "cat-uncategorized",
+    "rssFeedTitle": "Blog RSS Feed",
+    "defaultAuthor": "",
+    "defaultCategory": "",
     "featuredPostsCount": 1,
     "archiveByMonth": true
   }
