@@ -529,11 +529,21 @@ import "../../styles/admin/css/settings.css"
       saveBtn.addEventListener("click", saveSettingsSubmit);
     }
 
-    // Media modal triggers setup
+    // Media modal triggers setup - use global GWP picker
     document.addEventListener("click", (e) => {
       if (e.target && e.target.classList.contains("media-picker-trigger")) {
         const targetId = e.target.getAttribute("data-target");
-        openMediaModal(targetId);
+        window.openWPMediaPicker({
+          title: 'Select Image',
+          btnLabel: 'Use this image',
+          onSelect: function(url) {
+            const input = document.getElementById(targetId);
+            if (input) {
+              input.value = url;
+              input.dispatchEvent(new Event('input'));
+            }
+          }
+        });
       }
     });
 

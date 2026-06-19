@@ -1,36 +1,5 @@
 [
   {
-    "id": "f994bd1b-2030-4274-809e-d07e4b3ec4cc",
-    "url": "/uploads/asian-1781764320704.webp",
-    "filename": "asian-1781764320704.webp",
-    "originalFilename": "Asian.webp",
-    "title": "Asian.webp",
-    "alt": "Asian",
-    "caption": "",
-    "description": "",
-    "tags": [],
-    "category": "",
-    "focusKeyword": "",
-    "credits": "",
-    "copyright": "",
-    "folder": "",
-    "mimeType": "image/webp",
-    "type": "image",
-    "hash": "9d5ba4da31792ec85efa147389acd0c41a66bc676479867e9ece35b224e9d4ed",
-    "dimensions": null,
-    "variants": {
-      "webp": "/uploads/asian-1781764320704.webp",
-      "thumb": "/uploads/asian-1781764320704-thumb.webp",
-      "small": "/uploads/asian-1781764320704-small.webp",
-      "medium": "/uploads/asian-1781764320704-medium.webp",
-      "large": "/uploads/asian-1781764320704-large.webp"
-    },
-    "size": 7512,
-    "uploadedBy": "admin",
-    "uploadedAt": "2026-06-18T06:32:01.004Z",
-    "lastModified": "2026-06-18T06:32:01.004Z"
-  },
-  {
     "id": "d06ae32f-53f4-48cc-ac49-8873fad4d9b6",
     "url": "/uploads/awinsa-1781764691338.png",
     "filename": "awinsa-1781764691338.png",
@@ -2411,5 +2380,30 @@
     "uploadedBy": "admin",
     "uploadedAt": "2026-06-18T11:02:21.691Z",
     "lastModified": "2026-06-18T11:02:21.691Z"
+  },
+  {
+    "id": "4efed869-21e1-4eb1-a9a8-5730b0099f9f",
+    "url": "/uploads/2-1781856007586.webp",
+    "filename": "2-1781856007586.webp",
+    "originalFilename": "2-1781856007586.webp",
+    "title": "2-1781856007586.webp",
+    "alt": "2 1781856007586",
+    "caption": "",
+    "description": "",
+    "tags": [],
+    "category": "",
+    "focusKeyword": "",
+    "credits": "",
+    "copyright": "",
+    "folder": "",
+    "mimeType": "image/webp",
+    "type": "image",
+    "hash": "",
+    "dimensions": null,
+    "variants": {},
+    "size": 55442,
+    "uploadedBy": "admin",
+    "uploadedAt": "2026-06-19T08:00:07.591Z",
+    "lastModified": "2026-06-19T08:00:07.591Z"
   }
 ]

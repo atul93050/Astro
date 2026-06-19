@@ -9,5 +9,16 @@
     "status": "pending",
     "createdAt": "2026-06-19T07:28:35.682Z",
     "parentId": null
+  },
+  {
+    "id": "comment-1781863131242",
+    "postSlug": "robotics-metal-fabrication",
+    "authorName": "Alex Carter",
+    "authorEmail": "alex@example.com",
+    "authorWebsite": "",
+    "body": "Fascinating read! Automation is definitely changing how welding tolerances are managed.",
+    "status": "pending",
+    "createdAt": "2026-06-19T09:58:51.242Z",
+    "parentId": null
   }
 ]

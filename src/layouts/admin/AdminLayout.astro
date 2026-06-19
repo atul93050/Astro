@@ -266,8 +266,16 @@ if (session !== "authenticated-admin-session-2026") {
       border-color: var(--primary) !important;
     }
     .media-picker-item.selected {
-      border-color: var(--accent) !important;
+      border-color: #2271b1 !important;
+      box-shadow: 0 0 0 2px #2271b1 !important;
     }
+    .media-picker-item .gwp-check {
+      position: absolute; top: 4px; right: 4px; width: 18px; height: 18px;
+      background: #2271b1; border-radius: 3px; display: none;
+      align-items: center; justify-content: center; z-index: 5;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.35);
+    }
+    .media-picker-item.selected .gwp-check { display: flex; }
     .media-picker-item img {
       width: 100% !important;
       height: 100% !important;
@@ -280,6 +288,143 @@ if (session !== "authenticated-admin-session-2026") {
       color: var(--text-dim) !important;
       font-size: 0.85rem !important;
     }
+
+    /* Global WP Media Picker Modal */
+    #gwp-modal-overlay {
+      position: fixed; inset: 0; background: rgba(8,12,20,0.8);
+      backdrop-filter: blur(6px); z-index: 9900;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    #gwp-modal-overlay.active { opacity: 1; pointer-events: auto; }
+    #gwp-modal-box {
+      width: 95vw; max-width: 1020px; height: 88vh;
+      background: #fff; border-radius: 4px;
+      display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+      transform: scale(0.96); transition: transform 0.2s ease;
+    }
+    #gwp-modal-overlay.active #gwp-modal-box { transform: scale(1); }
+    .gwp-header {
+      padding: 0.75rem 1.25rem; border-bottom: 1px solid #dcdcde;
+      display: flex; justify-content: space-between; align-items: center;
+      background: #f6f7f7; flex-shrink: 0;
+    }
+    .gwp-header h4 { font-size: 1rem; font-weight: 600; color: #1d2327; margin: 0; }
+    .gwp-body { display: flex; flex: 1; overflow: hidden; }
+    .gwp-tabs {
+      width: 145px; border-right: 1px solid #dcdcde; background: #f6f7f7;
+      padding: 1rem 0; display: flex; flex-direction: column; gap: 0.2rem; flex-shrink: 0;
+    }
+    .gwp-tab-btn {
+      background: none; border: none; text-align: left;
+      padding: 0.5rem 1rem; font-size: 0.82rem; font-weight: 600;
+      color: #444; cursor: pointer; border-left: 4px solid transparent;
+      font-family: inherit; transition: color 0.15s;
+    }
+    .gwp-tab-btn.active { color: #2271b1; border-left-color: #2271b1; }
+    .gwp-center {
+      flex: 1; display: flex; flex-direction: column;
+      overflow: hidden; padding: 1rem 1.25rem; background: #fff;
+    }
+    .gwp-filter-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 0.8rem; gap: 0.75rem; flex-wrap: wrap; flex-shrink: 0;
+    }
+    .gwp-filter-bar select, .gwp-filter-bar input {
+      height: 28px; padding: 0 0.5rem; font-size: 0.8rem;
+      border: 1px solid #dcdcde; border-radius: 3px;
+      background: #fff; color: #1d2327; font-family: inherit;
+    }
+    .gwp-filter-bar select { min-width: 120px; }
+    .gwp-filter-bar input { width: 150px; }
+    #gwp-media-grid {
+      flex: 1; overflow-y: auto; overflow-x: hidden;
+      border: 1px solid #dcdcde; border-radius: 3px;
+      padding: 0.5rem; background: #fff;
+      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)) !important;
+      gap: 0.5rem !important;
+      min-height: 100px;
+    }
+    .gwp-pagination {
+      display: flex; align-items: center; justify-content: center;
+      gap: 0.5rem; padding-top: 0.65rem; flex-shrink: 0;
+    }
+    .gwp-pagination button {
+      padding: 0.3rem 0.9rem; border: 1px solid #dcdcde;
+      border-radius: 20px; background: #fff; color: #2c3338;
+      font-size: 0.8rem; font-weight: 500; cursor: pointer;
+      font-family: inherit; transition: background 0.15s;
+    }
+    .gwp-pagination button:hover:not(:disabled) { background: #f0f0f0; }
+    .gwp-pagination button:disabled { opacity: 0.4; cursor: default; }
+    .gwp-pagination .gwp-page-info {
+      font-size: 0.8rem; color: #646970; font-weight: 500;
+      padding: 0.3rem 0.75rem; border: 1px solid #dcdcde;
+      border-radius: 20px; background: #fff; min-width: 100px; text-align: center;
+    }
+    .gwp-sidebar {
+      width: 275px; border-left: 1px solid #dcdcde; background: #f6f7f7;
+      display: flex; flex-direction: column; overflow-y: auto;
+      overflow-x: hidden; padding: 1rem; flex-shrink: 0;
+    }
+    .gwp-sidebar h5 {
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+      color: #1d2327; letter-spacing: 0.05em;
+      border-bottom: 1px solid #dcdcde; padding-bottom: 0.5rem;
+      margin: 0 0 0.75rem 0;
+    }
+    .gwp-detail-label {
+      font-size: 0.75rem; font-weight: 600; color: #2c3338;
+      display: block; margin-bottom: 0.2rem; margin-top: 0.5rem;
+    }
+    .gwp-detail-input {
+      width: 100%; padding: 4px 6px; box-sizing: border-box;
+      border: 1px solid #dcdcde; border-radius: 3px;
+      font-family: inherit; font-size: 0.78rem; color: #1d2327;
+      background: #fff;
+    }
+    .gwp-detail-textarea {
+      width: 100%; height: 52px; resize: vertical; padding: 4px 6px;
+      box-sizing: border-box; border: 1px solid #dcdcde;
+      border-radius: 3px; font-family: inherit; font-size: 0.78rem;
+      color: #1d2327; background: #fff;
+    }
+    .gwp-detail-readonly {
+      width: 100%; padding: 4px 6px; box-sizing: border-box;
+      border: 1px solid #dcdcde; border-radius: 3px;
+      font-family: monospace; font-size: 0.73rem; color: #646970;
+      background: #f0f0f1;
+    }
+    .gwp-usage-tag {
+      display: inline-block; padding: 0.2rem 0.5rem;
+      background: rgba(34,113,177,0.1); color: #2271b1;
+      border-radius: 3px; font-size: 0.7rem; font-weight: 600;
+      margin: 0.15rem; text-decoration: none;
+    }
+    .gwp-footer {
+      padding: 0.65rem 1.25rem; border-top: 1px solid #dcdcde;
+      background: #f6f7f7; display: flex;
+      justify-content: space-between; align-items: center;
+      flex-shrink: 0;
+    }
+    .gwp-upload-zone {
+      display: none; flex-direction: column; justify-content: center;
+      align-items: center; flex: 1; border: 2px dashed #c3c4c7;
+      border-radius: 4px; padding: 2rem; background: #f0f0f1; text-align: center;
+    }
+    .gwp-upload-zone.active { display: flex; }
+    /* Light mode overrides already covered since #fff / #f6f7f7 are wp-style whites */
+    html.light-mode .gwp-detail-input,
+    html.light-mode .gwp-detail-textarea { background: #fff; color: #1d2327; }
+    html:not(.light-mode) #gwp-modal-box { background: #fff; }
+    html:not(.light-mode) .gwp-header,
+    html:not(.light-mode) .gwp-tabs,
+    html:not(.light-mode) .gwp-footer,
+    html:not(.light-mode) .gwp-sidebar { background: #f6f7f7; }
+    html:not(.light-mode) .gwp-center,
+    html:not(.light-mode) #gwp-media-grid { background: #fff; }
 
     /* Global Modal Overlay styling */
     .confirm-modal-overlay {
@@ -1564,5 +1709,559 @@ if (session !== "authenticated-admin-session-2026") {
       </div>
     </div>
   </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       GLOBAL WORDPRESS-STYLE MEDIA LIBRARY PICKER MODAL
+       Open via: window.openWPMediaPicker({ onSelect: fn, mode: 'featured'|'inline', title: '...' })
+       ═══════════════════════════════════════════════════════════ -->
+  <div id="gwp-modal-overlay">
+    <div id="gwp-modal-box">
+
+      <!-- Header -->
+      <div class="gwp-header">
+        <h4 id="gwp-modal-title">Select Image</h4>
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          <input type="text" id="gwp-inline-url" placeholder="Or paste image URL…"
+            style="display:none;background:#fff;border:1px solid #dcdcde;border-radius:3px;color:#1d2327;padding:0.35rem 0.65rem;font-size:0.8rem;width:240px;font-family:inherit;" />
+          <button type="button" id="gwp-inline-url-btn"
+            style="display:none;background:#2271b1;border:none;color:#fff;border-radius:3px;padding:0.35rem 0.75rem;font-size:0.8rem;cursor:pointer;font-weight:600;font-family:inherit;">Insert</button>
+          <button type="button" onclick="window.closeWPMediaPicker()"
+            style="background:none;border:none;cursor:pointer;color:#646970;display:flex;align-items:center;padding:0.25rem;">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="gwp-body">
+
+        <!-- Left Tabs -->
+        <div class="gwp-tabs">
+          <button type="button" class="gwp-tab-btn active" id="gwp-tab-library" onclick="gwpSwitchTab('library')">Media Library</button>
+          <button type="button" class="gwp-tab-btn" id="gwp-tab-upload" onclick="gwpSwitchTab('upload')">Upload files</button>
+        </div>
+
+        <!-- Center: Library or Upload -->
+        <div class="gwp-center">
+
+          <!-- Library Panel -->
+          <div id="gwp-panel-library" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+            <!-- Filter bar -->
+            <div class="gwp-filter-bar">
+              <div style="display:flex;gap:0.5rem;align-items:center;">
+                <select id="gwp-filter-type" onchange="gwpFilter()">
+                  <option value="all">All media items</option>
+                  <option value="image" selected>Images</option>
+                </select>
+                <select id="gwp-filter-date" onchange="gwpFilter()">
+                  <option value="all">All dates</option>
+                </select>
+                <select id="gwp-filter-folder" onchange="gwpFilter()">
+                  <option value="all">All folders</option>
+                </select>
+              </div>
+              <div style="display:flex;align-items:center;gap:0.4rem;">
+                <span style="font-size:0.8rem;color:#646970;font-weight:500;">Search media</span>
+                <input type="text" id="gwp-search" placeholder="Search..." oninput="gwpFilter()" />
+              </div>
+            </div>
+
+            <!-- Grid -->
+            <div class="media-picker-grid" id="gwp-media-grid">
+              <!-- JS populated -->
+            </div>
+
+            <!-- Pagination -->
+            <div class="gwp-pagination">
+              <button type="button" id="gwp-prev-btn" onclick="gwpChangePage(-1)" disabled>Previous</button>
+              <span class="gwp-page-info" id="gwp-page-info">Page 1 of 1</span>
+              <button type="button" id="gwp-next-btn" onclick="gwpChangePage(1)" disabled>Next</button>
+            </div>
+          </div>
+
+          <!-- Upload Panel -->
+          <div id="gwp-panel-upload" class="gwp-upload-zone">
+            <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="#2271b1" stroke-width="1.5" style="margin-bottom:1rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <h3 style="font-size:1rem;font-weight:600;color:#1d2327;margin:0 0 0.4rem 0;font-family:inherit;">Drop files to upload</h3>
+            <p style="font-size:0.8rem;color:#646970;margin:0 0 1rem 0;">or</p>
+            <input type="file" id="gwp-upload-file" accept="image/*,video/*,.svg,.pdf" style="display:none;" multiple />
+            <button type="button" class="btn btn-outline" onclick="document.getElementById('gwp-upload-file').click()"
+              style="padding:0.45rem 1.25rem;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:inherit;">Select Files</button>
+            <div id="gwp-upload-status" style="margin-top:1rem;font-size:0.8rem;color:#2271b1;font-weight:600;"></div>
+          </div>
+
+        </div>
+
+        <!-- Right Sidebar: Attachment Details -->
+        <div class="gwp-sidebar">
+          <h5>Attachment Details</h5>
+          <div id="gwp-details-panel">
+            <div style="color:#646970;font-size:0.8rem;text-align:center;padding:2rem 0;font-weight:500;">
+              No image selected.<br>Click an image to view details.
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="gwp-footer">
+        <div style="display:flex;align-items:center;gap:0.5rem;font-size:0.8rem;color:#2c3338;font-weight:500;">
+          <span id="gwp-selection-count">0 items selected</span>
+          <button type="button" id="gwp-clear-btn" onclick="gwpClearSelection()"
+            style="display:none;background:none;border:none;padding:0;color:#2271b1;cursor:pointer;font-weight:600;font-family:inherit;font-size:0.8rem;">Clear</button>
+          <div id="gwp-selection-preview" style="display:flex;gap:0.25rem;align-items:center;"></div>
+        </div>
+        <div style="display:flex;gap:0.5rem;">
+          <button type="button" class="btn btn-outline" onclick="window.closeWPMediaPicker()"
+            style="font-size:0.82rem;height:32px;padding:0 1rem;">Cancel</button>
+          <button type="button" class="btn btn-primary" id="gwp-submit-btn" onclick="gwpSubmitSelection()"
+            style="font-size:0.82rem;height:32px;padding:0 1.25rem;" disabled>Set featured image</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Global WP Media Picker Script -->
+  <script is:inline>
+  (function() {
+    // ─── State ────────────────────────────────────────────────────────────────
+    let _gwpAllItems = [];
+    let _gwpFiltered = [];
+    let _gwpCurrentPage = 1;
+    const GWP_PAGE_SIZE = 32;
+    let _gwpSelectedUrl = '';
+    let _gwpOnSelect = null;
+    let _gwpMode = 'featured'; // 'featured' | 'inline'
+    let _gwpQuillRef = null;
+
+    // ─── Public API ──────────────────────────────────────────────────────────
+    window.openWPMediaPicker = function(opts) {
+      opts = opts || {};
+      _gwpOnSelect  = opts.onSelect  || null;
+      _gwpMode      = opts.mode      || 'featured';
+      _gwpQuillRef  = opts.quill     || null;
+      const title   = opts.title     || (_gwpMode === 'inline' ? 'Insert Image' : 'Set Featured Image');
+      const btnLabel= opts.btnLabel  || (_gwpMode === 'inline' ? 'Insert image'  : 'Set featured image');
+
+      document.getElementById('gwp-modal-title').textContent = title;
+      document.getElementById('gwp-submit-btn').textContent  = btnLabel;
+
+      // Show/hide inline URL row
+      const urlRow = document.getElementById('gwp-inline-url');
+      const urlBtn = document.getElementById('gwp-inline-url-btn');
+      if (_gwpMode === 'inline') {
+        urlRow.style.display = 'block';
+        urlBtn.style.display = 'inline-block';
+      } else {
+        urlRow.style.display = 'none';
+        urlBtn.style.display = 'none';
+      }
+
+      document.getElementById('gwp-modal-overlay').classList.add('active');
+      gwpSwitchTab('library');
+      gwpClearSelection();
+      gwpLoadMedia();
+    };
+
+    window.closeWPMediaPicker = function() {
+      document.getElementById('gwp-modal-overlay').classList.remove('active');
+      _gwpMode = 'featured';
+      _gwpOnSelect = null;
+      _gwpQuillRef = null;
+      gwpClearSelection();
+    };
+
+    // ─── Tab switching ────────────────────────────────────────────────────────
+    window.gwpSwitchTab = function(tab) {
+      document.getElementById('gwp-panel-library').style.display = tab === 'library' ? 'flex' : 'none';
+      const uploadPanel = document.getElementById('gwp-panel-upload');
+      if (tab === 'upload') { uploadPanel.classList.add('active'); } else { uploadPanel.classList.remove('active'); }
+      document.getElementById('gwp-tab-library').classList.toggle('active', tab === 'library');
+      document.getElementById('gwp-tab-upload').classList.toggle('active', tab === 'upload');
+    };
+
+    // ─── Load media from API ──────────────────────────────────────────────────
+    async function gwpLoadMedia() {
+      const grid = document.getElementById('gwp-media-grid');
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:#646970;">Loading…</div>';
+      try {
+        const res  = await fetch('/api/media-crud', { credentials: 'include' });
+        const data = await res.json();
+        // Sort by uploadedAt DESC (latest first)
+        _gwpAllItems = (data.media || data.items || [])
+          .filter(i => ['image', 'svg', 'video'].includes(i.type) || (i.filename && /\.(jpg|jpeg|png|gif|webp|avif|svg|mp4|mov|pdf)$/i.test(i.filename)))
+          .sort((a, b) => {
+            const da = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
+            const db = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
+            return db - da; // descending
+          });
+        gwpPopulateDateFilter(_gwpAllItems);
+        gwpPopulateFolderFilter(_gwpAllItems);
+        _gwpFiltered = _gwpAllItems.slice();
+        _gwpCurrentPage = 1;
+        gwpRenderGrid();
+      } catch(e) {
+        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:#b32d2e;">Failed to load media library.</div>';
+      }
+    }
+
+    // ─── Populate filters ────────────────────────────────────────────────────
+    function gwpPopulateDateFilter(items) {
+      const sel = document.getElementById('gwp-filter-date');
+      if (!sel) return;
+      const months = new Map();
+      items.forEach(item => {
+        if (!item.uploadedAt) return;
+        const d  = new Date(item.uploadedAt);
+        const v  = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        const lbl= d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        if (!months.has(v)) months.set(v, lbl);
+      });
+      let html = '<option value="all">All dates</option>';
+      Array.from(months.entries()).sort((a,b) => b[0].localeCompare(a[0])).forEach(([v, lbl]) => {
+        html += `<option value="${v}">${lbl}</option>`;
+      });
+      sel.innerHTML = html;
+    }
+
+    function gwpPopulateFolderFilter(items) {
+      const sel = document.getElementById('gwp-filter-folder');
+      if (!sel) return;
+      const folders = new Set();
+      items.forEach(i => { if (i.folder) folders.add(i.folder); });
+      let html = '<option value="all">All folders</option><option value="">Root (/)</option>';
+      Array.from(folders).sort().forEach(f => { html += `<option value="${f}">${f}</option>`; });
+      sel.innerHTML = html;
+    }
+
+    // ─── Filter handler ──────────────────────────────────────────────────────
+    window.gwpFilter = function() {
+      const typeVal   = document.getElementById('gwp-filter-type').value;
+      const dateVal   = document.getElementById('gwp-filter-date').value;
+      const folderVal = document.getElementById('gwp-filter-folder').value;
+      const search    = document.getElementById('gwp-search').value.trim().toLowerCase();
+
+      _gwpFiltered = _gwpAllItems.filter(item => {
+        if (typeVal === 'image' && !['image','svg'].includes(item.type)) return false;
+        if (dateVal !== 'all' && item.uploadedAt) {
+          const d = new Date(item.uploadedAt);
+          const ym = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+          if (ym !== dateVal) return false;
+        }
+        if (folderVal !== 'all') {
+          const f = item.folder || '';
+          if (f !== folderVal) return false;
+        }
+        if (search) {
+          const t = (item.title||'').toLowerCase();
+          const fn= (item.filename||'').toLowerCase();
+          const a = (item.alt||'').toLowerCase();
+          if (!t.includes(search) && !fn.includes(search) && !a.includes(search)) return false;
+        }
+        return true;
+      });
+
+      _gwpCurrentPage = 1;
+      gwpRenderGrid();
+    };
+
+    // ─── Render grid (paged) ──────────────────────────────────────────────────
+    function gwpRenderGrid() {
+      const grid   = document.getElementById('gwp-media-grid');
+      const total  = _gwpFiltered.length;
+      const pages  = Math.max(1, Math.ceil(total / GWP_PAGE_SIZE));
+      _gwpCurrentPage = Math.min(_gwpCurrentPage, pages);
+
+      const start  = (_gwpCurrentPage - 1) * GWP_PAGE_SIZE;
+      const page   = _gwpFiltered.slice(start, start + GWP_PAGE_SIZE);
+
+      // Pagination controls
+      document.getElementById('gwp-page-info').textContent = `Page ${_gwpCurrentPage} of ${pages}`;
+      document.getElementById('gwp-prev-btn').disabled = _gwpCurrentPage <= 1;
+      document.getElementById('gwp-next-btn').disabled = _gwpCurrentPage >= pages;
+
+      if (!page.length) {
+        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:#646970;">No media items found.</div>';
+        return;
+      }
+
+      grid.innerHTML = page.map(img => {
+        const sel = img.url === _gwpSelectedUrl;
+        const thumb = img.url;
+        return `
+          <div class="media-picker-item${sel?' selected':''}" onclick="gwpSelectItem('${img.url}')" data-url="${img.url}" title="${img.title||img.filename||''}">
+            <img src="${thumb}" alt="${img.alt||''}" loading="lazy" />
+            <div class="gwp-check">
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="#fff"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ─── Page navigation ─────────────────────────────────────────────────────
+    window.gwpChangePage = function(delta) {
+      const pages = Math.max(1, Math.ceil(_gwpFiltered.length / GWP_PAGE_SIZE));
+      _gwpCurrentPage = Math.min(Math.max(1, _gwpCurrentPage + delta), pages);
+      gwpRenderGrid();
+    };
+
+    // ─── Select item ──────────────────────────────────────────────────────────
+    window.gwpSelectItem = function(url) {
+      _gwpSelectedUrl = url;
+      document.querySelectorAll('#gwp-media-grid .media-picker-item').forEach(el => {
+        el.classList.toggle('selected', el.getAttribute('data-url') === url);
+      });
+      document.getElementById('gwp-submit-btn').disabled = false;
+      document.getElementById('gwp-selection-count').textContent = '1 item selected';
+      const clearBtn = document.getElementById('gwp-clear-btn');
+      if (clearBtn) clearBtn.style.display = 'inline-block';
+      const prevEl = document.getElementById('gwp-selection-preview');
+      if (prevEl) prevEl.innerHTML = `<img src="${url}" style="width:24px;height:24px;object-fit:cover;border-radius:3px;border:1px solid #dcdcde;" />`;
+
+      const item = _gwpAllItems.find(i => i.url === url);
+      if (item) gwpRenderDetails(item);
+    };
+
+    // ─── Clear selection ─────────────────────────────────────────────────────
+    window.gwpClearSelection = function() {
+      _gwpSelectedUrl = '';
+      document.querySelectorAll('#gwp-media-grid .media-picker-item').forEach(el => el.classList.remove('selected'));
+      const btn = document.getElementById('gwp-submit-btn');
+      if (btn) btn.disabled = true;
+      const cnt = document.getElementById('gwp-selection-count');
+      if (cnt) cnt.textContent = '0 items selected';
+      const clr = document.getElementById('gwp-clear-btn');
+      if (clr) clr.style.display = 'none';
+      const prv = document.getElementById('gwp-selection-preview');
+      if (prv) prv.innerHTML = '';
+      const panel = document.getElementById('gwp-details-panel');
+      if (panel) panel.innerHTML = '<div style="color:#646970;font-size:0.8rem;text-align:center;padding:2rem 0;font-weight:500;">No image selected.<br>Click an image to view details.</div>';
+    };
+
+    // ─── Submit selection ─────────────────────────────────────────────────────
+    window.gwpSubmitSelection = function() {
+      if (!_gwpSelectedUrl) return;
+      if (_gwpOnSelect) {
+        _gwpOnSelect(_gwpSelectedUrl);
+      } else if (_gwpMode === 'inline' && _gwpQuillRef) {
+        const range = _gwpQuillRef.getSelection(true);
+        _gwpQuillRef.insertEmbed(range ? range.index : 0, 'image', _gwpSelectedUrl);
+        if (range) _gwpQuillRef.setSelection(range.index + 1);
+      }
+      window.closeWPMediaPicker();
+    };
+
+    // ─── Render attachment details sidebar ───────────────────────────────────
+    function gwpRenderDetails(item) {
+      const panel = document.getElementById('gwp-details-panel');
+      if (!panel) return;
+
+      const date = item.uploadedAt
+        ? new Date(item.uploadedAt).toLocaleString('en-IN', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })
+        : '—';
+      const size  = gwpFmtBytes(item.size);
+      const dims  = item.dimensions ? `${item.dimensions.width} × ${item.dimensions.height}` : '—';
+      const fullUrl = window.location.origin + item.url;
+
+      // Build folders options
+      const allFolders = [...new Set(_gwpAllItems.filter(i=>i.folder).map(i=>i.folder))].sort();
+      const folderOpts = `<option value="">Root (/)</option>` +
+        allFolders.map(f=>`<option value="${f}"${item.folder===f?' selected':''}>${f}</option>`).join('');
+
+      // Usage references
+      const usage = item.usage || [];
+      let usageHtml;
+      if (usage.length) {
+        usageHtml = usage.map(u =>
+          `<a href="#" class="gwp-usage-tag" title="${u.file} (${u.count} ref)">${u.title}</a>`
+        ).join('');
+      } else {
+        usageHtml = '<span style="font-size:0.75rem;color:#646970;">No active page references found on disk.</span>';
+      }
+
+      panel.innerHTML = `
+        <!-- Thumbnail + meta -->
+        <div style="display:flex;gap:0.5rem;align-items:flex-start;border-bottom:1px solid #dcdcde;padding-bottom:0.75rem;margin-bottom:0.25rem;">
+          <img src="${item.url}" style="width:68px;height:68px;object-fit:cover;border-radius:4px;border:1px solid #dcdcde;flex-shrink:0;" />
+          <div style="font-size:0.73rem;color:#646970;overflow:hidden;min-width:0;">
+            <div style="font-weight:700;color:#1d2327;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;margin-bottom:2px;" title="${item.filename}">${item.filename}</div>
+            <div>File size: <strong style="color:#1d2327;">${size}</strong></div>
+            <div>Uploaded at: <strong style="color:#1d2327;">${date}</strong></div>
+            ${item.dimensions ? `<div>Dimensions: <strong style="color:#1d2327;">${dims}</strong></div>` : ''}
+          </div>
+        </div>
+
+        <!-- Attachment Title -->
+        <label class="gwp-detail-label">Attachment Title</label>
+        <input type="text" id="gwp-d-title" class="gwp-detail-input" value="${(item.title||'').replace(/"/g,'&quot;')}" />
+
+        <!-- Alt Text -->
+        <label class="gwp-detail-label">Alt Description Text</label>
+        <input type="text" id="gwp-d-alt" class="gwp-detail-input" value="${(item.alt||'').replace(/"/g,'&quot;')}" />
+
+        <!-- Caption -->
+        <label class="gwp-detail-label">Caption</label>
+        <textarea id="gwp-d-caption" class="gwp-detail-textarea">${item.caption||''}</textarea>
+
+        <!-- Description -->
+        <label class="gwp-detail-label">Description</label>
+        <textarea id="gwp-d-desc" class="gwp-detail-textarea">${item.description||''}</textarea>
+
+        <!-- Virtual Folder -->
+        <label class="gwp-detail-label">Virtual Folder Location</label>
+        <select id="gwp-d-folder" class="gwp-detail-input" style="height:30px;cursor:pointer;">${folderOpts}</select>
+
+        <!-- Physical URL -->
+        <label class="gwp-detail-label">Physical Asset URL</label>
+        <div style="display:flex;gap:0.4rem;align-items:center;">
+          <input type="text" readonly value="${fullUrl}" class="gwp-detail-readonly" style="flex:1;" onclick="this.select()" />
+          <button type="button" onclick="navigator.clipboard.writeText('${fullUrl}').then(()=>{ if(window.showToast) showToast('URL copied!','success'); })"
+            style="background:#2271b1;border:none;color:#fff;border-radius:3px;padding:4px 8px;font-size:0.75rem;cursor:pointer;font-weight:600;font-family:inherit;white-space:nowrap;">Copy</button>
+        </div>
+
+        <!-- Page Usage Reference -->
+        <div style="border-top:1px solid #dcdcde;margin-top:0.75rem;padding-top:0.75rem;">
+          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:#646970;letter-spacing:0.05em;margin-bottom:0.4rem;">Page Usage Reference</div>
+          <div id="gwp-usage-wrap" style="display:flex;flex-wrap:wrap;gap:0.15rem;">
+            ${usageHtml}
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div style="display:flex;flex-direction:column;gap:0.5rem;margin-top:1rem;">
+          <button type="button" onclick="gwpSaveMetadata()"
+            style="background:#2271b1;border:none;color:#fff;border-radius:4px;padding:0.55rem;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:inherit;width:100%;">Save Metadata</button>
+          <button type="button" onclick="gwpDeleteItem('${item.url}')"
+            style="background:#b32d2e;border:none;color:#fff;border-radius:4px;padding:0.55rem;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:inherit;width:100%;">Delete Permanently</button>
+        </div>
+      `;
+    }
+
+    // ─── Save metadata ────────────────────────────────────────────────────────
+    window.gwpSaveMetadata = async function() {
+      if (!_gwpSelectedUrl) return;
+      const title  = document.getElementById('gwp-d-title')?.value  || '';
+      const alt    = document.getElementById('gwp-d-alt')?.value    || '';
+      const caption= document.getElementById('gwp-d-caption')?.value|| '';
+      const desc   = document.getElementById('gwp-d-desc')?.value   || '';
+      const folder = document.getElementById('gwp-d-folder')?.value || '';
+      try {
+        const res  = await fetch('/api/media-crud', {
+          method: 'PUT', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: _gwpSelectedUrl, title, alt, caption, description: desc, folder })
+        });
+        const data = await res.json();
+        if (data.success) {
+          // Update local cache
+          const idx = _gwpAllItems.findIndex(i => i.url === _gwpSelectedUrl);
+          if (idx !== -1) Object.assign(_gwpAllItems[idx], { title, alt, caption, description: desc, folder });
+          if (window.showToast) showToast('Metadata saved!', 'success');
+          else alert('Metadata saved!');
+        } else {
+          if (window.showToast) showToast(data.error || 'Save failed', 'error');
+        }
+      } catch(e) {
+        if (window.showToast) showToast('Network error saving metadata', 'error');
+      }
+    };
+
+    // ─── Delete item ──────────────────────────────────────────────────────────
+    window.gwpDeleteItem = async function(url) {
+      window.customConfirm('Are you sure you want to permanently delete this media file? This cannot be undone.', async () => {
+        try {
+          const res  = await fetch('/api/media-crud', {
+            method: 'DELETE', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ urls: [url] })
+          });
+          const data = await res.json();
+          if (data.success) {
+            if (window.showToast) showToast('Media permanently deleted!', 'success');
+            gwpClearSelection();
+            await gwpLoadMedia();
+          } else {
+            if (window.showToast) showToast(data.error || 'Delete failed', 'error');
+          }
+        } catch(e) {
+          if (window.showToast) showToast('Network error deleting media', 'error');
+        }
+      });
+    };
+
+    // ─── Upload handler ───────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function() {
+      const fileInput  = document.getElementById('gwp-upload-file');
+      const statusEl   = document.getElementById('gwp-upload-status');
+      const inlineUrl  = document.getElementById('gwp-inline-url');
+      const inlineBtn  = document.getElementById('gwp-inline-url-btn');
+
+      if (fileInput) {
+        fileInput.addEventListener('change', async function() {
+          if (!fileInput.files.length) return;
+          statusEl.textContent = 'Uploading…';
+          const uploaded = [];
+          for (const file of fileInput.files) {
+            try {
+              const fd = new FormData();
+              fd.append('file', file);
+              const res  = await fetch('/api/media-crud', { method: 'POST', body: fd, credentials: 'include' });
+              const data = await res.json();
+              if (data.success && data.url) { uploaded.push(data.url); }
+            } catch(e) {}
+          }
+          fileInput.value = '';
+          if (uploaded.length) {
+            statusEl.textContent = `${uploaded.length} file(s) uploaded!`;
+            await gwpLoadMedia();
+            gwpSwitchTab('library');
+            // auto-select the last uploaded
+            gwpSelectItem(uploaded[uploaded.length - 1]);
+            setTimeout(() => { statusEl.textContent = ''; }, 3000);
+          } else {
+            statusEl.textContent = 'Upload failed. Please try again.';
+          }
+        });
+      }
+
+      // Inline URL insert
+      if (inlineBtn) {
+        inlineBtn.addEventListener('click', function() {
+          const url = (inlineUrl ? inlineUrl.value.trim() : '');
+          if (!url) return;
+          if (_gwpMode === 'inline' && _gwpQuillRef) {
+            const range = _gwpQuillRef.getSelection(true);
+            _gwpQuillRef.insertEmbed(range ? range.index : 0, 'image', url);
+            if (range) _gwpQuillRef.setSelection(range.index + 1);
+          } else if (_gwpOnSelect) {
+            _gwpOnSelect(url);
+          }
+          window.closeWPMediaPicker();
+        });
+      }
+
+      // Close on overlay click
+      const overlay = document.getElementById('gwp-modal-overlay');
+      if (overlay) {
+        overlay.addEventListener('click', function(e) {
+          if (e.target === overlay) window.closeWPMediaPicker();
+        });
+      }
+    });
+
+    // ─── Helpers ──────────────────────────────────────────────────────────────
+    function gwpFmtBytes(bytes) {
+      if (!bytes) return '0 B';
+      const k = 1024, sizes = ['B','KB','MB','GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+  })();
+  </script>
+
 </body>
 </html>

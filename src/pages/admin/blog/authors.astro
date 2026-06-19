@@ -1054,8 +1054,10 @@ export const prerender = false;
 
   // ─── Rendering ────────────────────────────────────────────────────────────
   function applyFilters() {
-    var q = (document.getElementById('authors-search')?.value || '').toLowerCase();
-    var role = document.getElementById('role-filter')?.value || 'all';
+    var searchEl = document.getElementById('authors-search');
+    var q = (searchEl ? searchEl.value : '').toLowerCase();
+    var roleEl = document.getElementById('role-filter');
+    var role = roleEl ? roleEl.value : 'all';
 
     filteredAuthors = authorsData.filter(function(a) {
       var matchQ = !q || (a.name || '').toLowerCase().includes(q) || (a.email || '').toLowerCase().includes(q) || (a.role || '').toLowerCase().includes(q);
@@ -1165,21 +1167,22 @@ export const prerender = false;
   // ─── Panel Open / Close ───────────────────────────────────────────────────
   function openPanel(author) {
     var isEdit = !!author;
+    author = author || {};
     document.getElementById('panel-title').innerText = isEdit ? 'Edit Author' : 'New Author';
     document.getElementById('save-btn-text').innerText = isEdit ? 'Update Author' : 'Save Author';
-    document.getElementById('form-author-id').value = author ? (author.id || author._id || '') : '';
+    document.getElementById('form-author-id').value = author.id || author._id || '';
 
-    document.getElementById('form-name').value = author?.name || '';
-    document.getElementById('form-slug').value = author?.slug || '';
-    document.getElementById('form-email').value = author?.email || '';
-    document.getElementById('form-bio').value = author?.bio || '';
-    document.getElementById('form-role').value = author?.role || 'author';
-    document.getElementById('form-avatar').value = author?.avatar || '';
-    document.getElementById('form-website').value = author?.website || '';
-    document.getElementById('form-twitter').value = author?.twitter || '';
-    document.getElementById('form-linkedin').value = author?.linkedin || '';
+    document.getElementById('form-name').value = author.name || '';
+    document.getElementById('form-slug').value = author.slug || '';
+    document.getElementById('form-email').value = author.email || '';
+    document.getElementById('form-bio').value = author.bio || '';
+    document.getElementById('form-role').value = author.role || 'author';
+    document.getElementById('form-avatar').value = author.avatar || '';
+    document.getElementById('form-website').value = author.website || '';
+    document.getElementById('form-twitter').value = author.twitter || '';
+    document.getElementById('form-linkedin').value = author.linkedin || '';
 
-    updateAvatarPreview(author?.name || '', author?.avatar || '');
+    updateAvatarPreview(author.name || '', author.avatar || '');
 
     document.getElementById('panel-overlay').classList.add('active');
     document.getElementById('author-panel').classList.add('open');
@@ -1371,34 +1374,27 @@ export const prerender = false;
     if (cancelBtn) cancelBtn.addEventListener('click', hideDeleteModal);
     if (confirmBtn) confirmBtn.addEventListener('click', deleteAuthor);
 
-    // Media picker
+    // Media picker - use global GWP picker
     var pickMediaBtn = document.getElementById('btn-pick-media');
-    if (pickMediaBtn) pickMediaBtn.addEventListener('click', openMediaModal);
+    if (pickMediaBtn) {
+      pickMediaBtn.addEventListener('click', function() {
+        window.openWPMediaPicker({
+          title: 'Select Author Avatar',
+          btnLabel: 'Select image',
+          onSelect: function(url) {
+            document.getElementById('form-avatar').value = url;
+            updateAvatarPreview(document.getElementById('form-name').value, url);
+            if (window.showToast) showToast('Avatar image selected!', 'success');
+          }
+        });
+      });
+    }
 
+    // Legacy local media picker close events (media-modal-close / cancel may still be in markup - harmless if unused)
     var mediaClose = document.getElementById('media-modal-close');
     var mediaCancel = document.getElementById('media-modal-cancel');
-    var mediaSelect = document.getElementById('media-modal-select');
-    var mediaSearch = document.getElementById('media-search-input');
-
-    if (mediaClose) mediaClose.addEventListener('click', closeMediaModal);
-    if (mediaCancel) mediaCancel.addEventListener('click', closeMediaModal);
-
-    if (mediaSearch) {
-      mediaSearch.addEventListener('input', function() {
-        renderMediaGallery(mediaSearch.value);
-      });
-    }
-
-    if (mediaSelect) {
-      mediaSelect.addEventListener('click', function() {
-        if (selectedMediaUrl) {
-          document.getElementById('form-avatar').value = selectedMediaUrl;
-          updateAvatarPreview(document.getElementById('form-name').value, selectedMediaUrl);
-          closeMediaModal();
-          showToast('Image selected!', 'success');
-        }
-      });
-    }
+    if (mediaClose) mediaClose.addEventListener('click', function() { if(window.closeWPMediaPicker) closeWPMediaPicker(); });
+    if (mediaCancel) mediaCancel.addEventListener('click', function() { if(window.closeWPMediaPicker) closeWPMediaPicker(); });
 
     // Media modal overlay click to close
     var mediaOverlay = document.getElementById('media-modal-overlay');

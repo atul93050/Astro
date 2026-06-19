@@ -70,7 +70,20 @@ function stringifyMarkdown(data: any, body = "") {
 function getMeta(): any {
   ensureDirs();
   try {
-    return JSON.parse(fs.readFileSync(META_FILE, "utf-8"));
+    const meta = JSON.parse(fs.readFileSync(META_FILE, "utf-8"));
+    let dirty = false;
+    if (!meta.authors || !Array.isArray(meta.authors) || meta.authors.length === 0) {
+      meta.authors = [{ id: "author-admin", name: "Admin", slug: "admin", email: "", bio: "", avatar: "", role: "Administrator", website: "", twitter: "", linkedin: "", createdAt: new Date().toISOString() }];
+      dirty = true;
+    }
+    if (!meta.categories || !Array.isArray(meta.categories) || meta.categories.length === 0) {
+      meta.categories = [{ id: "cat-uncategorized", name: "Uncategorized", slug: "uncategorized", description: "", color: "#6366F1", createdAt: new Date().toISOString() }];
+      dirty = true;
+    }
+    if (dirty) {
+      fs.writeFileSync(META_FILE, JSON.stringify(meta, null, 2), "utf-8");
+    }
+    return meta;
   } catch {
     return { categories: [], tags: [], authors: [], settings: {} };
   }

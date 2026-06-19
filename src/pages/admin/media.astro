@@ -105,98 +105,223 @@ export const prerender = false;
       </div>
     </div>
 
-    <!-- Asset Detail Panel Drawer (Sidebars) -->
+    <!-- Asset Detail Panel Modal Overlay (originally asset-details-drawer) -->
     <div class="asset-details-drawer" id="asset-drawer">
-      <div class="drawer-header">
-        <h4>Attachment Details</h4>
-        <button type="button" class="btn-icon-sm" id="close-drawer-btn" style="border:none;">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-        </button>
-      </div>
       
-      <div class="drawer-body" id="drawer-content" style="display:none;">
-        <div class="drawer-preview-wrap">
-          <img src="" id="drawer-preview-img" alt="Preview" />
-        </div>
+      <!-- Modal Box Box-Window -->
+      <div class="asset-details-modal-box">
         
-        <div class="drawer-meta-info">
-          <div class="meta-label-value">
-            <span class="label">Filename:</span>
-            <span class="value" id="meta-filename">image.png</span>
+        <!-- Header -->
+        <div class="modal-box-header">
+          <div class="header-left">
+            <h3>Attachment details</h3>
           </div>
-          <div class="meta-label-value">
-            <span class="label">File size:</span>
-            <span class="value" id="meta-filesize">24 KB</span>
-          </div>
-          <div class="meta-label-value">
-            <span class="label">Uploaded at:</span>
-            <span class="value" id="meta-uploadedat">2026-06-01</span>
-          </div>
-        </div>
-
-        <form id="asset-meta-form" onsubmit="return false;" style="margin-top:1.25rem; display:flex; flex-direction:column; gap:1rem;">
-          <div class="form-group">
-            <label for="asset-title">Attachment Title</label>
-            <input type="text" id="asset-title" required />
-          </div>
-          
-          <div class="form-group">
-            <label for="asset-alt">Alt Description Text</label>
-            <input type="text" id="asset-alt" placeholder="Description for screenreaders" />
-          </div>
-
-          <div class="form-group">
-            <label for="asset-caption">Caption</label>
-            <textarea id="asset-caption" rows="2"></textarea>
-          </div>
-
-          <div class="form-group">
-            <label for="asset-folder">Virtual Folder Location</label>
-            <select id="asset-folder" style="width:100%; border:1px solid var(--border-color); padding:0.5rem; border-radius:4px; background:var(--input-bg); color:var(--text-main);">
-              <option value="">Root (/)</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label>Physical Asset URL</label>
-            <div class="input-picker-wrap">
-              <input type="text" id="asset-url-readonly" readonly style="font-family:monospace; font-size:0.78rem; opacity:0.85;" />
-              <button type="button" class="btn btn-outline btn-sm" id="copy-url-btn">Copy</button>
-            </div>
-          </div>
-
-          <!-- Thumbnails & WebP Generation Section -->
-          <div class="form-group" id="generate-variants-container" style="display:none; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 1rem; flex-direction: column; gap: 0.5rem;">
-            <label style="font-size:0.8rem; font-weight:700; text-transform:uppercase; color:var(--text-muted);">Image Optimization &amp; Variants</label>
-            <p style="font-size:0.75rem; color:var(--text-dim); margin-bottom:0.25rem;">Generate high-performance WebP formats and responsive thumbnails for this image.</p>
-            <div style="display:flex; gap:0.5rem; align-items:center;">
-              <button type="button" class="btn btn-outline btn-sm" id="generate-variants-btn" style="flex:1;">Generate Thumbnails</button>
-            </div>
-            <div id="variants-status-list" style="display:none; flex-direction:column; gap:0.25rem; background:rgba(255,255,255,0.03); padding:0.4rem; border-radius:4px; font-size:0.7rem; font-family:monospace; border:1px solid rgba(255,255,255,0.06); max-height:100px; overflow-y:auto;">
-            </div>
-          </div>
-
-          <!-- Dynamic Real-time Media Usage Scan List -->
-          <div style="border-top:1px solid var(--border-color) || rgba(255,255,255,0.08); padding-top:1rem; margin-top:1rem;">
-            <h5 style="font-size:0.8rem; font-weight:700; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.5rem;">Page Usage Reference</h5>
-            <div id="media-usage-list" style="display:flex; flex-direction:column; gap:0.4rem; max-height: 150px; overflow-y: auto;">
-              <span style="font-size:0.78rem; color:var(--text-dim);">No active page references found on disk.</span>
-            </div>
-          </div>
-
-          <div class="drawer-footer-actions">
-            <button type="button" class="btn btn-primary btn-sm" id="save-asset-meta-btn">Save Metadata</button>
-            <button type="button" class="btn btn-danger btn-sm btn-outline" id="delete-asset-btn" style="background-color:rgba(239, 68, 68, 0.08); border-color:var(--color-error); color:var(--color-error);">
-              Delete Permanently
+          <div class="header-right">
+            <!-- Nav buttons for Prev / Next item -->
+            <button type="button" class="nav-btn" id="modal-prev-btn" title="Previous media item">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+            <button type="button" class="nav-btn" id="modal-next-btn" title="Next media item">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+            
+            <!-- Close button -->
+            <button type="button" class="close-btn" id="close-drawer-btn" title="Close dialog">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
           </div>
-        </form>
+        </div>
+
+        <!-- Body -->
+        <div class="modal-box-body" id="drawer-content" style="display:none;">
+          
+          <!-- Left side: Large preview of selected media -->
+          <div class="modal-preview-column">
+            
+            <!-- Standard Image Preview -->
+            <div class="modal-preview-wrapper" id="preview-image-container">
+              <img src="" id="drawer-preview-img" alt="Preview" />
+              <div id="document-preview-icon" style="display:none; flex-direction:column; align-items:center; justify-content:center; color:#9ca3af; text-align:center;">
+                <span id="preview-file-icon" style="font-size:5rem; margin-bottom:1rem;">📄</span>
+                <span id="preview-file-title" style="font-size:1.1rem; font-weight:700; word-break:break-all; max-width:80%;">File Name</span>
+              </div>
+            </div>
+
+            <!-- Background Remover Canvas Workspace -->
+            <div class="modal-preview-wrapper" id="bg-remover-workspace" style="display:none; flex-direction:column; gap:1rem;">
+              <div style="position:relative; max-width:100%; max-height:80%; overflow:auto; background-image: linear-gradient(45deg, var(--border-color) 25%, transparent 25%), linear-gradient(-45deg, var(--border-color) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, var(--border-color) 75%), linear-gradient(-45deg, transparent 75%, var(--border-color) 75%); background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0px; background-color: var(--bg-surface-solid); border:1px dashed var(--primary); border-radius:4px; display:flex; align-items:center; justify-content:center;">
+                <canvas id="bg-remover-canvas" style="cursor:crosshair; max-width:100%; height:auto; display:block;"></canvas>
+              </div>
+              <div class="bg-remover-controls" style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; background: var(--bg-base); border: 1px solid var(--border-color); padding:0.5rem; border-radius:4px; width:100%; box-sizing:border-box;">
+                <span style="font-size:0.75rem; color:var(--text-muted);">Tolerance:</span>
+                <input type="range" id="bg-remover-tolerance" min="1" max="100" value="20" style="width:100px; cursor:pointer;" />
+                <span id="tolerance-val" style="font-size:0.75rem; font-family:monospace; color:var(--text-main);">20</span>
+                <button type="button" class="btn btn-outline btn-sm" id="btn-apply-bg-remover" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Apply Selection</button>
+                <div style="flex:1;"></div>
+                <button type="button" class="btn btn-sm" id="btn-save-bg-remover" style="background:#10B981; border:none; color:white; font-weight:600; padding:0.25rem 0.6rem; font-size:0.75rem;">Save Transparent</button>
+                <button type="button" class="btn btn-outline btn-sm" id="btn-cancel-bg-remover" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Cancel</button>
+              </div>
+              <p style="font-size:0.7rem; color:var(--text-dim); text-align:center; margin:0;">💡 Click on any color in the image above (e.g. background white) to make it transparent, adjust tolerance if needed.</p>
+            </div>
+            
+            <div class="preview-actions">
+              <button type="button" class="btn btn-outline btn-sm" id="bg-remover-btn" style="display:none; gap:0.4rem; align-items:center;">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Remove Background
+              </button>
+              <span id="dimension-badge" class="badge badge-outline">Dimensions: 1920x1080</span>
+              <span id="aspect-ratio-badge" class="badge badge-outline" style="background:rgba(99,102,241,0.08); border-color:var(--primary); color:var(--primary);">Aspect Ratio: 16:9</span>
+            </div>
+          </div>
+          
+          <!-- Right side: Form & Metadata (Scrollable) -->
+          <div class="modal-details-column">
+            
+            <!-- Technical details / File meta -->
+            <div class="details-meta-section">
+              <div class="meta-row">
+                <span class="label">Uploaded on:</span>
+                <span class="value" id="meta-uploadedat">June 19, 2026</span>
+              </div>
+              <div class="meta-row">
+                <span class="label">Uploaded by:</span>
+                <span class="value" id="meta-uploadedby">admin</span>
+              </div>
+              <div class="meta-row">
+                <span class="label">File name:</span>
+                <span class="value" id="meta-filename">image.png</span>
+              </div>
+              <div class="meta-row">
+                <span class="label">File type:</span>
+                <span class="value" id="meta-filetype">image/png</span>
+              </div>
+              <div class="meta-row">
+                <span class="label">File size:</span>
+                <span class="value" id="meta-filesize">24 KB</span>
+              </div>
+              <div class="meta-row" id="meta-dimensions-row">
+                <span class="label">Dimensions:</span>
+                <span class="value" id="meta-dimensions">1920 by 1080 pixels</span>
+              </div>
+            </div>
+
+            <!-- Dynamic Dominant Colors Extractor (our suggestion!) -->
+            <div id="dominant-colors-container" style="display:none; flex-direction:column; gap:0.4rem; padding-bottom:1rem; border-bottom:1px solid var(--border-color); margin-bottom:1rem;">
+              <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Dominant Colors Palette</span>
+              <div id="color-palette-list" style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap; margin-top:0.25rem;">
+                <!-- pills will be generated -->
+              </div>
+            </div>
+
+            <!-- Duplicate Status Warning Banner -->
+            <div id="duplicate-warning" class="duplicate-warning-banner" style="display:none;">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-top:2px; flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <div>
+                <strong>Duplicate File Warning:</strong> An identical file already exists in the library:
+                <div id="duplicate-links-list" style="margin-top:0.25rem; display:flex; flex-direction:column; gap:0.25rem;"></div>
+              </div>
+            </div>
+
+            <!-- Main Edit Form -->
+            <form id="asset-meta-form" onsubmit="return false;" style="display:flex; flex-direction:column; gap:0.85rem;">
+              
+              <div class="form-group-horizontal">
+                <label for="asset-alt">Alternative Text</label>
+                <div class="input-desc-wrapper">
+                  <textarea id="asset-alt" rows="2" placeholder="Describe the purpose of the image. Leave empty if purely decorative."></textarea>
+                  <span class="field-desc"><a href="https://www.w3.org/WAI/tutorials/images/decision-tree/" target="_blank" style="color:var(--primary); text-decoration:underline;">Learn how to describe the purpose of the image</a>.</span>
+                </div>
+              </div>
+
+              <div class="form-group-horizontal">
+                <label for="asset-title">Title</label>
+                <input type="text" id="asset-title" required />
+              </div>
+              
+              <div class="form-group-horizontal">
+                <label for="asset-caption">Caption</label>
+                <textarea id="asset-caption" rows="2" placeholder="Caption for display underneath the image..."></textarea>
+              </div>
+
+              <!-- Added Description field (missing from sidebar, exists in DB) -->
+              <div class="form-group-horizontal">
+                <label for="asset-description">Description</label>
+                <textarea id="asset-description" rows="3" placeholder="Longer description or notes about this file..."></textarea>
+              </div>
+
+              <!-- Added Tags input (supported by backend PUT API!) -->
+              <div class="form-group-horizontal">
+                <label for="asset-tags">Tags</label>
+                <input type="text" id="asset-tags" placeholder="comma-separated tags (e.g. blog, banner, logo)" />
+              </div>
+
+              <div class="form-group-horizontal">
+                <label for="asset-folder">Folder</label>
+                <select id="asset-folder">
+                  <option value="">Root (/)</option>
+                </select>
+              </div>
+
+              <div class="form-group-horizontal">
+                <label>File URL</label>
+                <div class="input-desc-wrapper">
+                  <div class="input-picker-wrap">
+                    <input type="text" id="asset-url-readonly" readonly style="font-family:monospace; font-size:0.75rem;" />
+                    <button type="button" class="btn btn-outline btn-sm" id="copy-url-btn" style="white-space:nowrap;">Copy URL</button>
+                  </div>
+                  <div style="display:flex; gap:0.25rem; margin-top:0.25rem;">
+                    <button type="button" class="btn btn-outline btn-sm" id="copy-markdown-btn" style="flex:1; padding:0.2rem; font-size:0.72rem;">Copy MD</button>
+                    <button type="button" class="btn btn-outline btn-sm" id="copy-html-btn" style="flex:1; padding:0.2rem; font-size:0.72rem;">Copy HTML</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Replace Media Section -->
+              <div class="form-group-horizontal" style="border-top:1px solid var(--border-color); padding-top:1rem; margin-top:0.5rem;">
+                <label>Replace File</label>
+                <div class="input-desc-wrapper">
+                  <input type="file" id="replace-file-input" accept="image/*,video/*,.svg,.pdf" style="display:none;" />
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-replace-media" style="width:100%;">
+                    Upload Replacement File
+                  </button>
+                  <span class="field-desc">Overwrites the file on disk while keeping the same URL and filename (links will not break).</span>
+                </div>
+              </div>
+
+              <!-- Optimization/Variants section -->
+              <div id="generate-variants-container" style="display:none; flex-direction:column; gap:0.5rem; border-top:1px solid var(--border-color); padding-top:1rem; margin-top:0.5rem;">
+                <label style="font-size:0.8rem; font-weight:700; text-transform:uppercase; color:var(--text-muted);">Image Optimization</label>
+                <p style="font-size:0.75rem; color:var(--text-dim); margin-bottom:0.25rem;">Generate WebP format and responsive sizes for improved performance.</p>
+                <button type="button" class="btn btn-outline btn-sm" id="generate-variants-btn">Generate Optimization Variants</button>
+                <div id="variants-status-list" style="display:none; flex-direction:column; gap:0.25rem; background:rgba(255,255,255,0.03); padding:0.5rem; border-radius:4px; font-size:0.72rem; font-family:monospace; border:1px solid rgba(255,255,255,0.06); max-height:110px; overflow-y:auto;"></div>
+              </div>
+
+              <!-- Usage List references -->
+              <div style="border-top:1px solid var(--border-color); padding-top:1rem; margin-top:0.5rem;">
+                <label style="font-size:0.8rem; font-weight:700; text-transform:uppercase; color:var(--text-muted); display:block; margin-bottom:0.5rem;">Used In / Page References</label>
+                <div id="media-usage-list" style="display:flex; flex-direction:column; gap:0.4rem; max-height: 120px; overflow-y: auto;">
+                  <span style="font-size:0.75rem; color:var(--text-dim);">Not referenced anywhere on disk.</span>
+                </div>
+              </div>
+
+              <!-- Footer/Actions row inside right column -->
+              <div class="modal-footer-actions">
+                <div class="action-links">
+                  <a id="link-view-file" href="#" target="_blank">View media file</a>
+                  <span class="sep">|</span>
+                  <a id="link-download-file" href="#" download>Download file</a>
+                  <span class="sep">|</span>
+                  <button type="button" id="delete-asset-btn" class="delete-link">Delete permanently</button>
+                </div>
+                
+                <button type="button" class="btn btn-primary" id="save-asset-meta-btn" style="align-self:flex-end; padding:0.4rem 1rem;">Save Metadata</button>
+              </div>
+
+            </form>
+          </div>
+
+        </div>
       </div>
-      
-      <div class="drawer-fallback" id="drawer-fallback-msg">
-        <p>Select any image from the media grid to configure its metadata and properties or grab its direct URL.</p>
-      </div>
-    </div>
 
   </div>
 
@@ -261,14 +386,9 @@ export const prerender = false;
   /* Grid layouts */
   .media-library-grid-layout {
     display: grid;
-    grid-template-columns: 1fr 320px;
+    grid-template-columns: 1fr;
     gap: 1.5rem;
     align-items: start;
-  }
-  @media (max-width: 960px) {
-    .media-library-grid-layout {
-      grid-template-columns: 1fr;
-    }
   }
 
   .media-grid-container {
@@ -350,81 +470,298 @@ export const prerender = false;
     object-fit: cover;
   }
 
-  /* Detail Drawer Sidebars Panel */
+  /* Backdrop overlay styled modal overlay container */
   .asset-details-drawer {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(10px);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem;
+    box-sizing: border-box;
+  }
+  .asset-details-drawer.modal-open {
+    display: flex;
+  }
+
+  /* Modal box window container */
+  .asset-details-modal-box {
     background: var(--bg-surface);
     border: 1px solid var(--bg-surface-border);
     border-radius: var(--radius-lg);
-    box-shadow: 0 4px 15px var(--color-shadow);
-    backdrop-filter: blur(10px);
+    width: 100%;
+    max-width: 1200px;
+    height: 100%;
+    max-height: 850px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
-    position: sticky;
-    top: 1.5rem;
+    animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
-  .drawer-header {
-    padding: 1rem 1.25rem;
-    border-bottom: 1px solid var(--bg-surface-border);
-    background: rgba(156, 163, 175, 0.02);
+
+  @keyframes modalFadeIn {
+    from {
+      opacity: 0;
+      transform: scale(0.96) translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  /* Modal Box Header */
+  .modal-box-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    background: rgba(156, 163, 175, 0.02);
   }
-  .drawer-header h4 {
-    font-size: 0.95rem;
+  .modal-box-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
     font-weight: 700;
+    color: var(--text-main);
   }
-  .drawer-body {
-    padding: 1.25rem;
-  }
-  .drawer-fallback {
-    padding: 3rem 1.5rem;
-    text-align: center;
-    color: var(--text-dim);
-    font-size: 0.82rem;
-    line-height: 1.5;
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
-  /* Preview asset */
-  .drawer-preview-wrap {
-    width: 100%;
-    aspect-ratio: 16/10;
+  /* Navigation and close buttons */
+  .nav-btn, .close-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted);
     border-radius: 6px;
-    overflow: hidden;
-    background: var(--bg-base);
-    border: 1px solid var(--border-color);
-    margin-bottom: 1rem;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
   }
-  .drawer-preview-wrap img {
+  .nav-btn:hover:not(:disabled), .close-btn:hover {
+    background: rgba(156, 163, 175, 0.08);
+    color: var(--text-main);
+    border-color: var(--border-color);
+  }
+  .nav-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  .close-btn:hover {
+    color: #EF4444;
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.2);
+  }
+
+  /* Modal Box Body split */
+  .modal-box-body {
+    display: flex;
+    flex: 1;
+    height: calc(100% - 69px);
+    min-height: 0;
+  }
+
+  /* Left column: Preview */
+  .modal-preview-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-base);
+    position: relative;
+    padding: 2rem;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+  }
+  .modal-preview-wrapper {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .modal-preview-wrapper img {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
+    box-shadow: 0 4px 20px var(--color-shadow);
+    border-radius: 4px;
+    background-image: linear-gradient(45deg, var(--border-color) 25%, transparent 25%),
+                      linear-gradient(-45deg, var(--border-color) 25%, transparent 25%),
+                      linear-gradient(45deg, transparent 75%, var(--border-color) 75%),
+                      linear-gradient(-45deg, transparent 75%, var(--border-color) 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    background-color: var(--bg-surface-solid);
+  }
+  .preview-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    margin-top: 1.5rem;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .badge {
+    padding: 0.25rem 0.65rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .badge-outline {
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
   }
 
-  .drawer-meta-info {
+  /* Right column: Edit details form */
+  .modal-details-column {
+    width: 400px;
+    border-left: 1px solid var(--border-color);
+    background: var(--bg-surface);
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 0.75rem;
-    margin-bottom: 0.75rem;
+    padding: 1.5rem;
+    overflow-y: auto;
+    box-sizing: border-box;
   }
-  .meta-label-value {
+
+  /* Technical metadata table */
+  .details-meta-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1rem;
+  }
+  .meta-row {
     display: flex;
     justify-content: space-between;
-    font-size: 0.75rem;
+    font-size: 0.78rem;
+    line-height: 1.4;
   }
-  .meta-label-value .label {
+  .meta-row .label {
     color: var(--text-dim);
     font-weight: 600;
   }
-  .meta-label-value .value {
+  .meta-row .value {
     color: var(--text-muted);
     font-weight: 500;
-    word-break: break-all;
     max-width: 70%;
+    word-break: break-all;
+    text-align: right;
+  }
+
+  /* Duplicate warning banner */
+  .duplicate-warning-banner {
+    display: flex;
+    gap: 0.5rem;
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    color: #F59E0B;
+    padding: 0.75rem;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    margin-bottom: 1rem;
+  }
+
+  /* Dominant color extractor HEX color pill button */
+  .color-pill {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid var(--bg-surface-border);
+    cursor: pointer;
+    position: relative;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    transition: all 0.2s;
+  }
+  .color-pill:hover {
+    transform: scale(1.18);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  }
+  .color-pill::after {
+    content: attr(data-color);
+    position: absolute;
+    bottom: 130%;
+    left: 50%;
+    transform: translateX(-50%) scale(0.85);
+    background: #0f172a;
+    color: white;
+    font-size: 0.65rem;
+    font-family: monospace;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.15s;
+    white-space: nowrap;
+    z-index: 10;
+  }
+  .color-pill:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+
+  /* Horizontal Form styles */
+  .form-group-horizontal {
+    display: grid;
+    grid-template-columns: 100px 1fr;
+    gap: 1rem;
+    align-items: start;
+  }
+  .form-group-horizontal label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-align: right;
+    margin-top: 0.4rem;
+  }
+  .form-group-horizontal input[type="text"],
+  .form-group-horizontal textarea,
+  .form-group-horizontal select {
+    width: 100%;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--input-bg);
+    color: var(--text-main);
+    font-size: 0.8rem;
+    box-sizing: border-box;
+  }
+  .form-group-horizontal input[type="text"]:focus,
+  .form-group-horizontal textarea:focus,
+  .form-group-horizontal select:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 2px var(--primary-light);
+  }
+  .input-desc-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .field-desc {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    line-height: 1.3;
   }
 
   .input-picker-wrap {
@@ -435,13 +772,45 @@ export const prerender = false;
     flex: 1;
   }
 
-  .drawer-footer-actions {
+  /* Action links under form */
+  .modal-footer-actions {
+    border-top: 1px solid var(--border-color);
+    padding-top: 1.25rem;
+    margin-top: 1rem;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    margin-top: 1.5rem;
-    border-top: 1px solid var(--border-color);
-    padding-top: 1rem;
+    gap: 1rem;
+  }
+  .action-links {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+  }
+  .action-links a {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .action-links a:hover {
+    text-decoration: underline;
+  }
+  .action-links .sep {
+    color: var(--border-color);
+  }
+  .delete-link {
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: #EF4444 !important;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-family: inherit;
+  }
+  .delete-link:hover {
+    text-decoration: underline;
   }
 
   /* Toast Notification */
@@ -457,7 +826,7 @@ export const prerender = false;
     padding: 1rem 1.5rem;
     border-radius: var(--radius-sm);
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
-    z-index: 1100;
+    z-index: 11000;
     transform: translateY(150%);
     transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     backdrop-filter: blur(8px);
@@ -470,6 +839,38 @@ export const prerender = false;
     font-weight: 500;
     color: var(--text-main);
   }
+
+  /* Mobile responsiveness */
+  @media (max-width: 900px) {
+    .asset-details-drawer {
+      padding: 0.5rem;
+    }
+    .asset-details-modal-box {
+      max-height: 100%;
+    }
+    .modal-box-body {
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    .modal-preview-column {
+      flex: none;
+      height: 320px;
+    }
+    .modal-details-column {
+      width: 100%;
+      border-left: none;
+      border-top: 1px solid var(--border-color);
+      flex: none;
+    }
+    .form-group-horizontal {
+      grid-template-columns: 1fr;
+      gap: 0.25rem;
+    }
+    .form-group-horizontal label {
+      text-align: left;
+      margin-top: 0;
+    }
+  }
 </style>
 
 <script is:inline>
@@ -481,6 +882,11 @@ export const prerender = false;
   let bulkCheckedUrls = new Set();
   let currentPage = 1;
   let itemsPerPage = 10;
+  let filteredMediaList = [];
+
+  // Background remover state variables
+  let originalRemoverImg = null;
+  let currentRemoverData = null;
 
   function initMediaLibrary() {
     const grid = document.getElementById("main-media-grid");
@@ -491,6 +897,8 @@ export const prerender = false;
     setupDropzone();
     setupDrawerHandlers();
     setupFilters();
+    initReplaceMedia();
+    initBackgroundRemover();
   }
 
   // Set up search and filter inputs
@@ -706,6 +1114,8 @@ export const prerender = false;
       return true;
     });
 
+    filteredMediaList = filtered; // Keep track of the filtered list globally
+
     if (counter) counter.innerText = `${filtered.length} items`;
 
     // Pagination calculations
@@ -828,7 +1238,87 @@ export const prerender = false;
     selectAllCheckbox.checked = allChecked;
   }
 
-  // Active Asset Selection in sidebar
+  // Get ratio recommendation
+  function getAspectRecommendation(width, height) {
+    if (!width || !height) return { ratio: "N/A", text: "Standard file" };
+    const gcd = (a, b) => b ? gcd(b, a % b) : a;
+    const divisor = gcd(width, height);
+    const rWidth = width / divisor;
+    const rHeight = height / divisor;
+    let ratio = `${rWidth}:${rHeight}`;
+    
+    const decimal = width / height;
+    let text = "General image size";
+    
+    if (Math.abs(decimal - 1.777) < 0.05) {
+      ratio = "16:9";
+      text = "Recommended for Hero Banner / Landscape Slider";
+    } else if (Math.abs(decimal - 1.333) < 0.05) {
+      ratio = "4:3";
+      text = "Perfect for Featured Article Card / Grid Thumbnail";
+    } else if (Math.abs(decimal - 1.0) < 0.05) {
+      ratio = "1:1";
+      text = "Perfect for User Avatar / Profile Image / Icon";
+    } else if (Math.abs(decimal - 0.75) < 0.05) {
+      ratio = "3:4";
+      text = "Portrait aspect - Good for profile lists";
+    } else if (Math.abs(decimal - 0.562) < 0.05) {
+      ratio = "9:16";
+      text = "Mobile aspect - Good for stories / vertical layout";
+    }
+    
+    return { ratio, text };
+  }
+
+  // Dominant color extractor
+  function extractDominantColors(imgEl, callback) {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = 50;
+    canvas.height = 50;
+    
+    const tempImg = new Image();
+    tempImg.crossOrigin = "Anonymous";
+    tempImg.onload = () => {
+      try {
+        ctx.drawImage(tempImg, 0, 0, 50, 50);
+        const imgData = ctx.getImageData(0, 0, 50, 50).data;
+        
+        const colorMap = {};
+        for (let i = 0; i < imgData.length; i += 4) {
+          if (imgData[i+3] < 128) continue; // skip transparent pixels
+          
+          const r = Math.round(imgData[i] / 24) * 24;
+          const g = Math.round(imgData[i+1] / 24) * 24;
+          const b = Math.round(imgData[i+2] / 24) * 24;
+          const hex = rgbToHex(r, g, b);
+          colorMap[hex] = (colorMap[hex] || 0) + 1;
+        }
+        
+        const sorted = Object.entries(colorMap)
+          .filter(([color]) => color !== "#ffffff" && color !== "#000000") // filter out pure white/black
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 6)
+          .map(([color]) => color);
+        
+        callback(sorted);
+      } catch (err) {
+        console.warn("Color extraction skipped: ", err);
+        callback([]);
+      }
+    };
+    tempImg.src = imgEl.src + (imgEl.src.indexOf('?') > -1 ? '&' : '?') + 't=' + Date.now();
+  }
+  
+  function rgbToHex(r, g, b) {
+    const toHex = c => {
+      const hex = Math.max(0, Math.min(255, c)).toString(16);
+      return hex.length === 1 ? "0" + hex : hex;
+    };
+    return "#" + toHex(r) + toHex(g) + toHex(b);
+  }
+
+  // Active Asset Selection in modal
   function selectAssetItem(item) {
     selectedAsset = item;
     
@@ -840,20 +1330,40 @@ export const prerender = false;
       }
     });
 
-    // Populate Sidebar Details Panel
-    const fallback = document.getElementById("drawer-fallback-msg");
+    // Populate Sidebar Details Panel & open modal
     const content = document.getElementById("drawer-content");
-    const preview = document.getElementById("drawer-preview-img");
-
-    if (fallback) fallback.style.display = "none";
-    if (content) content.style.display = "block";
+    const drawer = document.getElementById("asset-drawer");
     
-    if (preview) {
-      if (item.type === "image" || item.type === "svg") {
-        preview.src = item.url;
-        preview.style.display = "block";
-      } else {
-        preview.style.display = "none"; // Hide preview image for docs/videos
+    if (drawer) drawer.classList.add("modal-open");
+    if (content) content.style.display = "flex";
+    
+    // Hide BG Remover workspace when selecting a new asset
+    document.getElementById("bg-remover-workspace").style.display = "none";
+    document.getElementById("preview-image-container").style.display = "flex";
+    
+    const previewImg = document.getElementById("drawer-preview-img");
+    const docIcon = document.getElementById("document-preview-icon");
+    const docTitle = document.getElementById("preview-file-title");
+    const docSymbol = document.getElementById("preview-file-icon");
+    
+    if (item.type === "image" || item.type === "svg") {
+      if (previewImg) {
+        previewImg.src = item.url;
+        previewImg.style.display = "block";
+      }
+      if (docIcon) docIcon.style.display = "none";
+    } else {
+      if (previewImg) previewImg.style.display = "none";
+      if (docIcon) {
+        docIcon.style.display = "flex";
+        if (docTitle) docTitle.innerText = item.title;
+        if (docSymbol) {
+          let symbol = "📄";
+          if (item.type === "video") symbol = "🎥";
+          if (item.type === "pdf") symbol = "📕";
+          if (item.type === "audio") symbol = "🎵";
+          docSymbol.innerText = symbol;
+        }
       }
     }
 
@@ -861,17 +1371,111 @@ export const prerender = false;
     const filename = item.url.split("/").pop();
     document.getElementById("meta-filename").innerText = filename;
     document.getElementById("meta-filesize").innerText = formatBytes(item.size);
-    document.getElementById("meta-uploadedat").innerText = new Date(item.uploadedAt).toLocaleString();
+    document.getElementById("meta-uploadedat").innerText = new Date(item.uploadedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+    document.getElementById("meta-uploadedby").innerText = item.uploadedBy || "admin";
+    document.getElementById("meta-filetype").innerText = item.mimeType || (item.type === "image" ? "image/png" : "application/octet-stream");
+
+    // Dimensions row
+    const dimRow = document.getElementById("meta-dimensions-row");
+    const dimVal = document.getElementById("meta-dimensions");
+    const dimBadge = document.getElementById("dimension-badge");
+    const aspectBadge = document.getElementById("aspect-ratio-badge");
+    
+    if (item.type === "image" && item.dimensions) {
+      if (dimRow) dimRow.style.display = "flex";
+      if (dimVal) dimVal.innerText = `${item.dimensions.width} by ${item.dimensions.height} pixels`;
+      if (dimBadge) {
+        dimBadge.style.display = "inline-flex";
+        dimBadge.innerText = `Dimensions: ${item.dimensions.width}x${item.dimensions.height}`;
+      }
+      
+      const rec = getAspectRecommendation(item.dimensions.width, item.dimensions.height);
+      if (aspectBadge) {
+        aspectBadge.style.display = "inline-flex";
+        aspectBadge.innerText = `Aspect Ratio: ${rec.ratio}`;
+        aspectBadge.title = rec.text;
+      }
+    } else {
+      if (dimRow) dimRow.style.display = "none";
+      if (dimBadge) dimBadge.style.display = "none";
+      if (aspectBadge) aspectBadge.style.display = "none";
+    }
+
+    // Toggle BG Remover button
+    const bgRemoverBtn = document.getElementById("bg-remover-btn");
+    if (bgRemoverBtn) {
+      bgRemoverBtn.style.display = (item.type === "image" && item.mimeType !== "image/svg+xml") ? "inline-flex" : "none";
+    }
 
     // Fill Form inputs
     document.getElementById("asset-title").value = item.title || "";
     document.getElementById("asset-alt").value = item.alt || "";
     document.getElementById("asset-caption").value = item.caption || "";
+    document.getElementById("asset-description").value = item.description || "";
+    document.getElementById("asset-tags").value = (item.tags || []).join(", ");
     document.getElementById("asset-url-readonly").value = window.location.origin + item.url;
     
     const assetFolderSelect = document.getElementById("asset-folder");
     if (assetFolderSelect) {
       assetFolderSelect.value = item.folder || "";
+    }
+
+    // Dominant color palette extraction
+    const colorsContainer = document.getElementById("dominant-colors-container");
+    const colorsList = document.getElementById("color-palette-list");
+    if (colorsContainer && colorsList) {
+      if (item.type === "image") {
+        colorsContainer.style.display = "flex";
+        colorsList.innerHTML = `<span style="font-size:0.75rem; color:var(--text-dim);">Extracting colors...</span>`;
+        setTimeout(() => {
+          const img = document.getElementById("drawer-preview-img");
+          if (img && img.src && selectedAsset && selectedAsset.url === item.url) {
+            extractDominantColors(img, (colors) => {
+              if (colors.length > 0) {
+                colorsList.innerHTML = colors.map(color => `
+                  <button type="button" class="color-pill" data-color="${color}" style="background:${color};" onclick="navigator.clipboard.writeText('${color}'); showToast('Color ${color} copied!')"></button>
+                `).join('');
+              } else {
+                colorsList.innerHTML = `<span style="font-size:0.75rem; color:var(--text-dim);">No distinct colors extracted</span>`;
+              }
+            });
+          }
+        }, 400);
+      } else {
+        colorsContainer.style.display = "none";
+      }
+    }
+
+    // Duplicate Warning
+    const dupWarning = document.getElementById("duplicate-warning");
+    const dupLinks = document.getElementById("duplicate-links-list");
+    if (dupWarning && dupLinks) {
+      if (item.isDuplicate && item.duplicateOf && item.duplicateOf.length > 0) {
+        dupWarning.style.display = "flex";
+        dupLinks.innerHTML = item.duplicateOf.map(url => `
+          <a href="${url}" target="_blank" style="color:#B45309; text-decoration:underline; font-size:0.75rem; word-break:break-all;">• ${url}</a>
+        `).join('');
+      } else {
+        dupWarning.style.display = "none";
+      }
+    }
+
+    // Link URLs
+    const viewLink = document.getElementById("link-view-file");
+    const downloadLink = document.getElementById("link-download-file");
+    if (viewLink) viewLink.href = item.url;
+    if (downloadLink) {
+      downloadLink.href = item.url;
+      downloadLink.download = filename;
+    }
+
+    // Update Navigation buttons state
+    const modalPrevBtn = document.getElementById("modal-prev-btn");
+    const modalNextBtn = document.getElementById("modal-next-btn");
+    if (modalPrevBtn && modalNextBtn && filteredMediaList.length > 0) {
+      const idx = filteredMediaList.findIndex(m => m.url === item.url);
+      modalPrevBtn.disabled = (idx <= 0);
+      modalNextBtn.disabled = (idx >= filteredMediaList.length - 1 || idx === -1);
     }
 
     // Toggle Generate Thumbnails section
@@ -908,8 +1512,28 @@ export const prerender = false;
           </div>
         `).join('');
       } else {
-        usageList.innerHTML = `<span style="font-size:0.78rem; color:var(--text-dim);">No active page references found on disk.</span>`;
+        usageList.innerHTML = `<span style="font-size:0.75rem; color:var(--text-dim);">Not referenced anywhere on disk.</span>`;
       }
+    }
+  }
+
+  // Modal navigation
+  function navigateModal(direction) {
+    if (!selectedAsset || filteredMediaList.length === 0) return;
+    const idx = filteredMediaList.findIndex(item => item.url === selectedAsset.url);
+    if (idx === -1) return;
+    
+    const newIdx = idx + direction;
+    if (newIdx >= 0 && newIdx < filteredMediaList.length) {
+      const nextAsset = filteredMediaList[newIdx];
+      
+      const targetPage = Math.floor(newIdx / itemsPerPage) + 1;
+      if (currentPage !== targetPage) {
+        currentPage = targetPage;
+        filterAndRenderMedia();
+      }
+      
+      selectAssetItem(nextAsset);
     }
   }
 
@@ -917,17 +1541,65 @@ export const prerender = false;
     selectedAsset = null;
     document.querySelectorAll(".media-card").forEach(el => el.classList.remove("active-selected"));
     
-    const fallback = document.getElementById("drawer-fallback-msg");
-    const content = document.getElementById("drawer-content");
-
-    if (fallback) fallback.style.display = "block";
-    if (content) content.style.display = "none";
+    const drawer = document.getElementById("asset-drawer");
+    if (drawer) drawer.classList.remove("modal-open");
   }
 
   // Setup click & save event handlers on Drawer Form
   function setupDrawerHandlers() {
     const closeBtn = document.getElementById("close-drawer-btn");
     if (closeBtn) closeBtn.addEventListener("click", closeDrawer);
+
+    // Prev/Next modal navigation
+    const prevBtn = document.getElementById("modal-prev-btn");
+    const nextBtn = document.getElementById("modal-next-btn");
+    if (prevBtn) {
+      prevBtn.onclick = (e) => {
+        e.stopPropagation();
+        navigateModal(-1);
+      };
+    }
+    if (nextBtn) {
+      nextBtn.onclick = (e) => {
+        e.stopPropagation();
+        navigateModal(1);
+      };
+    }
+
+    // Embed snippets copy buttons
+    const copyUrlBtn = document.getElementById("copy-url-btn");
+    const copyMdBtn = document.getElementById("copy-markdown-btn");
+    const copyHtmlBtn = document.getElementById("copy-html-btn");
+    
+    if (copyUrlBtn) {
+      copyUrlBtn.onclick = () => {
+        const urlInput = document.getElementById("asset-url-readonly");
+        urlInput.select();
+        navigator.clipboard.writeText(urlInput.value);
+        copyUrlBtn.innerText = "Copied!";
+        setTimeout(() => { copyUrlBtn.innerText = "Copy URL"; }, 1500);
+      };
+    }
+    if (copyMdBtn) {
+      copyMdBtn.onclick = () => {
+        const alt = document.getElementById("asset-alt").value.trim() || selectedAsset.title;
+        const url = window.location.origin + selectedAsset.url;
+        const text = `![${alt}](${url})`;
+        navigator.clipboard.writeText(text);
+        copyMdBtn.innerText = "Copied!";
+        setTimeout(() => { copyMdBtn.innerText = "Copy MD"; }, 1500);
+      };
+    }
+    if (copyHtmlBtn) {
+      copyHtmlBtn.onclick = () => {
+        const alt = document.getElementById("asset-alt").value.trim() || selectedAsset.title;
+        const url = window.location.origin + selectedAsset.url;
+        const text = `<img src="${url}" alt="${alt}" />`;
+        navigator.clipboard.writeText(text);
+        copyHtmlBtn.innerText = "Copied!";
+        setTimeout(() => { copyHtmlBtn.innerText = "Copy HTML"; }, 1500);
+      };
+    }
 
     // Generate thumbnails & responsive formats click
     const genBtn = document.getElementById("generate-variants-btn");
@@ -957,7 +1629,7 @@ export const prerender = false;
           showToast("Network error generating thumbnails");
         } finally {
           genBtn.disabled = false;
-          genBtn.innerText = "Generate Thumbnails";
+          genBtn.innerText = "Generate Optimization Variants";
         }
       };
     }
@@ -971,6 +1643,8 @@ export const prerender = false;
         const title = document.getElementById("asset-title").value.trim();
         const alt = document.getElementById("asset-alt").value.trim();
         const caption = document.getElementById("asset-caption").value.trim();
+        const description = document.getElementById("asset-description").value.trim();
+        const tags = document.getElementById("asset-tags").value.trim();
         const folder = document.getElementById("asset-folder").value;
 
         if (!title) {
@@ -990,6 +1664,8 @@ export const prerender = false;
               title,
               alt,
               caption,
+              description,
+              tags,
               folder
             })
           });
@@ -1013,10 +1689,11 @@ export const prerender = false;
     // Asset Delete Click
     const deleteBtn = document.getElementById("delete-asset-btn");
     if (deleteBtn) {
-      deleteBtn.addEventListener("click", () => {
+      deleteBtn.addEventListener("click", (e) => {
+        e.preventDefault();
         if (!selectedAsset) return;
         window.customConfirm("Are you sure you want to permanently delete this media asset? This will delete the physical file on disk and cannot be undone.", async () => {
-          const restore = () => { deleteBtn.disabled = false; deleteBtn.innerText = "Delete Permanently"; };
+          const restore = () => { deleteBtn.disabled = false; deleteBtn.innerText = "Delete permanently"; };
           const doDelete = async (force) => {
             deleteBtn.disabled = true;
             deleteBtn.innerText = "Deleting...";
@@ -1046,20 +1723,6 @@ export const prerender = false;
           };
           doDelete(false);
         });
-      });
-    }
-
-    // URL Copy
-    const copyBtn = document.getElementById("copy-url-btn");
-    const urlInput = document.getElementById("asset-url-readonly");
-    if (copyBtn && urlInput) {
-      copyBtn.addEventListener("click", () => {
-        urlInput.select();
-        navigator.clipboard.writeText(urlInput.value);
-        copyBtn.innerText = "Copied!";
-        setTimeout(() => {
-          copyBtn.innerText = "Copy";
-        }, 1500);
       });
     }
 
@@ -1231,6 +1894,189 @@ export const prerender = false;
     }
 
     loadMediaCatalog();
+  }
+
+  // Initialize Replace Media Feature
+  function initReplaceMedia() {
+    const replaceBtn = document.getElementById("btn-replace-media");
+    const replaceInput = document.getElementById("replace-file-input");
+    if (!replaceBtn || !replaceInput) return;
+    
+    replaceBtn.onclick = (e) => {
+      e.preventDefault();
+      replaceInput.click();
+    };
+    
+    replaceInput.onchange = async () => {
+      if (replaceInput.files.length === 0 || !selectedAsset) return;
+      
+      const file = replaceInput.files[0];
+      replaceBtn.disabled = true;
+      replaceBtn.innerText = "Replacing file...";
+      
+      const formData = new FormData();
+      formData.append("action", "replace");
+      formData.append("url", selectedAsset.url);
+      formData.append("file", file);
+      
+      try {
+        const res = await fetch("/api/media-crud", {
+          method: "POST",
+          body: formData
+        });
+        const result = await res.json();
+        if (result.success) {
+          showToast("File replaced successfully!");
+          selectedAsset = result.media;
+          selectAssetItem(selectedAsset);
+          loadMediaCatalog();
+        } else {
+          showToast("Replace failed: " + (result.error || ""));
+        }
+      } catch (e) {
+        showToast("Network error replacing file");
+      } finally {
+        replaceBtn.disabled = false;
+        replaceBtn.innerText = "Upload Replacement File";
+        replaceInput.value = "";
+      }
+    };
+  }
+
+  // Initialize Canvas background remover tool
+  function initBackgroundRemover() {
+    const bgRemoverBtn = document.getElementById("bg-remover-btn");
+    const bgRemoverWorkspace = document.getElementById("bg-remover-workspace");
+    const previewContainer = document.getElementById("preview-image-container");
+    const canvas = document.getElementById("bg-remover-canvas");
+    const ctx = canvas.getContext("2d");
+    const toleranceInput = document.getElementById("bg-remover-tolerance");
+    const toleranceVal = document.getElementById("tolerance-val");
+    
+    if (!bgRemoverBtn) return;
+    
+    bgRemoverBtn.onclick = (e) => {
+      e.preventDefault();
+      if (!selectedAsset) return;
+      previewContainer.style.display = "none";
+      bgRemoverWorkspace.style.display = "flex";
+      
+      originalRemoverImg = new Image();
+      if (selectedAsset.url.startsWith("http://") || selectedAsset.url.startsWith("https://")) {
+        originalRemoverImg.crossOrigin = "Anonymous";
+      }
+      originalRemoverImg.onload = () => {
+        canvas.width = originalRemoverImg.naturalWidth;
+        canvas.height = originalRemoverImg.naturalHeight;
+        ctx.drawImage(originalRemoverImg, 0, 0);
+        currentRemoverData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      };
+      originalRemoverImg.src = selectedAsset.url + "?t=" + Date.now();
+    };
+    
+    if (toleranceInput && toleranceVal) {
+      toleranceInput.oninput = (e) => {
+        toleranceVal.innerText = e.target.value;
+      };
+    }
+    
+    canvas.onclick = (e) => {
+      if (!currentRemoverData) return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.floor(((e.clientX - rect.left) / rect.width) * canvas.width);
+      const y = Math.floor(((e.clientY - rect.top) / rect.height) * canvas.height);
+      
+      const idx = (y * canvas.width + x) * 4;
+      const targetR = currentRemoverData.data[idx];
+      const targetG = currentRemoverData.data[idx+1];
+      const targetB = currentRemoverData.data[idx+2];
+      const targetA = currentRemoverData.data[idx+3];
+      
+      if (targetA === 0) return; // already transparent
+      
+      const tolerance = parseInt(toleranceInput.value, 10);
+      
+      ctx.drawImage(originalRemoverImg, 0, 0);
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imgData.data;
+      
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i+1];
+        const b = data[i+2];
+        const a = data[i+3];
+        
+        if (a === 0) continue;
+        
+        const dist = Math.sqrt(
+          Math.pow(r - targetR, 2) +
+          Math.pow(g - targetG, 2) +
+          Math.pow(b - targetB, 2)
+        );
+        
+        if (dist <= tolerance * 3) {
+          data[i+3] = 0; // set alpha transparent
+        }
+      }
+      
+      ctx.putImageData(imgData, 0, 0);
+    };
+    
+    const btnApply = document.getElementById("btn-apply-bg-remover");
+    if (btnApply) {
+      btnApply.onclick = () => {
+        currentRemoverData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        showToast("Selection applied successfully!");
+      };
+    }
+    
+    const btnCancel = document.getElementById("btn-cancel-bg-remover");
+    if (btnCancel) {
+      btnCancel.onclick = () => {
+        bgRemoverWorkspace.style.display = "none";
+        previewContainer.style.display = "flex";
+      };
+    }
+    
+    const btnSave = document.getElementById("btn-save-bg-remover");
+    if (btnSave) {
+      btnSave.onclick = () => {
+        if (!selectedAsset) return;
+        btnSave.disabled = true;
+        btnSave.innerText = "Saving...";
+        
+        canvas.toBlob(async (blob) => {
+          const formData = new FormData();
+          formData.append("action", "replace");
+          formData.append("url", selectedAsset.url);
+          formData.append("file", blob, selectedAsset.url.split("/").pop());
+          
+          try {
+            const res = await fetch("/api/media-crud", {
+              method: "POST",
+              body: formData
+            });
+            const result = await res.json();
+            if (result.success) {
+              showToast("Background removed successfully!");
+              bgRemoverWorkspace.style.display = "none";
+              previewContainer.style.display = "flex";
+              selectedAsset = result.media;
+              selectAssetItem(selectedAsset);
+              loadMediaCatalog();
+            } else {
+              showToast("Save failed: " + (result.error || ""));
+            }
+          } catch (e) {
+            showToast("Network error saving transparent background image");
+          } finally {
+            btnSave.disabled = false;
+            btnSave.innerText = "Save Transparent";
+          }
+        }, "image/png");
+      };
+    }
   }
 
   // File size format utility

@@ -1,7 +1,60 @@
 {
-  "categories": [],
-  "tags": [],
-  "authors": [],
+  "categories": [
+    {
+      "id": "cat-uncategorized",
+      "name": "Uncategorized",
+      "slug": "uncategorized",
+      "description": "",
+      "color": "#6366F1",
+      "createdAt": "2026-06-19T07:45:22.637Z"
+    },
+    {
+      "id": "cat-industrial-equipment",
+      "name": "Industrial Equipment",
+      "slug": "industrial-equipment",
+      "description": "Machinery and tools for fabrication.",
+      "color": "#10B981",
+      "createdAt": "2026-06-19T09:58:49.337Z"
+    }
+  ],
+  "tags": [
+    {
+      "id": "tag-automation",
+      "name": "Automation",
+      "slug": "automation",
+      "description": "Industrial automation techniques.",
+      "color": "#10B981",
+      "createdAt": "2026-06-19T09:58:49.698Z"
+    }
+  ],
+  "authors": [
+    {
+      "id": "author-admin",
+      "name": "Admin",
+      "slug": "admin",
+      "email": "",
+      "bio": "",
+      "avatar": "",
+      "role": "Administrator",
+      "website": "",
+      "twitter": "",
+      "linkedin": "",
+      "createdAt": "2026-06-19T07:45:22.637Z"
+    },
+    {
+      "id": "author-sarah-jenkins",
+      "name": "Sarah Jenkins",
+      "slug": "sarah-jenkins",
+      "email": "sarah@example.com",
+      "bio": "Industrial engineer and automation expert.",
+      "avatar": "",
+      "role": "Author",
+      "website": "",
+      "twitter": "",
+      "linkedin": "",
+      "createdAt": "2026-06-19T09:58:49.469Z"
+    }
+  ],
   "settings": {
     "blogTitle": "Blog",
     "blogDescription": "",
