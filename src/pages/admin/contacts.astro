@@ -57,6 +57,38 @@ const submissions = files.map(file => {
     </div>
   </div>
 
+  <!-- Stats & Reports Overview -->
+  <div class="stats-overview-container">
+    <div class="stats-card">
+      <div class="stats-card-icon text-primary">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+      </div>
+      <div class="stats-card-details">
+        <span class="stats-card-label">Total Leads</span>
+        <h3 class="stats-card-value" id="stats-total-count">0</h3>
+      </div>
+    </div>
+    
+    <div class="stats-card">
+      <div class="stats-card-icon text-success">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+      </div>
+      <div class="stats-card-details">
+        <span class="stats-card-label">Leads Today</span>
+        <h3 class="stats-card-value" id="stats-today-count">0</h3>
+      </div>
+    </div>
+
+    <div class="stats-card trend-card">
+      <div class="stats-card-details">
+        <span class="stats-card-label">Daily Lead Volume (Last 7 Days)</span>
+        <div class="trend-chart" id="stats-trend-chart">
+          <!-- Dynamically populated bars -->
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="inbox-grid-layout">
     
     <!-- Main Inbox Table list -->
@@ -66,6 +98,29 @@ const submissions = files.map(file => {
           <svg class="search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           <input type="text" id="inbox-search" placeholder="Search by name, email, subject..." />
         </div>
+
+        <div class="filter-controls-wrap">
+          <select id="inbox-date-filter" class="admin-select-input" aria-label="Date filter preset">
+            <option value="all">All Time</option>
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="7days">Last 7 Days</option>
+            <option value="30days">Last 30 Days</option>
+            <option value="custom">Custom Range</option>
+          </select>
+
+          <div id="custom-date-inputs" class="custom-date-inputs" style="display: none;">
+            <input type="date" id="filter-start-date" class="admin-date-input" title="Start Date" aria-label="Start Date" />
+            <span class="date-sep">to</span>
+            <input type="date" id="filter-end-date" class="admin-date-input" title="End Date" aria-label="End Date" />
+          </div>
+
+          <button type="button" id="export-csv-btn" class="btn btn-outline btn-sm btn-icon-export">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.35rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Export CSV
+          </button>
+        </div>
+
         <span class="submissions-counter" id="inbox-counter">{submissions.length} submissions</span>
       </div>
 
@@ -188,7 +243,7 @@ const submissions = files.map(file => {
 
 </AdminLayout>
 
-<style is:global>
+<style>
   .subtitle {
     color: var(--text-muted);
     font-size: 0.95rem;
@@ -444,6 +499,180 @@ const submissions = files.map(file => {
     font-weight: 500;
     color: var(--text-main);
   }
+
+  /* Stats Cards Styles */
+  .stats-overview-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr 2fr;
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  @media (max-width: 900px) {
+    .stats-overview-container {
+      grid-template-columns: 1fr;
+    }
+  }
+  .stats-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    box-shadow: 0 4px 12px var(--color-shadow);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .stats-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: rgba(156, 163, 175, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .text-primary {
+    color: var(--primary);
+  }
+  .text-success {
+    color: var(--color-success, #10b981);
+  }
+  .stats-card-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .stats-card-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .stats-card-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 0;
+  }
+
+  /* Trend Chart Chart Bars */
+  .trend-card {
+    display: block !important;
+  }
+  .trend-card .stats-card-details {
+    width: 100%;
+  }
+  .trend-chart {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    height: 52px;
+    margin-top: 0.5rem;
+    gap: 0.5rem;
+  }
+  .trend-bar-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    gap: 0.25rem;
+  }
+  .trend-bar-container {
+    width: 16px;
+    height: 38px;
+    background: rgba(156, 163, 175, 0.15);
+    border-radius: 4px;
+    display: flex;
+    align-items: flex-end;
+    position: relative;
+    overflow: hidden;
+  }
+  .trend-bar {
+    width: 100%;
+    background: var(--primary);
+    border-radius: 4px;
+    transition: height 0.3s ease;
+    cursor: help;
+    min-height: 0px;
+  }
+  .trend-bar:hover {
+    background: var(--primary-light, #a01c1c);
+  }
+  .trend-bar-label {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  /* Filter Controls */
+  .filter-controls-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .admin-select-input {
+    padding: 0.55rem 1.8rem 0.55rem 0.75rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-main);
+    font-size: 0.88rem;
+    font-weight: 500;
+    outline: none;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.25em 1.25em;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+  }
+  .admin-select-input:focus {
+    border-color: var(--primary);
+  }
+  .custom-date-inputs {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .admin-date-input {
+    padding: 0.45rem 0.6rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-main);
+    font-size: 0.82rem;
+    font-weight: 500;
+    outline: none;
+  }
+  .admin-date-input:focus {
+    border-color: var(--primary);
+  }
+  .date-sep {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  .btn-icon-export {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-main);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+  }
+  .btn-icon-export:hover {
+    background-color: rgba(156, 163, 175, 0.08);
+    border-color: var(--text-muted);
+  }
 </style>
 
 <script is:inline define:vars={{ submissions }}>
@@ -454,38 +683,223 @@ const submissions = files.map(file => {
     if (!table || table.dataset.listenerBound) return;
     table.dataset.listenerBound = "true";
 
-    setupSearch();
+    calculateStats();
+    setupFilters();
     setupDrawerHandlers();
   }
 
-  function setupSearch() {
+  function calculateStats() {
+    // 1. Total Leads
+    const totalCount = submissions.length;
+    const totalEl = document.getElementById("stats-total-count");
+    if (totalEl) totalEl.innerText = totalCount;
+
+    // 2. Leads Today
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const todayCount = submissions.filter(s => s.timestamp >= startOfToday).length;
+    const todayEl = document.getElementById("stats-today-count");
+    if (todayEl) todayEl.innerText = todayCount;
+
+    // 3. Daily Lead Volume (Last 7 Days Chart)
+    const trendChart = document.getElementById("stats-trend-chart");
+    if (trendChart) {
+      trendChart.innerHTML = "";
+      
+      // Inline styles to ensure chart layout works regardless of cached CSS
+      trendChart.style.display = "flex";
+      trendChart.style.justifyContent = "space-between";
+      trendChart.style.alignItems = "flex-end";
+      trendChart.style.height = "52px";
+      trendChart.style.marginTop = "0.5rem";
+      trendChart.style.gap = "0.5rem";
+      
+      const days = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(now.getDate() - i);
+        const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        const endOfDay = startOfDay + 24 * 60 * 60 * 1000 - 1;
+        const count = submissions.filter(s => s.timestamp >= startOfDay && s.timestamp <= endOfDay).length;
+        
+        const dayLabel = d.toLocaleDateString("en-US", { day: "numeric", month: "short" });
+        days.push({ label: dayLabel, count, dateStr: d.toISOString().split("T")[0] });
+      }
+
+      const maxCount = Math.max(...days.map(d => d.count), 1);
+
+      days.forEach(day => {
+        const pct = (day.count / maxCount) * 100;
+        
+        const wrapper = document.createElement("div");
+        wrapper.className = "trend-bar-wrapper";
+        wrapper.style.display = "flex";
+        wrapper.style.flexDirection = "column";
+        wrapper.style.alignItems = "center";
+        wrapper.style.flex = "1";
+        wrapper.style.gap = "0.25rem";
+        
+        const barContainer = document.createElement("div");
+        barContainer.className = "trend-bar-container";
+        barContainer.style.width = "16px";
+        barContainer.style.height = "38px";
+        barContainer.style.backgroundColor = "rgba(156, 163, 175, 0.25)";
+        barContainer.style.borderRadius = "4px";
+        barContainer.style.display = "flex";
+        barContainer.style.alignItems = "flex-end";
+        barContainer.style.position = "relative";
+        barContainer.style.overflow = "hidden";
+        
+        const bar = document.createElement("div");
+        bar.className = "trend-bar";
+        bar.style.width = "100%";
+        bar.style.height = `${pct}%`;
+        bar.style.backgroundColor = "var(--primary)";
+        bar.style.borderRadius = "4px";
+        bar.style.transition = "height 0.3s ease";
+        bar.title = `${day.dateStr}: ${day.count} lead${day.count === 1 ? "" : "s"}`;
+        
+        const label = document.createElement("span");
+        label.className = "trend-bar-label";
+        label.innerText = day.label;
+        label.style.fontSize = "0.68rem";
+        label.style.color = "var(--text-muted)";
+        label.style.fontWeight = "600";
+        
+        barContainer.appendChild(bar);
+        wrapper.appendChild(barContainer);
+        wrapper.appendChild(label);
+        trendChart.appendChild(wrapper);
+      });
+    }
+  }
+
+  function setupFilters() {
     const searchInput = document.getElementById("inbox-search");
+    const dateFilter = document.getElementById("inbox-date-filter");
+    const startDateInput = document.getElementById("filter-start-date");
+    const endDateInput = document.getElementById("filter-end-date");
+    const exportBtn = document.getElementById("export-csv-btn");
+
+    if (searchInput) searchInput.addEventListener("input", applyFilters);
+    if (dateFilter) dateFilter.addEventListener("change", applyFilters);
+    if (startDateInput) startDateInput.addEventListener("change", applyFilters);
+    if (endDateInput) endDateInput.addEventListener("change", applyFilters);
+    if (exportBtn) exportBtn.addEventListener("click", exportToCSV);
+  }
+
+  function applyFilters() {
+    const searchInput = document.getElementById("inbox-search");
+    const dateFilter = document.getElementById("inbox-date-filter");
+    const customDateInputs = document.getElementById("custom-date-inputs");
+    const startDateInput = document.getElementById("filter-start-date");
+    const endDateInput = document.getElementById("filter-end-date");
+    
     const rows = document.querySelectorAll(".inbox-row");
     const emptyRow = document.getElementById("empty-inbox-row");
     const counter = document.getElementById("inbox-counter");
 
-    if (searchInput) {
-      searchInput.addEventListener("input", () => {
-        const q = searchInput.value.toLowerCase().trim();
-        let visibleCount = 0;
+    if (!dateFilter) return;
 
-        rows.forEach(row => {
-          const name = row.getAttribute("data-name") || "";
-          const email = row.getAttribute("data-email") || "";
-          const subject = row.getAttribute("data-subject") || "";
-          
-          if (name.includes(q) || email.includes(q) || subject.includes(q)) {
-            row.style.display = "";
-            visibleCount++;
-          } else {
-            row.style.display = "none";
-          }
-        });
+    const q = searchInput ? searchInput.value.toLowerCase().trim() : "";
+    const filterVal = dateFilter.value;
 
-        if (counter) counter.innerText = `${visibleCount} submissions`;
-        if (emptyRow) emptyRow.style.display = (visibleCount === 0 && rows.length > 0) ? "" : "none";
-      });
+    if (filterVal === "custom") {
+      customDateInputs.style.display = "flex";
+    } else {
+      customDateInputs.style.display = "none";
     }
+
+    let startTimestamp = 0;
+    let endTimestamp = Infinity;
+    const now = new Date();
+
+    if (filterVal === "today") {
+      startTimestamp = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    } else if (filterVal === "yesterday") {
+      const yesterday = new Date();
+      yesterday.setDate(now.getDate() - 1);
+      startTimestamp = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate()).getTime();
+      endTimestamp = startTimestamp + 24 * 60 * 60 * 1000 - 1;
+    } else if (filterVal === "7days") {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(now.getDate() - 7);
+      startTimestamp = new Date(sevenDaysAgo.getFullYear(), sevenDaysAgo.getMonth(), sevenDaysAgo.getDate()).getTime();
+    } else if (filterVal === "30days") {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(now.getDate() - 30);
+      startTimestamp = new Date(thirtyDaysAgo.getFullYear(), thirtyDaysAgo.getMonth(), thirtyDaysAgo.getDate()).getTime();
+    } else if (filterVal === "custom") {
+      if (startDateInput && startDateInput.value) {
+        startTimestamp = new Date(startDateInput.value + "T00:00:00").getTime();
+      }
+      if (endDateInput && endDateInput.value) {
+        endTimestamp = new Date(endDateInput.value + "T23:59:59").getTime();
+      }
+    }
+
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+      const name = row.getAttribute("data-name") || "";
+      const email = row.getAttribute("data-email") || "";
+      const subject = row.getAttribute("data-subject") || "";
+      const filename = row.getAttribute("data-filename");
+
+      const msg = submissions.find(s => s.filename === filename);
+      const timestamp = msg ? msg.timestamp : 0;
+
+      const textMatch = name.includes(q) || email.includes(q) || subject.includes(q);
+      const dateMatch = timestamp >= startTimestamp && timestamp <= endTimestamp;
+
+      if (textMatch && dateMatch) {
+        row.style.display = "";
+        visibleCount++;
+      } else {
+        row.style.display = "none";
+      }
+    });
+
+    if (counter) counter.innerText = `${visibleCount} submissions`;
+    if (emptyRow) emptyRow.style.display = (visibleCount === 0 && rows.length > 0) ? "" : "none";
+  }
+
+  function exportToCSV() {
+    const visibleRows = Array.from(document.querySelectorAll(".inbox-row")).filter(row => row.style.display !== "none");
+    
+    if (visibleRows.length === 0) {
+      showToast("No leads matching filters to export.");
+      return;
+    }
+
+    const headers = ["Name", "Email", "Subject", "Submitted At", "Message"];
+    const csvRows = [headers.join(",")];
+
+    visibleRows.forEach(row => {
+      const filename = row.getAttribute("data-filename");
+      const msg = submissions.find(s => s.filename === filename);
+      if (msg) {
+        const name = `"${msg.name.replace(/"/g, '""')}"`;
+        const email = `"${msg.email.replace(/"/g, '""')}"`;
+        const subject = `"${msg.subject.replace(/"/g, '""')}"`;
+        const date = `"${msg.submittedAt.replace(/"/g, '""')}"`;
+        const message = `"${msg.message.replace(/"/g, '""').replace(/\r?\n/g, ' ')}"`;
+        
+        csvRows.push([name, email, subject, date, message].join(","));
+      }
+    });
+
+    const csvString = csvRows.join("\n");
+    const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    const dateStr = new Date().toISOString().split("T")[0];
+    link.setAttribute("download", `tangence-leads-${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("Leads exported successfully to CSV!");
   }
 
   // Bind Details Drawer panel clicks

@@ -1,0 +1,33 @@
+---
+interface Props {
+  title?: string;
+  subtitle?: string;
+  button_text?: string;
+  button_link?: string;
+}
+
+const { title, subtitle, button_text, button_link } = Astro.props;
+
+const defaultTitle = "Ready to solve your <br>toughest wear challenge?";
+const defaultSubtitle = "Talk to our technical team &mdash; free consultation for new requirements";
+const defaultButtonText = "Consult our Expert";
+const defaultButtonLink = "/contact";
+
+const displayTitle = title || defaultTitle;
+const displaySubtitle = subtitle || defaultSubtitle;
+const displayButtonText = button_text || defaultButtonText;
+const displayButtonLink = button_link || defaultButtonLink;
+---
+
+<section class="cta-banner">
+  <div class="cta-overlay"></div>
+  <div class="container position-relative">
+    <div class="row">
+      <div class="col-12 col-md-7 col-lg-6">
+        <h2 class="cta-heading" set:html={displayTitle}></h2>
+        {displaySubtitle && <p class="cta-sub" set:html={displaySubtitle}></p>}
+        <a href={displayButtonLink} class="cta-btn">{displayButtonText}</a>
+      </div>
+    </div>
+  </div>
+</section>

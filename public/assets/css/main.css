@@ -125,7 +125,7 @@ html, body {overflow-x: hidden;font-family: 'Frutiger LT Pro', 'Frutiger LT Std'
 .dropdown.dropdown-simple { min-width: 280px; padding: 0; border: 1px solid #eee; box-shadow: 0 6px 20px rgba(0,0,0,0.08); }
 .nav-item:hover .dropdown.dropdown-simple { display: block; width: auto; padding: 0; top: 100%; left: 0; min-height: 0; background: #fff; }
 
-/* ── CREATIVE MEGA DROPDOWN ── */
+/* â”€â”€ CREATIVE MEGA DROPDOWN â”€â”€ */
 .dropdown.dropdown-mega {
   display: none;
   position: fixed;
@@ -497,7 +497,7 @@ html, body {overflow-x: hidden;font-family: 'Frutiger LT Pro', 'Frutiger LT Std'
   transform-origin: center center;
 }
 
-/* Small gear — top left */
+/* Small gear â€” top left */
  .gear1 {
     width: 88px;
     top: 55px;
@@ -506,7 +506,7 @@ html, body {overflow-x: hidden;font-family: 'Frutiger LT Pro', 'Frutiger LT Std'
     position: absolute;
 }
 
-/* Medium gear — top right, meshes with gear1 */
+/* Medium gear â€” top right, meshes with gear1 */
  .gear2 {
   width: 110px;
   top: 8px;
@@ -515,7 +515,7 @@ html, body {overflow-x: hidden;font-family: 'Frutiger LT Pro', 'Frutiger LT Std'
       position: absolute;
 }
 
-/* Large gear — bottom center, meshes with both */
+/* Large gear â€” bottom center, meshes with both */
 .gear3 {
     width: 120px;
     bottom: auto;
@@ -627,14 +627,14 @@ font-size: 16px;
   gap: 40px;
 }
 
-/* Card — hidden state before scroll */
+/* Card â€” hidden state before scroll */
 .product-card {
   opacity: 0;
   transform: translateY(40px);
   transition: opacity 0.55s ease, transform 0.55s ease;
 }
 
-/* Card — visible state after IntersectionObserver fires */
+/* Card â€” visible state after IntersectionObserver fires */
 .product-card.card-visible {
   opacity: 1;
   transform: translateY(0);
@@ -667,7 +667,7 @@ font-size: 16px;
   transition: transform 0.45s ease;
 }
 
-/* Hover — lift card + zoom image */
+/* Hover â€” lift card + zoom image */
 .product-card:hover .product-img-wrap img {
   transform: scale(1.06);
 }
@@ -698,7 +698,7 @@ font-size: 16px;
 }
 
 /* .product-link::after {
-  content: '→';
+  content: 'â†’';
   display: inline-block;
   transition: transform 0.2s ease;
 } */
@@ -790,7 +790,7 @@ font-size: 16px;
   z-index: 1;
 }
 
-/* Nav arrows — top-right of card */
+/* Nav arrows â€” top-right of card */
 .solution-nav-arrows {
   position: absolute;
   top: -48px;
@@ -1187,7 +1187,7 @@ display: none;
   transform: rotate(180deg);
 }
 
-/* Answer — collapsed by default */
+/* Answer â€” collapsed by default */
 .faq-answer {
   max-height: 0;
   overflow: hidden;
@@ -1239,7 +1239,7 @@ padding: 0 22px 22px;
   overflow: hidden;
 }
 
-/* Gear decorations — left side */
+/* Gear decorations â€” left side */
 .why-gears {
   position: absolute;
   left: -30px;
@@ -1501,7 +1501,7 @@ font-size: 16px;
     font-weight: 300;
 }
 
-/* Slider wrap — full width so cards bleed to edges */
+/* Slider wrap â€” full width so cards bleed to edges */
 .industries-slider-wrap {
   position: relative;
 
@@ -1604,7 +1604,7 @@ width: 100%;
   overflow: hidden;
 }
 
-/* Header row — title+para left, arrows right */
+/* Header row â€” title+para left, arrows right */
 .services-header {
   display: flex;
   align-items: flex-end;
@@ -1678,7 +1678,7 @@ width: 100%;
   z-index: 1;
   left: -100%;}
 
-/* Slider track — add right padding so last card peeks */
+/* Slider track â€” add right padding so last card peeks */
 .services-slider {
   margin: 0 -14px;
 }
@@ -1824,7 +1824,7 @@ width: 100%;
   margin-bottom: 44px;
 }
 
-/* Each row wrapper — hides overflow for clean edge-to-edge scroll */
+/* Each row wrapper â€” hides overflow for clean edge-to-edge scroll */
 .clients-row-wrap {
   overflow: hidden;
   margin-bottom: 4px;
@@ -1865,7 +1865,7 @@ width: 100%;
   filter: grayscale(0%);
 }
 
-/* Row 2 — flip the whole slider to reverse scroll direction */
+/* Row 2 â€” flip the whole slider to reverse scroll direction */
 .logo-slider-2 {
   transform: scaleX(-1);
 }
@@ -2058,7 +2058,7 @@ position: relative;
 .menu-title {color: #000;margin-top:10px;font-size: 16px; font-weight: 700;}
 /* ==============================================
    RESPONSIVE MEDIA QUERIES
-   All breakpoints in one place — largest to smallest
+   All breakpoints in one place â€” largest to smallest
    Desktop styles above; only overrides go here
    ============================================== */
    @media (min-width: 1600px) {
@@ -2100,7 +2100,7 @@ position: relative;
 }
 .about-men-bg{    bottom: -20%;}
 }
-/* ── 1399px ── Large desktops */
+/* â”€â”€ 1399px â”€â”€ Large desktops */
 @media (max-width: 1399px) {
   .svc-img-wrap { width: 100%; }
   .about-gear-bg {
@@ -2122,7 +2122,7 @@ position: relative;
 .faq-men{bottom: -16%;}
 }
 
-/* ── 1299px ── Medium desktops */
+/* â”€â”€ 1299px â”€â”€ Medium desktops */
 @media (max-width: 1299px) {
   .stat-number { font-size: 70px; }
   .svc-img-wrap { width: 100%; }
@@ -2131,7 +2131,7 @@ position: relative;
   .faq-gears-left { transform: scale(0.8); top: 5%; }
 }
 
-/* ── 1200px ── Small desktops */
+/* â”€â”€ 1200px â”€â”€ Small desktops */
 @media (max-width: 1200px) {
   .logo img { max-width: 260px; }
   .nav { gap: 18px; }
@@ -2139,7 +2139,7 @@ position: relative;
   .mega-left-panel { width: 220px; padding: 30px 22px; }
 }
 
-/* ── 1024px ── Large tablets landscape */
+/* â”€â”€ 1024px â”€â”€ Large tablets landscape */
 @media (max-width: 1024px) {
   .logo img { max-width: 240px; }
   .nav { gap: 14px; }
@@ -2183,7 +2183,7 @@ position: relative;
 }
 }
 
-/* ── 991px ── Tablets portrait — mobile nav kicks in */
+/* â”€â”€ 991px â”€â”€ Tablets portrait â€” mobile nav kicks in */
 @media (max-width: 991px) {
   /* Header / nav */
   .menu-btn { display: block; }
@@ -2238,7 +2238,7 @@ position: relative;
 }
 }
 
-/* ── 768px ── Small tablets / large phones landscape */
+/* â”€â”€ 768px â”€â”€ Small tablets / large phones landscape */
 @media (max-width: 768px) {
   /* Global */
   section { padding: 40px 0 !important; }
@@ -2263,7 +2263,7 @@ position: relative;
     line-height: 0;
     height: fit-content;
     width: 22%;}
-  /* Gears — scale down */
+  /* Gears â€” scale down */
   .about-gear-bg { width: 180px; height: 200px; right: -20px; }
   .about-gear-bg .gear1 { width: 78px; top: 12px; left: 12px; }
   .about-gear-bg .gear2 { width: 100px; top: 5px; left: 92px; }
@@ -2334,7 +2334,7 @@ position: relative;
   .vs-track .vs-item img { height: 100px; }
 }
 
-/* ── 576px ── Mobile phones */
+/* â”€â”€ 576px â”€â”€ Mobile phones */
 @media (max-width: 576px) {
   /* Banner */
   .banner-mob { display: block !important; }
@@ -2429,7 +2429,7 @@ position: relative;
 }
 }
 
-/* ── 480px ── Small phones */
+/* â”€â”€ 480px â”€â”€ Small phones */
 @media (max-width: 480px) {
   .logo img { max-width: 140px; }
   .about-para { font-size: 13px; line-height: 24px; }

@@ -14,8 +14,8 @@ try {
   const allPages = await getCollection("pages");
 
   RELATION_COLLECTIONS = {
-    blog: allBlogs.map(post => ({ value: post.slug, label: post.data.title })),
-    pages: allPages.map(p => ({ value: p.slug, label: p.data.title }))
+    blog: allBlogs.map(post => ({ value: post.id, label: post.data.title })),
+    pages: allPages.map(p => ({ value: p.id, label: p.data.title }))
   };
 } catch (e) {
   console.error("Failed to load relation collections for editor:", e);
@@ -1075,7 +1075,7 @@ if (!sectionData) {
       const value = event.dataTransfer.getData("text/plain");
       if (!value) return;
       
-      const pathJsonStr = event.currentTarget.dataset.path;
+      const pathJsonStr = event.currentTarget.closest('.relation-selector-container').dataset.path;
       
       if (action === 'add') {
         window.addRelationItemByValue(pathJsonStr, value);

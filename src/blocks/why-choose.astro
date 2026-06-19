@@ -1,0 +1,113 @@
+---
+interface Props {
+  section_title?: string;
+  description?: string;
+  tabs?: Array<{
+    id: string;
+    label: string;
+    image: string;
+    description?: string;
+    isActive?: boolean;
+  }>;
+}
+
+const { section_title, description, tabs } = Astro.props;
+
+const defaultTitle = "Why Choose";
+const defaultDescription = "For over 64+ years, EWAC has been a trusted partner to industries operating in the wear-intensive and heavy-duty sectors. Customers choose EWAC for our innovative welding products and solutions that improve productivity, reduce maintenance costs, and extend component life. Backed by strong technical expertise and a customer-focused approach, EWAC continues to deliver reliable, high-performance solutions built on Technology, Track record, and Trust.";
+
+const defaultTabs = [
+  {
+    id: "rnd",
+    label: "In-House<br>R&D Centre",
+    image: "/assets/images/R-&-D.jpg",
+    description: "EWAC's dedicated Research & Development team continuously develops innovative welding technologies and customized solutions to meet evolving industrial challenges.",
+    isActive: true
+  },
+  {
+    id: "institute",
+    label: "EWAC Institute<br>Training",
+    image: "/assets/images/training.jpg",
+    description: "EWAC offers specialized training programs and technical workshops to enhance welding skills, application knowledge, and industry best practices for the engineers, customers and professionals.",
+    isActive: false
+  },
+  {
+    id: "turnkey",
+    label: "Turnkey<br>Solutions",
+    image: "/assets/images/turnkey-solutions.jpg",
+    description: "EWAC provides end-to-end turnkey maintenance and repair solutions on-site or through our reclamation facility, offer technical support to enhance equipment life and operational efficiency.",
+    isActive: false
+  },
+  {
+    id: "legacy",
+    label: "64+ Years<br>of Legacy",
+    image: "/assets/images/legacy.jpg",
+    description: "For over 64 years, EWAC has built a strong legacy of trust, innovation, and technical excellence in maintenance and repair welding products and solutions across diverse industrial sectors.",
+    isActive: false
+  },
+  {
+    id: "network",
+    label: "Pan-India<br>Network",
+    image: "/assets/images/pan-india-network.jpg",
+    description: "With a strong nationwide presence, EWAC provides prompt technical support, product availability, and customer service through its extensive application support and distribution network.",
+    isActive: false
+  },
+  {
+    id: "quality",
+    label: "Trusted<br>Quality",
+    image: "/assets/images/trusted-quality.jpg",
+    description: "",
+    isActive: false
+  }
+];
+
+const displayTitle = section_title || defaultTitle;
+const displayDesc = description || defaultDescription;
+const displayTabs = (tabs && tabs.length > 0) ? tabs : defaultTabs;
+---
+
+<section class="why-section">
+  <div class="why-gears" aria-hidden="true">
+    <img src="/assets/images/about-gear1.svg" class="gear1" alt="img" />
+    <img src="/assets/images/about-gear2.svg" class="gear2" alt="img" />
+    <img src="/assets/images/about-gear2.svg" class="gear3" alt="img" />
+  </div>
+
+  <div class="container">
+    <h2 class="why-heading">
+      {displayTitle} <img src="/assets/images/logo-m.svg" alt="EWAC" class="why-logo-inline" />
+    </h2>
+    {displayDesc && <p class="why-sub" set:html={displayDesc}></p>}
+
+    <div class="why-tabs-wrap">
+      <!-- DROPDOWN (mobile) -->
+      <div class="why-dropdown-wrap">
+        <select class="why-dropdown" id="whyDropdown">
+          {displayTabs.map((tab) => (
+            <option value={tab.id} selected={tab.isActive} set:html={tab.label.replace("<br>", " ")}></option>
+          ))}
+        </select>
+        <span class="why-dropdown-arrow"><i class="fas fa-chevron-down"></i></span>
+      </div>
+
+      <div class="why-tab-nav">
+        {displayTabs.map((tab) => (
+          <button class={`why-tab ${tab.isActive ? 'active' : ''}`} data-tab={tab.id} set:html={tab.label}></button>
+        ))}
+      </div>
+
+      <div class="why-tab-content">
+        {displayTabs.map((tab) => (
+          <div class={`why-pane ${tab.isActive ? 'active' : ''}`} id={`why-${tab.id}`}>
+            <img src={tab.image} alt={tab.label.replace("<br>", " ")} />
+            {tab.description && (
+              <div class="why-pane-overlay">
+                <p>{tab.description}</p>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>

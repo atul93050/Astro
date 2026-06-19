@@ -1,0 +1,72 @@
+---
+interface Props {
+  section_title?: string;
+  news_list?: Array<{
+    title: string;
+    image: string;
+    link: string;
+  }>;
+  bottom_cta_text?: string;
+  bottom_cta_url?: string;
+}
+
+const { section_title, news_list, bottom_cta_text, bottom_cta_url } = Astro.props;
+
+const defaultTitle = "News";
+const defaultCtaText = "View all News";
+const defaultCtaUrl = "#";
+
+const defaultNews = [
+  {
+    title: "Why Choose HVOF Coating? Key Advantages for Industrial Efficiency and Durability",
+    image: "/assets/images/news1.png",
+    link: "#"
+  },
+  {
+    title: "Maximizing Work Efficiency with Thermal Spray Powder: A Guide to Its Benefits",
+    image: "/assets/images/news2.png",
+    link: "#"
+  },
+  {
+    title: "Why Welding Electrodes Are Essential for Industrial Success: Benefits and Applications",
+    image: "/assets/images/news3.png",
+    link: "#"
+  }
+];
+
+const displayTitle = section_title || defaultTitle;
+const displayNews = (news_list && news_list.length > 0) ? news_list : defaultNews;
+const displayItems = displayNews.length <= 3 ? [...displayNews, ...displayNews] : displayNews;
+const displayCtaText = bottom_cta_text || defaultCtaText;
+const displayCtaUrl = bottom_cta_url || defaultCtaUrl;
+---
+
+<section class="uni-slider-section red-color">
+  <div class="uni-men-bg">
+    <img src="/assets/images/about-gear1.svg" alt="img" class="gear1" />
+    <img src="/assets/images/about-gear2.svg" alt="img" class="gear2" />
+    <img src="/assets/images/about-gear2.svg" alt="img" class="gear3" />
+  </div>
+  <div class="heading-back-wrap"></div>
+  <div class="container">
+    <div class="uni-slider-heading">
+      <h2>{displayTitle}</h2>
+    </div>
+    <div class="uni-slider-wrap">
+      <div class="services-slider">
+        {displayItems.map((item) => (
+          <div class="svc-card">
+            <div class="svc-img-wrap">
+              <img src={item.image} alt={item.title} />
+            </div>
+            <h3 class="svc-name">{item.title}</h3>
+            <a href={item.link} class="svc-link">Read More</a>
+          </div>
+        ))}
+      </div>
+      <div class="uni-slider-footer">
+        <a href={displayCtaUrl} class="blogs-view-all">{displayCtaText}</a>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,70 @@
+---
+interface Props {
+  section_title?: string;
+  description?: string;
+  faqs?: Array<{
+    faq_title: string;
+    faq_description: string;
+    isActive?: boolean;
+  }>;
+  bottom_cta?: {
+    text?: string;
+    url?: string;
+  };
+}
+
+const { section_title, description, faqs, bottom_cta } = Astro.props;
+
+const displayTitle = section_title;
+const displaySubtitle = description;
+const displayFaqs = faqs || [];
+const displayCtaText = bottom_cta?.text;
+const displayCtaUrl = bottom_cta?.url;
+
+// Check if any visible content exists to render the section
+const hasContent = displayTitle || displaySubtitle || displayFaqs.length > 0 || (displayCtaText && displayCtaUrl);
+---
+
+{hasContent && (
+  <section class="faq-section">
+    <div class="faq-gears-left" aria-hidden="true">
+      <img src="/assets/images/about-gear1.svg" class="gear1" alt="img" />
+      <img src="/assets/images/about-gear2.svg" class="gear2" alt="img" />
+      <img src="/assets/images/about-gear2.svg" class="gear3" alt="img" />
+    </div>
+
+    <div class="faq-deco-right" aria-hidden="true">
+      <img src="/assets/images/gear4.svg" alt="" class="faq-person" />
+    </div>
+    <div class="faq-men">
+      <img src="/assets/images/Welding_Animation.gif" alt="Welding Animation" />
+    </div>
+
+    <div class="container">
+      {displayTitle && <h2 class="faq-heading">{displayTitle}</h2>}
+      {displaySubtitle && <p class="faq-sub">{displaySubtitle}</p>}
+
+      {displayFaqs.length > 0 && (
+        <div class="faq-list">
+          {displayFaqs.map((faq) => (
+            <div class={`faq-item ${(faq.isActive) ? 'active' : ''}`}>
+              <button class="faq-question">
+                {faq.faq_title}
+                <span class="faq-icon"><i class="fas fa-chevron-down"></i></span>
+              </button>
+              <div class="faq-answer">
+                <p set:html={faq.faq_description}></p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {displayCtaText && displayCtaUrl && (
+        <div class="faq-footer">
+          <a href={displayCtaUrl} class="faq-btn">{displayCtaText}</a>
+        </div>
+      )}
+    </div>
+  </section>
+)}

@@ -1,1 +1,38 @@
-[]
+[
+  {
+    "to": "atul800498@gmail.com",
+    "subject": "Mock Auto-Reply: Helloo",
+    "timestamp": "2026-06-19T07:04:37.432Z",
+    "details": {
+      "name": "Atul Verma",
+      "email": "atul800498@gmail.com",
+      "subject": "Helloo",
+      "message": "fdvsdyug yugsufyv",
+      "submittedAt": "2026-06-19T07:04:37.432Z"
+    }
+  },
+  {
+    "to": "atul.verma@tangence.com",
+    "subject": "Mock Auto-Reply: No Subject",
+    "timestamp": "2026-06-19T07:10:13.988Z",
+    "details": {
+      "name": "Atul",
+      "email": "atul.verma@tangence.com",
+      "subject": "No Subject",
+      "message": "Hello dfbjbuhefbduhdf sf",
+      "submittedAt": "2026-06-19T07:10:13.988Z"
+    }
+  },
+  {
+    "to": "sahil@infotech.com",
+    "subject": "Mock Auto-Reply: 세일즈 인텔리전스",
+    "timestamp": "2026-06-19T07:11:30.999Z",
+    "details": {
+      "name": "Sanmeet",
+      "email": "sahil@infotech.com",
+      "subject": "세일즈 인텔리전스",
+      "message": "Hefhsdua as fs sf",
+      "submittedAt": "2026-06-19T07:11:30.999Z"
+    }
+  }
+]

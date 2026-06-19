@@ -1,0 +1,52 @@
+---
+interface Props {
+  section_title?: string;
+  description?: string;
+  industries_list?: Array<{
+    name: string;
+    image: string;
+  }>;
+}
+
+const { section_title, description, industries_list } = Astro.props;
+
+const defaultTitle = "Industries We Serve";
+const defaultDescription = "EWAC serves a wide range of industries including Steel, Cement, Mining, Power, Railways, Heavy Engineering, Oil & Gas, and Infrastructure. Our advanced welding and wear protection solutions are designed to improve equipment life, enhance productivity, and reduce maintenance costs across demanding industrial applications.";
+
+const defaultIndustries = [
+  { name: "Oil & Gas Refineries", image: "/assets/images/serve1.png" },
+  { name: "Power", image: "/assets/images/serve2.png" },
+  { name: "Mining", image: "/assets/images/serve3.png" },
+  { name: "Cement", image: "/assets/images/serve4.png" }
+];
+
+const displayTitle = section_title || defaultTitle;
+const displayDesc = description || defaultDescription;
+const displayIndustries = (industries_list && industries_list.length > 0) ? industries_list : defaultIndustries;
+const displayItems = displayIndustries.length <= 4 ? [...displayIndustries, ...displayIndustries] : displayIndustries;
+---
+
+<section class="industries-section">
+  <div class="container">
+    <h2 class="ind-heading">{displayTitle}</h2>
+    {displayDesc && <p class="ind-sub" set:html={displayDesc}></p>}
+  </div>
+
+  <div class="industries-slider-wrap">
+    <div class="container">
+      <button class="ind-arrow ind-prev"><i class="fas fa-chevron-left"></i></button>
+      <button class="ind-arrow ind-next"><i class="fas fa-chevron-right"></i></button>
+
+      <div class="industries-slider">
+        {displayItems.map((ind) => (
+          <div class="ind-slide">
+            <div class="ind-card">
+              <img src={ind.image} alt={ind.name} />
+              <div class="ind-label" set:html={ind.name}></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>

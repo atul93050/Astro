@@ -21,7 +21,7 @@ const {
 const allBlogs = await getCollection("blog");
 
 // Filter and order only the selected blog posts
-const selectedBlogs = allBlogs.filter(post => related_blogs.includes(post.slug));
+const selectedBlogs = allBlogs.filter(post => related_blogs.includes(post.id));
 
 // Fallback items if no blogs are selected/available
 const fallbackItems = [
@@ -51,7 +51,7 @@ const itemsToRender = selectedBlogs.length > 0
   ? selectedBlogs.map(blog => ({
       image: blog.data.featuredImage || "/assets/images/case1.png",
       title: blog.data.title,
-      url: `/blog/${blog.slug}`
+      url: `/blog/${blog.id}`
     }))
   : fallbackItems;
 ---

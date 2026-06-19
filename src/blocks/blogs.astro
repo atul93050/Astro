@@ -1,0 +1,70 @@
+---
+interface Props {
+  section_title?: string;
+  blogs_list?: Array<{
+    title: string;
+    image: string;
+    link: string;
+  }>;
+  bottom_cta_text?: string;
+  bottom_cta_url?: string;
+}
+
+const { section_title, blogs_list, bottom_cta_text, bottom_cta_url } = Astro.props;
+
+const defaultTitle = "Blogs";
+const defaultCtaText = "View all Blogs";
+const defaultCtaUrl = "#";
+
+const defaultBlogs = [
+  {
+    title: "Why Choose HVOF Coating? Key Advantages for Industrial Efficiency and Durability",
+    image: "/assets/images/blog1.png",
+    link: "#"
+  },
+  {
+    title: "Maximizing Work Efficiency with Thermal Spray Powder: A Guide to Its Benefits",
+    image: "/assets/images/blog2.png",
+    link: "#"
+  },
+  {
+    title: "Why Welding Electrodes Are Essential for Industrial Success: Benefits and Applications",
+    image: "/assets/images/blog3.png",
+    link: "#"
+  }
+];
+
+const displayTitle = section_title || defaultTitle;
+const displayBlogs = (blogs_list && blogs_list.length > 0) ? blogs_list : defaultBlogs;
+const displayItems = displayBlogs.length <= 3 ? [...displayBlogs, ...displayBlogs] : displayBlogs;
+const displayCtaText = bottom_cta_text || defaultCtaText;
+const displayCtaUrl = bottom_cta_url || defaultCtaUrl;
+---
+
+<section class="uni-slider-section blog">
+  <div class="uni-men-bg">
+    <img src="/assets/images/Welding_Animation.gif" alt="img" />
+  </div>
+  <div class="heading-back-wrap"></div>
+  <div class="container">
+    <div class="uni-slider-heading">
+      <h2>{displayTitle}</h2>
+    </div>
+    <div class="uni-slider-wrap">
+      <div class="services-slider">
+        {displayItems.map((blog) => (
+          <div class="svc-card">
+            <div class="svc-img-wrap">
+              <img src={blog.image} alt={blog.title} />
+            </div>
+            <h3 class="svc-name">{blog.title}</h3>
+            <a href={blog.link} class="svc-link">Read More</a>
+          </div>
+        ))}
+      </div>
+      <div class="uni-slider-footer">
+        <a href={displayCtaUrl} class="blogs-view-all">{displayCtaText}</a>
+      </div>
+    </div>
+  </div>
+</section>

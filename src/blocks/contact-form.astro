@@ -1,0 +1,369 @@
+---
+interface Props {
+  section_title?: string;
+  description?: string;
+}
+
+const { section_title, description } = Astro.props;
+
+const displayTitle = section_title || "Get In Touch";
+const displayDesc = description || "Fill out the form below and our technical experts will get back to you within 24 business hours.";
+---
+
+<section class="cms-contact-section">
+  <div class="container">
+    <div class="cms-contact-wrapper">
+      <div class="cms-contact-header">
+        <h2 class="cms-contact-title">{displayTitle}</h2>
+        {displayDesc && <p class="cms-contact-subtitle" set:html={displayDesc}></p>}
+      </div>
+
+      <form class="cms-form-element" id="cmsBlockContactForm" novalidate>
+        <div class="cms-form-row">
+          <div class="cms-form-group">
+            <label for="block-name">Full Name <span class="required">*</span></label>
+            <input type="text" id="block-name" name="name" required placeholder="Enter your full name" />
+            <span class="error-msg" id="block-nameError"></span>
+          </div>
+
+          <div class="cms-form-group">
+            <label for="block-email">Email Address <span class="required">*</span></label>
+            <input type="email" id="block-email" name="email" required placeholder="Enter your email address" />
+            <span class="error-msg" id="block-emailError"></span>
+          </div>
+        </div>
+
+        <div class="cms-form-group">
+          <label for="block-subject">Subject <span class="required">*</span></label>
+          <input type="text" id="block-subject" name="subject" required placeholder="Select or enter subject" />
+          <span class="error-msg" id="block-subjectError"></span>
+        </div>
+
+        <div class="cms-form-group">
+          <label for="block-message">Message <span class="required">*</span></label>
+          <textarea id="block-message" name="message" rows="5" required placeholder="Describe your requirement or query here..."></textarea>
+          <span class="error-msg" id="block-messageError"></span>
+        </div>
+
+        <div class="cms-form-actions">
+          <button type="submit" id="block-submitBtn" class="cms-submit-btn">
+            <span class="btn-text">Send Message</span>
+            <span class="btn-spinner" style="display: none;"><i class="fas fa-spinner fa-spin"></i> Submitting...</span>
+          </button>
+        </div>
+      </form>
+
+      <!-- Feedback Toast Banner -->
+      <div id="block-formFeedback" class="cms-feedback-banner" style="display: none;">
+        <div class="feedback-icon"><i class="fas fa-check-circle"></i></div>
+        <div class="feedback-content">
+          <h4 id="block-feedbackTitle">Thank You!</h4>
+          <p id="block-feedbackText">Your message has been submitted successfully.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .cms-contact-section {
+    padding: 70px 0 80px;
+    background: #f7f7f7;
+    font-family: 'Frutiger LT Std', 'Outfit', sans-serif;
+  }
+  .cms-contact-wrapper {
+    max-width: 800px;
+    margin: 0 auto;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 40px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+  }
+  @media (max-width: 576px) {
+    .cms-contact-wrapper {
+      padding: 24px;
+    }
+  }
+
+  .cms-contact-header {
+    text-align: center;
+    margin-bottom: 35px;
+  }
+  .cms-contact-title {
+    font-size: clamp(26px, 4vw, 36px);
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 10px;
+  }
+  .cms-contact-subtitle {
+    font-size: 15px;
+    color: #64748b;
+    line-height: 1.5;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .cms-form-element {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .cms-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+  @media (max-width: 576px) {
+    .cms-form-row {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .cms-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .cms-form-group label {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #334155;
+  }
+  .required {
+    color: #C02222;
+  }
+  .cms-form-group input,
+  .cms-form-group textarea {
+    padding: 11px 15px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 14.5px;
+    color: #1e293b;
+    outline: none;
+    background-color: #f8fafc;
+    transition: all 0.2s ease;
+  }
+  .cms-form-group input:focus,
+  .cms-form-group textarea:focus {
+    border-color: #C02222;
+    box-shadow: 0 0 0 3px rgba(192, 34, 34, 0.08);
+    background-color: #ffffff;
+  }
+
+  .cms-form-group.has-error input,
+  .cms-form-group.has-error textarea {
+    border-color: #ef4444;
+    background-color: #fffafb;
+  }
+  .error-msg {
+    font-size: 12px;
+    color: #ef4444;
+    font-weight: 500;
+    min-height: 16px;
+  }
+
+  .cms-submit-btn {
+    padding: 12px 26px;
+    background-color: #C02222;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 8px rgba(192, 34, 34, 0.15);
+  }
+  .cms-submit-btn:hover {
+    background-color: #a01c1c;
+  }
+  .cms-submit-btn:disabled {
+    background-color: #94a3b8;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .cms-feedback-banner {
+    margin-top: 20px;
+    border-radius: 6px;
+    padding: 12px 16px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    animation: slideDown 0.3s ease forwards;
+  }
+  .cms-feedback-banner.success {
+    background-color: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    color: #065f46;
+  }
+  .cms-feedback-banner.error {
+    background-color: #fef2f2;
+    border: 1px solid #fca5a5;
+    color: #991b1b;
+  }
+  .cms-feedback-banner.success .feedback-icon {
+    color: #10b981;
+  }
+  .cms-feedback-banner.error .feedback-icon {
+    color: #ef4444;
+  }
+  .feedback-content h4 {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  .feedback-content p {
+    font-size: 13px;
+  }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+
+<script is:inline>
+  document.addEventListener("DOMContentLoaded", () => {
+    const bindBlockContactForm = () => {
+      const form = document.getElementById("cmsBlockContactForm");
+      if (!form || form.dataset.bound) return;
+      form.dataset.bound = "true";
+
+      const submitBtn = document.getElementById("block-submitBtn");
+      const btnText = submitBtn.querySelector(".btn-text");
+      const btnSpinner = submitBtn.querySelector(".btn-spinner");
+      const feedbackBanner = document.getElementById("block-formFeedback");
+      const feedbackTitle = document.getElementById("block-feedbackTitle");
+      const feedbackText = document.getElementById("block-feedbackText");
+
+      const fields = ["block-name", "block-email", "block-subject", "block-message"];
+
+      function validateField(id) {
+        const input = document.getElementById(id);
+        const errorSpan = document.getElementById(id + "Error");
+        const group = input.closest(".cms-form-group");
+        
+        let isValid = true;
+        let errorMsg = "";
+
+        const value = input.value.trim();
+
+        if (!value) {
+          isValid = false;
+          errorMsg = `${input.previousElementSibling.textContent.replace(" *", "")} is required.`;
+        } else if (id === "block-email") {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(value)) {
+            isValid = false;
+            errorMsg = "Please enter a valid email address.";
+          }
+        }
+
+        if (!isValid) {
+          group.classList.add("has-error");
+          errorSpan.textContent = errorMsg;
+        } else {
+          group.classList.remove("has-error");
+          errorSpan.textContent = "";
+        }
+
+        return isValid;
+      }
+
+      fields.forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+          input.addEventListener("input", () => {
+            const group = input.closest(".cms-form-group");
+            const errorSpan = document.getElementById(id + "Error");
+            if (input.value.trim()) {
+              group.classList.remove("has-error");
+              errorSpan.textContent = "";
+            }
+          });
+        }
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        let isFormValid = true;
+        fields.forEach(id => {
+          const isFieldValid = validateField(id);
+          if (!isFieldValid) isFormValid = false;
+        });
+
+        if (!isFormValid) return;
+
+        submitBtn.disabled = true;
+        btnText.style.display = "none";
+        btnSpinner.style.display = "inline-block";
+        feedbackBanner.style.display = "none";
+
+        const formData = {
+          name: document.getElementById("block-name").value.trim(),
+          email: document.getElementById("block-email").value.trim(),
+          subject: document.getElementById("block-subject").value.trim(),
+          message: document.getElementById("block-message").value.trim()
+        };
+
+        try {
+          const response = await fetch("/api/contact-submit", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(formData)
+          });
+
+          const data = await response.json();
+
+          if (response.ok && data.success) {
+            feedbackBanner.className = "cms-feedback-banner success";
+            feedbackBanner.style.display = "flex";
+            feedbackTitle.textContent = "Submission Successful!";
+            feedbackText.textContent = "Your enquiry has been successfully logged in our lead box. We will contact you shortly.";
+            form.reset();
+          } else {
+            feedbackBanner.className = "cms-feedback-banner error";
+            feedbackBanner.style.display = "flex";
+            feedbackTitle.textContent = "Submission Failed";
+            
+            if (data.errors) {
+              feedbackText.textContent = "Please correct the errors in the form.";
+              Object.keys(data.errors).forEach(key => {
+                const input = document.getElementById("block-" + key);
+                if (input) {
+                  const group = input.closest(".cms-form-group");
+                  const errorSpan = document.getElementById("block-" + key + "Error");
+                  group.classList.add("has-error");
+                  errorSpan.textContent = data.errors[key];
+                }
+              });
+            } else {
+              feedbackText.textContent = data.error || "An error occurred while submitting your enquiry.";
+            }
+          }
+        } catch (error) {
+          feedbackBanner.className = "cms-feedback-banner error";
+          feedbackBanner.style.display = "flex";
+          feedbackTitle.textContent = "Network Error";
+          feedbackText.textContent = "Could not connect to the server. Please check your connection.";
+        } finally {
+          submitBtn.disabled = false;
+          btnText.style.display = "inline-block";
+          btnSpinner.style.display = "none";
+        }
+      });
+    };
+
+    bindBlockContactForm();
+    document.addEventListener("astro:page-load", bindBlockContactForm);
+  });
+</script>

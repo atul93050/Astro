@@ -43,19 +43,36 @@ export const prerender = false;
     </button>
   </div>
 
-  <!-- Filters Row: Search + Category + Author -->
+  <!-- Filters Row: WordPress style controls -->
   <div class="filters-row">
-    <div class="search-wrap">
-      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="search" id="search-input" placeholder="Search posts by title…" autocomplete="off" />
-    </div>
-    <div class="filter-selects">
-      <select id="category-filter">
+    <div class="filters-left">
+      <select id="bulk-action-select" class="admin-select-input" style="max-width: 160px;" aria-label="Bulk action selector">
+        <option value="">Bulk actions</option>
+        <option value="publish">Publish</option>
+        <option value="draft">Set Draft</option>
+        <option value="delete">Delete</option>
+      </select>
+      <button type="button" id="bulk-action-apply-btn" class="btn btn-outline btn-sm">Apply</button>
+
+      <div class="filter-separator"></div>
+
+      <select id="date-filter" class="admin-select-input" style="max-width: 150px;" aria-label="Filter by date">
+        <option value="">All dates</option>
+      </select>
+
+      <select id="category-filter" class="admin-select-input" style="max-width: 160px;" aria-label="Filter by category">
         <option value="">All Categories</option>
       </select>
-      <select id="author-filter">
-        <option value="">All Authors</option>
-      </select>
+
+      <button type="button" id="btn-filter-submit" class="btn btn-outline btn-sm">Filter</button>
+    </div>
+
+    <div class="filters-right">
+      <div class="search-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="search" id="search-input" placeholder="Search posts by title…" autocomplete="off" />
+        <button type="button" id="btn-search-submit" class="btn btn-outline btn-sm" style="margin-left: 0.5rem;">Search Posts</button>
+      </div>
     </div>
   </div>
 
@@ -93,10 +110,13 @@ export const prerender = false;
           <th>Author</th>
           <th>Category</th>
           <th>Tags</th>
+          <th style="text-align:center; width:60px;" title="Approved Comments">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          </th>
           <th>Status</th>
           <th>Date</th>
           <th style="text-align:right;">Views</th>
-          <th style="text-align:center; width:110px;">Actions</th>
+          <th style="text-align:center; width:140px;">Actions</th>
         </tr>
       </thead>
       <tbody id="posts-tbody">
@@ -307,15 +327,34 @@ export const prerender = false;
   .filters-row {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 0.75rem;
-    margin-bottom: 1rem;
+    margin-bottom: 1.25rem;
     flex-wrap: wrap;
+  }
+  .filters-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .filters-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+  .filter-separator {
+    width: 1px;
+    height: 24px;
+    background-color: var(--border-color);
+    margin: 0 0.5rem;
   }
   .search-wrap {
     position: relative;
-    flex: 1;
-    min-width: 220px;
-    max-width: 360px;
+    display: flex;
+    align-items: center;
+    min-width: 260px;
+    max-width: 420px;
   }
   .search-icon {
     position: absolute;
@@ -332,13 +371,76 @@ export const prerender = false;
     width: 100%;
     padding-left: 2.25rem !important;
   }
-  .filter-selects {
-    display: flex;
-    gap: 0.6rem;
-    flex-wrap: wrap;
+  .admin-select-input {
+    padding: 0.45rem 1.6rem 0.45rem 0.65rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-main);
+    font-size: 0.82rem;
+    font-weight: 500;
+    outline: none;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.4rem center;
+    background-repeat: no-repeat;
+    background-size: 1.1em 1.1em;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
   }
-  .filter-selects select {
-    min-width: 150px;
+  .admin-select-input:focus {
+    border-color: var(--primary);
+  }
+
+  /* Comments count bubble styles */
+  .comments-count-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.5rem;
+    background: rgba(156, 163, 175, 0.1);
+    border-radius: 12px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: var(--transition);
+    border: 1px solid var(--border-color);
+  }
+  .comments-count-badge:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+  }
+  .comments-count-badge.zero {
+    color: var(--text-dim);
+    background: transparent;
+    border-color: transparent;
+    cursor: default;
+  }
+  .bubble-icon {
+    display: inline-flex;
+    align-items: center;
+    color: currentColor;
+    opacity: 0.8;
+  }
+  
+  /* Date cell format styles */
+  .date-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-size: 0.8rem;
+  }
+  .date-status {
+    font-weight: 600;
+    color: var(--text-main);
+  }
+  .date-time {
+    color: var(--text-muted);
+    font-size: 0.76rem;
+    white-space: nowrap;
   }
 
   /* ── Bulk actions bar ────────────────────────────────────────────── */
@@ -418,6 +520,46 @@ export const prerender = false;
     color: var(--text-dim);
     font-family: 'Courier New', monospace;
     opacity: 0.85;
+  }
+  .row-actions-inline {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.18rem;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.15s ease-in-out, visibility 0.15s ease-in-out;
+  }
+  tr:hover .row-actions-inline {
+    visibility: visible;
+    opacity: 1;
+  }
+  .row-actions-inline .action-link {
+    color: var(--primary);
+    text-decoration: none;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-weight: 500;
+    font-family: inherit;
+  }
+  .row-actions-inline .action-link:hover {
+    color: #4F46E5;
+    text-decoration: underline;
+  }
+  .row-actions-inline .delete-link {
+    color: #EF4444;
+  }
+  .row-actions-inline .delete-link:hover {
+    color: #DC2626;
+  }
+  .row-actions-inline .sep {
+    color: var(--text-dim);
+    user-select: none;
+    font-size: 0.72rem;
   }
 
   /* Status badges */
@@ -671,10 +813,12 @@ export const prerender = false;
 let allPosts       = [];
 let filteredPosts  = [];
 let allCategories  = [];
+let allComments    = [];
 let allAuthors     = [];
 let activeStatus   = 'all';
 let searchQuery    = '';
 let catFilter      = '';
+let dateFilter     = '';
 let authorFilter   = '';
 let currentPage    = 1;
 const PER_PAGE     = 12;
@@ -692,7 +836,7 @@ let pendingDeleteSlug = null;
 
 async function setup() {
   bindTabEvents();
-  bindSearchEvents();
+  bindFilterEvents();
   bindBulkBarEvents();
   bindModalEvents();
   bindSelectAll();
@@ -700,6 +844,7 @@ async function setup() {
   await Promise.all([
     loadPosts(),
     loadCategories(),
+    loadComments(),
     loadAuthors(),
   ]);
 }
@@ -712,6 +857,7 @@ async function loadPosts() {
     const json = await res.json();
     if (json.success) {
       allPosts = json.posts || [];
+      populateDateFilter();
     } else {
       showToast('Failed to load posts: ' + (json.error || 'Unknown error'), 'error');
     }
@@ -730,6 +876,18 @@ async function loadCategories() {
     if (json.success) {
       allCategories = json.categories || [];
       populateCategoryFilter();
+    }
+  } catch (_) {}
+}
+
+async function loadComments() {
+  try {
+    const res = await fetch('/api/blog-crud?action=comments', { credentials: 'include' });
+    const json = await res.json();
+    if (json.success && Array.isArray(json.comments)) {
+      allComments = json.comments;
+    } else if (Array.isArray(json)) {
+      allComments = json;
     }
   } catch (_) {}
 }
@@ -755,6 +913,34 @@ function populateCategoryFilter() {
   sel.value = currentVal;
 }
 
+function populateDateFilter() {
+  const dateSel = document.getElementById('date-filter');
+  if (!dateSel) return;
+  const currentVal = dateSel.value;
+
+  const monthsMap = new Map();
+  allPosts.forEach(post => {
+    const dateStr = post.publishDate || post.scheduledDate || post.updatedDate;
+    if (dateStr) {
+      const d = new Date(dateStr);
+      if (!isNaN(d.getTime())) {
+        const year = d.getFullYear();
+        const monthNum = d.getMonth();
+        const monthName = d.toLocaleString('en-US', { month: 'long' });
+        const key = `${year}-${String(monthNum + 1).padStart(2, '0')}`;
+        const val = `${monthName} ${year}`;
+        monthsMap.set(key, val);
+      }
+    }
+  });
+
+  const sortedMonths = Array.from(monthsMap.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+
+  dateSel.innerHTML = '<option value="">All dates</option>' +
+    sortedMonths.map(([key, val]) => `<option value="${key}">${val}</option>`).join('');
+  dateSel.value = currentVal;
+}
+
 function populateAuthorFilter() {
   const sel = document.getElementById('author-filter');
   if (!sel) return;
@@ -770,6 +956,18 @@ function applyFilters() {
     if (activeStatus !== 'all' && post.status !== activeStatus) return false;
     if (catFilter && post.category !== catFilter) return false;
     if (authorFilter && post.author !== authorFilter) return false;
+    
+    // Dates filter check
+    if (dateFilter) {
+      const postDateStr = post.publishDate || post.scheduledDate || post.updatedDate;
+      if (!postDateStr) return false;
+      const d = new Date(postDateStr);
+      const postYear = d.getFullYear();
+      const postMonth = String(d.getMonth() + 1).padStart(2, '0');
+      const postDateKey = `${postYear}-${postMonth}`;
+      if (postDateKey !== dateFilter) return false;
+    }
+
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       const titleMatch = (post.title || '').toLowerCase().includes(q);
@@ -812,7 +1010,7 @@ function renderTable() {
       emptyEl.style.display = 'flex';
       const titleEl = document.getElementById('empty-state-title');
       const msgEl   = document.getElementById('empty-state-msg');
-      if (activeStatus !== 'all' || searchQuery || catFilter || authorFilter) {
+      if (activeStatus !== 'all' || searchQuery || catFilter || authorFilter || dateFilter) {
         if (titleEl) titleEl.textContent = 'No posts match your filters';
         if (msgEl)   msgEl.textContent = 'Try adjusting your search or filter criteria.';
       } else {
@@ -832,13 +1030,26 @@ function renderTable() {
     const tagsHtml   = renderTags(post.tags);
     const authorHtml = renderAuthor(post.author);
     const catHtml    = renderCategory(post.category);
-    const dateHtml   = formatDate(post.publishDate || post.scheduledDate || post.updatedDate || '');
+    const dateHtml   = formatDate(post.publishDate || post.scheduledDate || post.updatedDate || '', post.status);
     const imgHtml    = post.featuredImage
       ? `<img class="post-img-thumb" src="${escHtml(post.featuredImage)}" alt="" loading="lazy" />`
       : `<div class="post-img-placeholder">
            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
          </div>`;
     const views = (post.views || 0).toLocaleString();
+
+    // Approved comments count for this post
+    const postCommentsCount = allComments.filter(c => c.postSlug === post.slug && c.status === 'approved').length;
+    const commentsBubble = postCommentsCount > 0 ? `
+      <a href="/admin/blog/comments?postSlug=${encodeURIComponent(post.slug)}" class="comments-count-badge" title="${postCommentsCount} approved comments">
+        <span class="bubble-icon"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg></span>
+        <span class="count-num">${postCommentsCount}</span>
+      </a>
+    ` : `<span class="comments-count-badge zero" title="No approved comments">—</span>`;
+
+    // View post url preview mapping
+    const isPublished = post.status === 'published';
+    const viewUrl = isPublished ? `/blog/${post.slug}` : `/blog/${post.slug}?preview=true`;
 
     return `
       <tr data-slug="${escHtml(post.slug)}" class="${isSelected ? 'selected-row' : ''}">
@@ -850,16 +1061,29 @@ function renderTable() {
           <div class="post-title-cell">
             <span class="post-title-text" title="${escHtml(post.title || 'Untitled')}">${escHtml(post.title || 'Untitled')}</span>
             <span class="post-slug-text">/${escHtml(post.slug)}</span>
+            <div class="row-actions-inline">
+              <a href="/admin/blog/edit?slug=${encodeURIComponent(post.slug)}" class="action-link edit-link">Edit</a>
+              <span class="sep">|</span>
+              <a href="${viewUrl}" target="_blank" class="action-link view-link">View</a>
+              <span class="sep">|</span>
+              <button type="button" class="action-link duplicate-link duplicate-btn" data-slug="${escHtml(post.slug)}" data-title="${escHtml(post.title || 'Untitled')}">Duplicate</button>
+              <span class="sep">|</span>
+              <button type="button" class="action-link delete-link delete-btn" data-slug="${escHtml(post.slug)}" data-title="${escHtml(post.title || 'Untitled')}">Delete</button>
+            </div>
           </div>
         </td>
         <td>${authorHtml}</td>
         <td>${catHtml}</td>
         <td>${tagsHtml}</td>
+        <td style="text-align:center;">${commentsBubble}</td>
         <td>${statusBadge}</td>
-        <td style="white-space:nowrap; font-size:0.82rem; color:var(--text-muted);">${dateHtml}</td>
+        <td>${dateHtml}</td>
         <td class="views-num">${views}</td>
         <td>
           <div class="row-actions">
+            <a href="${viewUrl}" target="_blank" class="btn-action view-btn" title="View live post">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </a>
             <a href="/admin/blog/edit?slug=${encodeURIComponent(post.slug)}" class="btn-action edit-btn" title="Edit post">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </a>
@@ -898,8 +1122,8 @@ function renderStatusBadge(status) {
     scheduled: { label: 'Scheduled', icon: '⚠' },
     archived:  { label: 'Archived',  icon: '<svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>' },
   };
-  const s = map[status] || { label: status || 'Unknown', icon: '' };
-  return `<span class="status-badge ${escHtml(status || '')}">${s.icon} ${s.label}</span>`;
+  const val = map[status] || { label: status || 'Unknown', icon: '' };
+  return `<span class="status-badge ${escHtml(status || '')}">${val.icon} ${val.label}</span>`;
 }
 
 function renderTags(tags) {
@@ -907,22 +1131,24 @@ function renderTags(tags) {
     return '<span style="color:var(--text-dim); font-size:0.75rem;">—</span>';
   }
   const show = tags.slice(0, 2);
-  const more = tags.length - 2;
+  const extra = tags.length - 2;
+  const pills = show.map(t => `<span class="tag-pill">${escHtml(t)}</span>`).join('');
   return `<div class="tags-cell">
-    ${show.map(t => `<span class="tag-pill">${escHtml(t)}</span>`).join('')}
-    ${more > 0 ? `<span class="tags-more">+${more}</span>` : ''}
+    ${pills}
+    ${extra > 0 ? `<span class="tags-more">+${extra} more</span>` : ''}
   </div>`;
 }
 
 function renderAuthor(authorId) {
   const author = allAuthors.find(a => a.id === authorId) || null;
-  const name = author ? author.name : (authorId || 'Unknown');
-  const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-  const avatarContent = (author && author.avatar)
-    ? `<img src="${escHtml(author.avatar)}" alt="${escHtml(name)}" />`
-    : initials;
+  const name = author ? author.name : (authorId || 'Admin');
+  const initial = name.charAt(0).toUpperCase();
+  const avatarHtml = author && author.avatar
+    ? `<img src="${escHtml(author.avatar)}" alt="" />`
+    : `<span>${initial}</span>`;
+
   return `<div class="author-cell">
-    <div class="author-avatar">${avatarContent}</div>
+    <div class="author-avatar">${avatarHtml}</div>
     <span class="author-name">${escHtml(name)}</span>
   </div>`;
 }
@@ -936,11 +1162,21 @@ function renderCategory(catSlug) {
   return `<span class="cat-pill" style="background:${bg}; color:${color}; border-color:${border};">${escHtml(name)}</span>`;
 }
 
-function formatDate(dateStr) {
+function formatDate(dateStr, status) {
   if (!dateStr) return '<span style="color:var(--text-dim);">—</span>';
   try {
     const d = new Date(dateStr);
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const dateFormatted = d.toLocaleDateString('en-US', { year: 'numeric', month: 'numeric', day: 'numeric' });
+    const timeFormatted = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
+    
+    // Capitalize status
+    const statusLabel = status ? status.charAt(0).toUpperCase() + status.slice(1) : "";
+    return `
+      <div class="date-cell">
+        <span class="date-status">${statusLabel}</span>
+        <span class="date-time">${dateFormatted} at ${timeFormatted}</span>
+      </div>
+    `;
   } catch (_) {
     return dateStr;
   }
@@ -1008,31 +1244,52 @@ function bindTabEvents() {
   });
 }
 
-function bindSearchEvents() {
+function bindFilterEvents() {
+  const filterBtn = document.getElementById('btn-filter-submit');
+  const searchBtn = document.getElementById('btn-search-submit');
   const searchInput = document.getElementById('search-input');
-  const catSel      = document.getElementById('category-filter');
-  const authorSel   = document.getElementById('author-filter');
+  const bulkApplyBtn = document.getElementById('bulk-action-apply-btn');
 
-  if (searchInput) {
-    let debounceTimer;
-    searchInput.addEventListener('input', e => {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
-        searchQuery = e.target.value.trim();
-        applyFilters();
-      }, 280);
-    });
-  }
-  if (catSel) {
-    catSel.addEventListener('change', e => {
-      catFilter = e.target.value;
+  if (filterBtn) {
+    filterBtn.addEventListener('click', () => {
+      catFilter = document.getElementById('category-filter')?.value || '';
+      authorFilter = document.getElementById('author-filter')?.value || '';
+      dateFilter = document.getElementById('date-filter')?.value || '';
       applyFilters();
     });
   }
-  if (authorSel) {
-    authorSel.addEventListener('change', e => {
-      authorFilter = e.target.value;
+
+  if (searchBtn && searchInput) {
+    const performSearch = () => {
+      searchQuery = searchInput.value.trim();
       applyFilters();
+    };
+    searchBtn.addEventListener('click', performSearch);
+    searchInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        performSearch();
+      }
+    });
+  }
+
+  if (bulkApplyBtn) {
+    bulkApplyBtn.addEventListener('click', () => {
+      const action = document.getElementById('bulk-action-select')?.value;
+      if (!action) {
+        showToast('Please select a bulk action first.', 'warning');
+        return;
+      }
+      if (selectedSlugs.size === 0) {
+        showToast('No posts selected.', 'warning');
+        return;
+      }
+      if (action === 'publish') {
+        bulkSetStatus('published');
+      } else if (action === 'draft') {
+        bulkSetStatus('draft');
+      } else if (action === 'delete') {
+        openBulkDeleteModal();
+      }
     });
   }
 

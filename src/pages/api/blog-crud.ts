@@ -240,7 +240,27 @@ export const GET: APIRoute = async ({ url, cookies }) => {
       if (filterStatus) filtered = filtered.filter((c: any) => c.status === filterStatus);
       if (filterPost) filtered = filtered.filter((c: any) => c.postSlug === filterPost);
       filtered.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      return jsonResponse({ success: true, comments: filtered });
+      
+      const commentsWithTitles = filtered.map((c: any) => {
+        let postTitle = "Untitled Post";
+        try {
+          const postPath = path.join(BLOG_DIR, `${c.postSlug}.md`);
+          if (fs.existsSync(postPath)) {
+            const content = fs.readFileSync(postPath, "utf-8");
+            const parts = content.split(/^---$/m);
+            if (parts.length >= 3) {
+              const yamlStr = parts[1];
+              const parsed = parse(yamlStr);
+              if (parsed && parsed.title) {
+                postTitle = parsed.title;
+              }
+            }
+          }
+        } catch {}
+        return { ...c, postTitle };
+      });
+
+      return jsonResponse({ success: true, comments: commentsWithTitles });
     }
 
     // ── Settings ────────────────────────────────────────────────────────────

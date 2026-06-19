@@ -1,1 +1,13 @@
-[]
+[
+  {
+    "id": "comment-1781854115682",
+    "postSlug": "test-post",
+    "authorName": "Test User",
+    "authorEmail": "test@example.com",
+    "authorWebsite": "",
+    "body": "This is a test comment from script",
+    "status": "pending",
+    "createdAt": "2026-06-19T07:28:35.682Z",
+    "parentId": null
+  }
+]

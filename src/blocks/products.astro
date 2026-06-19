@@ -1,0 +1,61 @@
+---
+interface Props {
+  section_title?: string;
+  description?: string;
+  products_list?: Array<{
+    name: string;
+    image: string;
+    link: string;
+  }>;
+}
+
+const { section_title, description, products_list } = Astro.props;
+
+const defaultTitle = "Products by Category";
+const defaultDescription = "EWAC offers a comprehensive range of welding consumables, wear protection solutions, maintenance & repair products, and industrial welding equipment engineered for demanding applications across industries. Our product portfolio is designed to improve productivity, extend equipment life, and deliver reliable performance in maintenance, reclamation, fabrication, and hardfacing applications.";
+
+const defaultProducts = [
+  {
+    name: "Maintenance & Repair",
+    image: "/assets/images/products1.png",
+    link: "#"
+  },
+  {
+    name: "Fabrication Products",
+    image: "/assets/images/products2.png",
+    link: "#"
+  },
+  {
+    name: "Wear Liners & Components",
+    image: "/assets/images/products3.png",
+    link: "#"
+  },
+  {
+    name: "Ceramic Liners & Components",
+    image: "/assets/images/products4.png",
+    link: "#"
+  }
+];
+
+const displayTitle = section_title || defaultTitle;
+const displayDesc = description || defaultDescription;
+const displayProducts = (products_list && products_list.length > 0) ? products_list : defaultProducts;
+---
+
+<section class="products-section" id="products-category">
+  <div class="container">
+    <h2 class="products-heading">{displayTitle}</h2>
+    {displayDesc && <p class="products-sub" set:html={displayDesc}></p>}
+    <div class="products-grid">
+      {displayProducts.map((prod) => (
+        <div class="product-card">
+          <div class="product-img-wrap">
+            <img src={prod.image} alt={prod.name} />
+          </div>
+          <h3 class="product-name">{prod.name}</h3>
+          <a href={prod.link} class="product-link">Read More</a>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

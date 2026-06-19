@@ -1,0 +1,163 @@
+---
+interface Props {
+  section_title?: string;
+  description?: string;
+  solutions_tabs?: Array<{
+    id: string;
+    label: string;
+    title: string;
+    isActive?: boolean;
+    items: Array<{
+      name: string;
+      image: string;
+      link: string;
+    }>;
+  }>;
+}
+
+const { section_title, description, solutions_tabs } = Astro.props;
+
+const defaultTitle = "Find the Right Solution";
+const defaultDescription = "We understand that every industry and application has unique challenges. With decades of technical expertise and a comprehensive product portfolio, EWAC helps you find reliable and cost-effective solutions tailored to your operational needs.";
+
+const defaultTabs = [
+  {
+    id: "maintenance",
+    label: "Maintenance & Repair",
+    title: "Maintenance & Repair",
+    isActive: true,
+    items: [
+      { name: "Manual Metal Arc Welding", image: "/assets/images/solution1.png", link: "#" },
+      { name: "Flux Cored Wires & Wire Feeder", image: "/assets/images/solution2.png", link: "#" },
+      { name: "Brazing Alloys & Fluxes", image: "/assets/images/solution3.png", link: "#" },
+      { name: "Thermal Spray Wires", image: "/assets/images/solution2.png", link: "#" }
+    ]
+  },
+  {
+    id: "fabrication",
+    label: "Fabrication Products",
+    title: "Fabrication Products",
+    isActive: false,
+    items: [
+      { name: "Stainless Steel Electrodes", image: "/assets/images/solution1.png", link: "#" },
+      { name: "Mild Steel MIG Wires", image: "/assets/images/solution2.png", link: "#" },
+      { name: "TIG Filler Rods", image: "/assets/images/solution3.png", link: "#" },
+      { name: "SAW Wires & Fluxes", image: "/assets/images/solution2.png", link: "#" }
+    ]
+  },
+  {
+    id: "wear",
+    label: "Wear Liners & Components",
+    title: "Wear Liners & Components",
+    isActive: false,
+    items: [
+      { name: "Chromium Carbide Plates", image: "/assets/images/solution1.png", link: "#" },
+      { name: "Wear Buttons & Tiles", image: "/assets/images/solution2.png", link: "#" },
+      { name: "Pipe Elbows & Spools", image: "/assets/images/solution3.png", link: "#" },
+      { name: "Impact Bars", image: "/assets/images/solution2.png", link: "#" }
+    ]
+  },
+  {
+    id: "ceramic",
+    label: "Ceramic Liners & Components",
+    title: "Ceramic Liners & Components",
+    isActive: false,
+    items: [
+      { name: "Alumina Ceramic Tiles", image: "/assets/images/solution1.png", link: "#" },
+      { name: "Rubber-Ceramic Composites", image: "/assets/images/solution2.png", link: "#" },
+      { name: "Ceramic Cyclones", image: "/assets/images/solution3.png", link: "#" },
+      { name: "Hex Ceramic Liners", image: "/assets/images/solution2.png", link: "#" }
+    ]
+  },
+  {
+    id: "equipment",
+    label: "Equipment",
+    title: "Equipment",
+    isActive: false,
+    items: [
+      { name: "MIG Welding Machines", image: "/assets/images/solution1.png", link: "#" },
+      { name: "Plasma Spray Systems", image: "/assets/images/solution2.png", link: "#" },
+      { name: "PTA Systems", image: "/assets/images/solution3.png", link: "#" },
+      { name: "Welding Accessories", image: "/assets/images/solution2.png", link: "#" }
+    ]
+  }
+];
+
+const displayTitle = section_title || defaultTitle;
+const displayDesc = description || defaultDescription;
+const displayTabs = (solutions_tabs && solutions_tabs.length > 0) ? solutions_tabs : defaultTabs;
+---
+
+<section class="solution-section">
+  <div class="solution-gears" aria-hidden="true">
+    <img src="/assets/images/about-gear1.svg" class="gear1" alt="img" />
+    <img src="/assets/images/about-gear2.svg" class="gear2" alt="img" />
+    <img src="/assets/images/about-gear2.svg" class="gear3" alt="img" />
+  </div>
+
+  <div class="about-men-bg">
+    <img src="/assets/images/Welding_Animation.gif" alt="img" />
+  </div>
+
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-10">
+        <div class="solution-intro">
+          <h2 class="solution-heading">{displayTitle}</h2>
+          {displayDesc && <p class="solution-sub" set:html={displayDesc}></p>}
+        </div>
+      </div>
+    </div>
+
+    <div class="solution-wrap">
+      <div class="solution-nav-arrows">
+        <button class="sol-arr sol-arr-prev"><i class="fas fa-chevron-left"></i></button>
+        <button class="sol-arr sol-arr-next"><i class="fas fa-chevron-right"></i></button>
+      </div>
+
+      <div class="solution-card">
+        <!-- LEFT TAB LIST -->
+        <div class="solution-left">
+          <div class="solution-left-title">Products</div>
+          <ul class="sol-tab-list">
+            {displayTabs.map((tab) => (
+              <li class={`sol-tab-item ${tab.isActive ? 'active' : ''}`} data-tab={tab.id}>{tab.label}</li>
+            ))}
+          </ul>
+          <!-- MOBILE DROPDOWN -->
+          <div class="sol-dropdown-wrap">
+            <select class="sol-dropdown" id="solDropdown">
+              {displayTabs.map((tab) => (
+                <option value={tab.id} selected={tab.isActive}>{tab.label}</option>
+              ))}
+            </select>
+            <span class="sol-dropdown-arrow"><i class="fas fa-chevron-down"></i></span>
+          </div>
+        </div>
+
+        <!-- RIGHT TAB PANES -->
+        <div class="solution-right">
+          {displayTabs.map((tab) => (
+            <div class={`sol-pane ${tab.isActive ? 'active' : ''}`} id={`sol-${tab.id}`}>
+              <h3 class="sol-pane-title">{tab.title}</h3>
+              <div class="sol-products-slider">
+                {tab.items.map((item) => (
+                  <div class="sol-prod-item">
+                    <div class="sol-prod-img">
+                      <img src={item.image} alt={item.name} />
+                    </div>
+                    <h4 class="sol-prod-name">{item.name}</h4>
+                    <a href={item.link} class="sol-prod-link">Read More</a>
+                  </div>
+                ))}
+              </div>
+              <div class="sol-pane-footer">
+                <a href="#" class="sol-view-all">View All</a>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

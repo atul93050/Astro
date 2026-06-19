@@ -200,9 +200,9 @@ const breadcrumbSchema = JSON.stringify({
     <script type="application/ld+json" is:inline set:html={breadcrumbSchema}></script>
 
     <!-- Admin Preview Badge -->
-    {isPreview && (
+    {isAdmin && (
       <div class="admin-preview-banner">
-        <span><i class="fa fa-eye"></i> Admin Preview Mode — This post status is <strong>{post.data.status.toUpperCase()}</strong></span>
+        <span><i class="fa fa-eye"></i> Admin Mode — This post status is <strong>{post.data.status.toUpperCase()}</strong></span>
         <a href={`/admin/blog/edit?slug=${slug}`} class="btn-edit-shortcut">Edit Post</a>
       </div>
     )}
@@ -521,7 +521,7 @@ const breadcrumbSchema = JSON.stringify({
 
 <!-- Client scripts for Views count, Link copying, and Comments submission -->
 <script is:inline define:vars={{ slug, isDev }}>
-  document.addEventListener("DOMContentLoaded", () => {
+  const initBlogInteractivity = () => {
     const isPreview = new URLSearchParams(window.location.search).get("preview") === "true";
 
     if (!isPreview && !isDev) {
@@ -535,7 +535,8 @@ const breadcrumbSchema = JSON.stringify({
 
     // 2. Social Share Link copying
     const copyBtn = document.getElementById("btn-copy-link");
-    if (copyBtn) {
+    if (copyBtn && !copyBtn.dataset.listenerBound) {
+      copyBtn.dataset.listenerBound = "true";
       copyBtn.addEventListener("click", () => {
         navigator.clipboard.writeText(window.location.href)
           .then(() => {
@@ -559,6 +560,8 @@ const breadcrumbSchema = JSON.stringify({
     const cancelReplyBtn = document.getElementById("btn-cancel-reply");
 
     replyButtons.forEach(btn => {
+      if (btn.dataset.listenerBound) return;
+      btn.dataset.listenerBound = "true";
       btn.addEventListener("click", () => {
         const commentId = btn.dataset.commentId;
         const authorName = btn.dataset.authorName;
@@ -571,7 +574,8 @@ const breadcrumbSchema = JSON.stringify({
       });
     });
 
-    if (cancelReplyBtn) {
+    if (cancelReplyBtn && !cancelReplyBtn.dataset.listenerBound) {
+      cancelReplyBtn.dataset.listenerBound = "true";
       cancelReplyBtn.addEventListener("click", () => {
         if (parentIdInput && replyBanner) {
           parentIdInput.value = "";
@@ -584,7 +588,8 @@ const breadcrumbSchema = JSON.stringify({
     const formStatus = document.getElementById("form-status");
     const submitBtn = document.getElementById("btn-submit-comment");
 
-    if (form && formStatus && submitBtn) {
+    if (form && formStatus && submitBtn && !form.dataset.listenerBound) {
+      form.dataset.listenerBound = "true";
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
         
@@ -634,7 +639,10 @@ const breadcrumbSchema = JSON.stringify({
         }
       });
     }
-  });
+  };
+
+  initBlogInteractivity();
+  document.addEventListener("astro:page-load", initBlogInteractivity);
 </script>
 
 <style>

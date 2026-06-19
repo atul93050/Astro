@@ -24,8 +24,28 @@ blocks:
     sectionId: home-banner-section
   - type: about
     sectionId: about-section
+  - type: products
+    sectionId: products-index
+  - type: services
+    sectionId: services-index
+  - type: solutions
+    sectionId: solutions-index
+  - type: industries
+    sectionId: industries-index
+  - type: why_choose
+    sectionId: why_choose-index
+  - type: blogs
+    sectionId: blogs-index
+  - type: news
+    sectionId: news-index
   - type: casestudy
     sectionId: casestudy-section
-lastUpdated: 2026-06-18T15:54:46.693Z
+  - type: clients
+    sectionId: clients-index
+  - type: faq
+    sectionId: faq-index
+  - type: cta
+    sectionId: cta-index
+lastUpdated: 2026-06-19T06:49:36.542Z
 ---
 

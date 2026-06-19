@@ -175,5 +175,342 @@
         "repeaterFields": []
       }
     ]
+  },
+  {
+    "key": "text_schema",
+    "name": "text schema",
+    "category": "other",
+    "description": "",
+    "componentPath": "src/blocks/text.astro",
+    "previewImage": "/uploads/case2-1781780522169.png",
+    "fields": [
+      {
+        "name": "section_title",
+        "label": "Section Title",
+        "type": "text",
+        "required": false,
+        "default": "",
+        "options": [],
+        "repeaterFields": []
+      },
+      {
+        "name": "description",
+        "label": "Description",
+        "type": "text",
+        "required": false,
+        "default": "",
+        "options": [],
+        "repeaterFields": []
+      }
+    ]
+  },
+  {
+    "key": "products",
+    "name": "Products",
+    "category": "other",
+    "description": "Products Category Grid with Entrance Animations",
+    "componentPath": "src/blocks/products.astro",
+    "fields": [
+      {
+        "name": "section_title",
+        "label": "Section Title",
+        "type": "text",
+        "required": false,
+        "default": "Products by Category",
+        "options": [],
+        "repeaterFields": []
+      },
+      {
+        "name": "description",
+        "label": "Description",
+        "type": "text",
+        "required": false,
+        "default": "",
+        "options": [],
+        "repeaterFields": []
+      }
+    ]
+  },
+  {
+    "key": "services",
+    "name": "Services",
+    "category": "other",
+    "description": "Services Slick Slider Carousel",
+    "componentPath": "src/blocks/services.astro",
+    "fields": [
+      {
+        "name": "section_title",
+        "label": "Section Title",
+        "type": "text",
+        "required": false,
+        "default": "Our Services",
+        "options": [],
+        "repeaterFields": []
+      },
+      {
+        "name": "description",
+        "label": "Description",
+        "type": "text",
+        "required": false,
+        "default": "",
+        "options": [],
+        "repeaterFields": []
+      }
+    ]
+  },
+  {
+    "key": "solutions",
+    "name": "Solutions",
+    "category": "other",
+    "description": "Solutions Tabs and Slick Sliders",
+    "componentPath": "src/blocks/solutions.astro",
+    "fields": [
+      {
+        "name": "section_title",
+        "label": "Section Title",
+        "type": "text",
+        "required": false,
+        "default": "Solutions by Industry",
+        "options": [],
+        "repeaterFields": []
+      }
+    ]
+  },
+  {
+    "key": "industries",
+    "name": "Industries",
+    "category": "other",
+    "description": "Industries Slick Slider Carousel",
+    "componentPath": "src/blocks/industries.astro",
+    "fields": [
+      {
+        "name": "section_title",
+        "label": "Section Title",
+        "type": "text",
+        "required": false,
+        "default": "Industries We Serve",
+        "options": [],
+        "repeaterFields": []
+      }
+    ]
+  },
+  {
+    "key": "why_choose",
+    "name": "Why Choose",
+    "category": "other",
+    "description": "Why Choose Us Tabbed Panel & Gears Decoration",
+    "componentPath": "src/blocks/why-choose.astro",
+    "fields": [
+      {
+        "name": "section_title",
+        "label": "Section Title",
+        "type": "text",
+        "required": false,
+        "default": "Why EWAC?",
+        "options": [],
+        "repeaterFields": []
+      }
+    ]
+  },
+  {
+    "key": "blogs",
+    "name": "Blogs",
+    "category": "other",
+    "description": "Blogs Carousel Section",
+    "componentPath": "src/blocks/blogs.astro",
+    "fields": [
+      {
+        "name": "section_title",
+        "label": "Section Title",
+        "type": "text",
+        "required": false,
+        "default": "Latest Blogs",
+        "options": [],
+        "repeaterFields": []
+      }
+    ]
+  },
+  {
+    "key": "news",
+    "name": "News",
+    "category": "other",
+    "description": "News Carousel Section (Red Color Modifier)",
+    "componentPath": "src/blocks/news.astro",
+    "fields": [
+      {
+        "name": "section_title",
+        "label": "Section Title",
+        "type": "text",
+        "required": false,
+        "default": "News & Events",
+        "options": [],
+        "repeaterFields": []
+      }
+    ]
+  },
+  {
+    "key": "clients",
+    "name": "Clients",
+    "category": "other",
+    "description": "Clients Double Scrolling Logo Tickers",
+    "componentPath": "src/blocks/clients.astro",
+    "fields": [
+      {
+        "name": "section_title",
+        "label": "Section Title",
+        "type": "text",
+        "required": false,
+        "default": "",
+        "options": [],
+        "repeaterFields": []
+      },
+      {
+        "name": "clients_row1",
+        "label": "Clients Row1",
+        "type": "gallery",
+        "required": false,
+        "default": "",
+        "options": [],
+        "repeaterFields": []
+      },
+      {
+        "name": "clients_row2",
+        "label": "Clients Row2",
+        "type": "gallery",
+        "required": false,
+        "default": "",
+        "options": [],
+        "repeaterFields": []
+      }
+    ],
+    "previewImage": ""
+  },
+  {
+    "key": "faq",
+    "name": "FAQ",
+    "category": "other",
+    "description": "Accordion FAQ with Gears Decoration",
+    "componentPath": "src/blocks/faq.astro",
+    "fields": [
+      {
+        "name": "section_title",
+        "label": "Section Title",
+        "type": "text",
+        "required": false,
+        "default": "Frequently Asked Questions",
+        "options": [],
+        "repeaterFields": []
+      },
+      {
+        "name": "description",
+        "label": "Description",
+        "type": "text",
+        "required": false,
+        "default": "",
+        "options": [],
+        "repeaterFields": []
+      },
+      {
+        "name": "faqs",
+        "label": "faqs",
+        "type": "repeater",
+        "required": false,
+        "default": "",
+        "options": [],
+        "repeaterFields": [
+          {
+            "name": "faq_title",
+            "label": "faq title",
+            "type": "text",
+            "required": false,
+            "default": "",
+            "options": [],
+            "repeaterFields": []
+          },
+          {
+            "name": "faq_description",
+            "label": "faq description",
+            "type": "textarea",
+            "required": false,
+            "default": "",
+            "options": [],
+            "repeaterFields": []
+          },
+          {
+            "name": "isactive",
+            "label": "isActive",
+            "type": "boolean",
+            "required": false,
+            "default": "",
+            "options": [],
+            "repeaterFields": []
+          }
+        ]
+      },
+      {
+        "name": "bottom_cta",
+        "label": "Bottom Cta",
+        "type": "link",
+        "required": false,
+        "default": "",
+        "options": [],
+        "repeaterFields": []
+      }
+    ],
+    "previewImage": ""
+  },
+  {
+    "key": "cta",
+    "name": "CTA",
+    "category": "other",
+    "description": "CTA Portrait Banner Overlay",
+    "componentPath": "src/blocks/cta.astro",
+    "fields": [
+      {
+        "name": "title",
+        "label": "CTA Title",
+        "type": "text",
+        "required": false,
+        "default": "Have a Specific Challenge?",
+        "options": [],
+        "repeaterFields": []
+      },
+      {
+        "name": "subtitle",
+        "label": "CTA Subtitle",
+        "type": "text",
+        "required": false,
+        "default": "Get in touch with our experts to find the right solution for your application.",
+        "options": [],
+        "repeaterFields": []
+      }
+    ]
+  },
+  {
+    "key": "contact_form",
+    "name": "Contact Form",
+    "category": "other",
+    "description": "Functional Contact Form section block that submits leads to the database inbox",
+    "componentPath": "src/blocks/contact-form.astro",
+    "fields": [
+      {
+        "name": "section_title",
+        "label": "Section Title",
+        "type": "text",
+        "required": false,
+        "default": "Get In Touch",
+        "options": [],
+        "repeaterFields": []
+      },
+      {
+        "name": "description",
+        "label": "Description",
+        "type": "text",
+        "required": false,
+        "default": "Fill out the form below and our technical strategists will get back to you.",
+        "options": [],
+        "repeaterFields": []
+      }
+    ]
   }
 ]

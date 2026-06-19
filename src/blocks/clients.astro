@@ -1,0 +1,51 @@
+---
+interface Props {
+  section_title?: string;
+  clients_row1?: string[];
+  clients_row2?: string[];
+}
+
+const { section_title, clients_row1, clients_row2 } = Astro.props;
+
+const displayTitle = section_title;
+const displayRow1 = clients_row1 || [];
+const displayRow2 = clients_row2 || [];
+
+const hasContent = (displayRow1 && displayRow1.length > 0) || (displayRow2 && displayRow2.length > 0);
+---
+
+{hasContent && (
+  <section class="clients-section">
+    {displayTitle && (
+      <div class="container">
+        <h2 class="clients-title">{displayTitle}</h2>
+      </div>
+    )}
+
+    {/* ROW 1 — scrolls LEFT */}
+    {displayRow1 && displayRow1.length > 0 && (
+      <div class="clients-row-wrap">
+        <div class="logo-slider-1">
+          {displayRow1.map((image) => (
+            <div class="logo-slide">
+              <img src={image} alt="Client Logo" />
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {/* ROW 2 — scrolls RIGHT */}
+    {displayRow2 && displayRow2.length > 0 && (
+      <div class="clients-row-wrap">
+        <div class="logo-slider-2">
+          {displayRow2.map((image) => (
+            <div class="logo-slide">
+              <img src={image} alt="Client Logo" />
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+  </section>
+)}
