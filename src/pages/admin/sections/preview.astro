@@ -41,12 +41,25 @@ const block = {
   ...sectionData,
   sectionId: id
 };
+
+const blockType = block.type || "";
+const sectionScripts = blockType ? [`/assets/js/sections/${blockType}.js`].filter(scriptUrl => {
+  const filePath = path.resolve(`public/assets/js/sections/${path.basename(scriptUrl)}`);
+  return fs.existsSync(filePath);
+}) : [];
+
+const sectionStyles = blockType ? [`/assets/css/sections/${blockType}.css`].filter(styleUrl => {
+  const filePath = path.resolve(`public/assets/css/sections/${path.basename(styleUrl)}`);
+  return fs.existsSync(filePath);
+}) : [];
 ---
 
 <MainLayout
   title={`Preview Section: ${id}`}
   description="Admin Live Section Preview"
   robots="noindex, nofollow"
+  sectionScripts={sectionScripts}
+  sectionStyles={sectionStyles}
 >
   <div style="padding: 3rem 0; background: var(--bg-base); min-height: 50vh;">
     <BlockRenderer block={block} />

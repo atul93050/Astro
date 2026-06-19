@@ -26,6 +26,6 @@ blocks:
     sectionId: about-section
   - type: casestudy
     sectionId: casestudy-section
-lastUpdated: 2026-06-18T15:54:46.693Z
+lastUpdated: 2026-06-18T12:43:11.782Z
 ---
 

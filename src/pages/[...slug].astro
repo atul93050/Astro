@@ -180,6 +180,14 @@ const sectionScripts = uniqueBlockTypes
     const filePath = path.resolve(`public/assets/js/sections/${path.basename(scriptUrl)}`);
     return fs.existsSync(filePath);
   });
+
+// 8. Auto-load section specific stylesheets if they exist in public/assets/css/sections/<type>.css
+const sectionStyles = uniqueBlockTypes
+  .map(type => `/assets/css/sections/${type}.css`)
+  .filter(styleUrl => {
+    const filePath = path.resolve(`public/assets/css/sections/${path.basename(styleUrl)}`);
+    return fs.existsSync(filePath);
+  });
 ---
 
 <MainLayout
@@ -198,6 +206,7 @@ const sectionScripts = uniqueBlockTypes
   customCss={page.customCss}
   customJs={page.customJs}
   sectionScripts={sectionScripts}
+  sectionStyles={sectionStyles}
 >
   <Header />
 

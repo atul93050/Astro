@@ -120,7 +120,7 @@
     ]
   },
   {
-    "key": "casestudy_section",
+    "key": "casestudy",
     "name": "CaseStudy Section",
     "category": "other",
     "description": "For case study",
@@ -132,53 +132,45 @@
         "label": "Section Title",
         "type": "text",
         "required": false,
-        "default": "",
+        "default": "Case Studies",
         "options": [],
         "repeaterFields": []
       },
       {
-        "name": "services_slider",
-        "label": "Services Slider",
-        "type": "repeater",
+        "name": "animation_gif",
+        "label": "Animation GIF",
+        "type": "image",
         "required": false,
-        "default": "",
+        "default": "/assets/images/Welding_Animation.gif",
         "options": [],
-        "repeaterFields": [
-          {
-            "name": "service_image",
-            "label": "Service Image",
-            "type": "image",
-            "required": false,
-            "default": "",
-            "options": [],
-            "repeaterFields": []
-          },
-          {
-            "name": "service_name",
-            "label": "Service Name",
-            "type": "text",
-            "required": false,
-            "default": "",
-            "options": [],
-            "repeaterFields": []
-          },
-          {
-            "name": "service_button",
-            "label": "Service Button",
-            "type": "link",
-            "required": false,
-            "default": "",
-            "options": [],
-            "repeaterFields": []
-          }
-        ]
+        "repeaterFields": []
       },
       {
-        "name": "bottom_cta",
-        "label": "Bottom CTA",
-        "type": "link",
+        "name": "related_blogs",
+        "label": "Select Related Blogs/Case Studies",
+        "type": "relation",
+        "relationType": "blog",
+        "multiple": true,
         "required": false,
-        "default": "",
+        "default": [],
+        "options": [],
+        "repeaterFields": []
+      },
+      {
+        "name": "bottom_cta_text",
+        "label": "Bottom CTA Text",
+        "type": "text",
+        "required": false,
+        "default": "View all Case Studies",
+        "options": [],
+        "repeaterFields": []
+      },
+      {
+        "name": "bottom_cta_url",
+        "label": "Bottom CTA URL",
+        "type": "text",
+        "required": false,
+        "default": "#",
         "options": [],
         "repeaterFields": []
       }

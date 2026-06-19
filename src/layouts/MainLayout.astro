@@ -17,6 +17,7 @@ interface Props {
   customCss?: string;
   customJs?: string;
   sectionScripts?: string[];
+  sectionStyles?: string[];
 }
 
 const {
@@ -36,6 +37,7 @@ const {
   customCss = "",
   customJs = "",
   sectionScripts = [],
+  sectionStyles = [],
 } = Astro.props;
 
 import { ClientRouter } from "astro:transitions";
@@ -167,6 +169,11 @@ const organizationSchema = {
 
     <!-- Centralized per-page stylesheet (src/styles/pages/<slug>.css) -->
     {pageStyleUrl && <link rel="stylesheet" href={pageStyleUrl} />}
+
+    <!-- Section Specific Stylesheets (Auto-loaded) -->
+    {sectionStyles.map((href) => (
+      <link rel="stylesheet" href={href} />
+    ))}
 
     <!-- Sitewide Organization Schema -->
     <script

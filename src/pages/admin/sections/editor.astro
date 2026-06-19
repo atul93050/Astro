@@ -3,8 +3,23 @@ import AdminLayout from "../../../layouts/admin/AdminLayout.astro";
 import fs from "node:fs";
 import path from "node:path";
 import { parse } from "yaml";
+import { getCollection } from "astro:content";
 
 export const prerender = false;
+
+// Fetch collections for Relation fields
+let RELATION_COLLECTIONS: Record<string, { value: string; label: string }[]> = {};
+try {
+  const allBlogs = await getCollection("blog");
+  const allPages = await getCollection("pages");
+
+  RELATION_COLLECTIONS = {
+    blog: allBlogs.map(post => ({ value: post.slug, label: post.data.title })),
+    pages: allPages.map(p => ({ value: p.slug, label: p.data.title }))
+  };
+} catch (e) {
+  console.error("Failed to load relation collections for editor:", e);
+}
 
 // 1. Load section definitions registry
 const definitionsPath = path.resolve("src/data/section-definitions.json");
@@ -508,7 +523,13 @@ if (!sectionData) {
   }
 </style>
 
-<script is:inline define:vars={{ sectionData, id, blockConfig }}>
+<script is:inline define:vars={{ sectionData, id, blockConfig, RELATION_COLLECTIONS }}>
+  window.onerror = function(message, source, lineno, colno, error) {
+    alert("GLOBAL ERROR: " + message + " (line " + lineno + ")");
+    console.error(error);
+    return false;
+  };
+
   let block = sectionData || {};
   let activeMediaPickerTarget = "";
 
@@ -669,6 +690,97 @@ if (!sectionData) {
             <button type="button" class="btn btn-outline btn-sm media-picker-trigger" data-gallery-target="${escPathStr}" onclick="openGalleryPicker('${escPathStr}')">Add Image</button>
           </div>
         `;
+      } else if (field.type === "relation") {
+        const relType = field.relationType || "blog";
+        const options = RELATION_COLLECTIONS[relType] || [];
+        const isMultiple = !!field.multiple;
+        
+        if (isMultiple) {
+          const selectedVals = Array.isArray(val) ? val : (val ? [val] : []);
+          
+          const availableItems = options.filter(opt => !selectedVals.includes(opt.value));
+          const selectedItems = selectedVals
+            .map(v => options.find(opt => opt.value === v))
+            .filter(Boolean);
+
+          const availListHtml = availableItems.map(opt => `
+            <div class="relation-item-card available" 
+                 draggable="true" 
+                 ondragstart="dragRelation(event)"
+                 data-value="${opt.value}"
+                 onclick="addRelationItem(this)" 
+                 style="display:flex; justify-content:space-between; align-items:center; padding:0.45rem 0.65rem; margin-bottom:0.25rem; background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:6px; cursor:pointer; font-size:0.8rem; transition:all 0.2s;" 
+                 onmouseover="this.style.background='rgba(99,102,241,0.08)';" 
+                 onmouseout="this.style.background='rgba(255,255,255,0.02)';">
+              <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:80%;" title="${escHtml(opt.label)}">${escHtml(opt.label)}</span>
+              <span style="color:var(--primary); font-weight:bold; font-size:1.1rem; line-height:1; display:flex; align-items:center; gap:0.2rem;">
+                <span style="font-size:0.8rem; font-weight:normal; opacity:0.6;">Select</span> &rarr;
+              </span>
+            </div>
+          `).join('') || `<div style="text-align:center; padding:1rem; color:var(--text-dim); font-size:0.75rem;">No items available</div>`;
+
+          const selectedListHtml = selectedItems.map((opt, sIdx) => `
+            <div class="relation-item-card selected" 
+                 draggable="true" 
+                 ondragstart="dragRelation(event)"
+                 data-value="${opt.value}"
+                 style="display:flex; justify-content:space-between; align-items:center; padding:0.45rem 0.65rem; margin-bottom:0.25rem; background:rgba(99,102,241,0.04); border:1px solid rgba(99,102,241,0.3); border-radius:6px; font-size:0.8rem; transition:all 0.2s;">
+              <div onclick="removeRelationItem(this)" style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; flex:1; overflow:hidden;">
+                <span style="color:var(--color-error); font-weight:bold; font-size:1.1rem; display:flex; align-items:center; line-height:1;">&larr;</span>
+                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:75%;" title="${escHtml(opt.label)}">${escHtml(opt.label)}</span>
+              </div>
+              <div style="display:flex; gap:0.15rem; align-items:center;">
+                <button type="button" onclick="moveRelationItem(this, -1)" style="padding:0; border:none; background:none; color:var(--text-dim); cursor:pointer; display:flex; align-items:center; justify-content:center; width:20px; height:20px; font-size:0.75rem;" title="Move Up">&#9650;</button>
+                <button type="button" onclick="moveRelationItem(this, 1)" style="padding:0; border:none; background:none; color:var(--text-dim); cursor:pointer; display:flex; align-items:center; justify-content:center; width:20px; height:20px; font-size:0.75rem;" title="Move Down">&#9660;</button>
+              </div>
+            </div>
+          `).join('') || `<div style="text-align:center; padding:1rem; color:var(--text-dim); font-size:0.75rem;">No items selected</div>`;
+
+          inputFieldHtml = `
+            <div class="relation-selector-container" data-path="${escPathStr}" ${validationAttr} style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:1.25rem; background:rgba(255,255,255,0.01); border:1px solid var(--border-color); padding:0.85rem; border-radius:8px; margin-top:0.25rem;">
+              <div class="relation-column available-column" 
+                   ondragover="allowRelationDrop(event)" 
+                   ondragleave="leaveRelationDrop(event)" 
+                   ondrop="dropRelation(event, 'remove')"
+                   style="display:flex; flex-direction:column; gap:0.35rem; min-width:0;">
+                <div style="font-weight:700; font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; display:flex; justify-content:space-between; align-items:center; padding-bottom:0.25rem;">
+                  <span>Available Posts</span>
+                  <span style="font-size:0.7rem; background:rgba(255,255,255,0.05); padding:2px 6px; border-radius:4px; font-weight:600;">${availableItems.length}</span>
+                </div>
+                <input type="text" placeholder="Filter available..." class="relation-search" oninput="filterRelationAvailable(this)" style="margin-bottom:0.35rem; font-size:0.78rem; padding:0.4rem 0.65rem; height:32px; width:100%; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-body); color:var(--text-main);" />
+                <div class="relation-list relation-avail-list" style="border:1px solid var(--border-color); border-radius:6px; max-height:160px; min-height:120px; overflow-y:auto; background:var(--bg-body); padding:0.35rem; transition:all 0.2s;">
+                  ${availListHtml}
+                </div>
+              </div>
+
+              <div class="relation-column selected-column" 
+                   ondragover="allowRelationDrop(event)" 
+                   ondragleave="leaveRelationDrop(event)" 
+                   ondrop="dropRelation(event, 'add')"
+                   style="display:flex; flex-direction:column; gap:0.35rem; min-width:0;">
+                <div style="font-weight:700; font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; display:flex; justify-content:space-between; align-items:center; padding-bottom:0.25rem;">
+                  <span>Selected (${selectedItems.length})</span>
+                  <span style="font-size:0.7rem; background:var(--primary); color:white; padding:2px 6px; border-radius:4px; font-weight:600;">${selectedItems.length}</span>
+                </div>
+                <div style="font-size:0.7rem; color:var(--text-dim); display:flex; align-items:center; height:32px; margin-bottom:0.35rem;">
+                  Drag & drop items or click &rarr;/&larr; arrows to select/deselect.
+                </div>
+                <div class="relation-list relation-selected-list" style="border:1px solid var(--border-color); border-radius:6px; max-height:160px; min-height:120px; overflow-y:auto; background:var(--bg-body); padding:0.35rem; transition:all 0.2s;">
+                  ${selectedListHtml}
+                </div>
+              </div>
+            </div>
+          `;
+        } else {
+          inputFieldHtml = `
+            <select id="${inputId}" onchange="syncPathValue('${escPathStr}', this.value)" class="form-control" style="width: 100%; border: 1px solid var(--border-color); border-radius: 6px; padding: 0.5rem; background: var(--bg-surface); color: var(--text-main);">
+              <option value="">-- Select --</option>
+              ${options.map(opt => `
+                <option value="${opt.value}" ${val === opt.value ? 'selected' : ''}>${escHtml(opt.label)}</option>
+              `).join('')}
+            </select>
+          `;
+        }
       } else if (["date", "time", "datetime", "month"].includes(field.type)) {
         const subType = field.type === 'datetime' ? 'datetime-local' : field.type;
         inputFieldHtml = `<input type="${subType}" id="${inputId}" value="${val}" oninput="syncPathValue('${escPathStr}', this.value)" ${field.required ? 'required' : ''} ${validationAttr} />`;
@@ -813,6 +925,166 @@ if (!sectionData) {
     setNestedValue(ROOT_OBJECT, path, value);
     evaluateConditionalVisibility();
     validateAllFields();
+  };
+
+  window.filterRelationAvailable = function(inputEl) {
+    const query = inputEl.value.trim().toLowerCase();
+    const container = inputEl.closest('.relation-selector-container');
+    const items = container.querySelectorAll('.relation-item-card.available');
+    items.forEach(item => {
+      const text = item.querySelector('span').textContent.toLowerCase();
+      if (text.includes(query)) {
+        item.style.display = 'flex';
+      } else {
+        item.style.display = 'none';
+      }
+    });
+  };
+
+  window.addRelationItemByValue = function(pathJsonStr, value) {
+    const path = JSON.parse(pathJsonStr);
+    let val = getNestedValue(ROOT_OBJECT, path);
+    if (!Array.isArray(val)) {
+      val = val ? [val] : [];
+    }
+    if (!val.includes(value)) {
+      val.push(value);
+    }
+    window.syncPathValue(pathJsonStr, val);
+    
+    if (typeof renderBlocks === 'function') {
+      renderBlocks();
+    } else if (typeof renderFields === 'function') {
+      renderFields();
+    }
+  };
+
+  window.removeRelationItemByValue = function(pathJsonStr, value) {
+    const path = JSON.parse(pathJsonStr);
+    let val = getNestedValue(ROOT_OBJECT, path);
+    if (!Array.isArray(val)) {
+      val = val ? [val] : [];
+    }
+    const idx = val.indexOf(value);
+    if (idx !== -1) {
+      val.splice(idx, 1);
+    }
+    window.syncPathValue(pathJsonStr, val);
+    
+    if (typeof renderBlocks === 'function') {
+      renderBlocks();
+    } else if (typeof renderFields === 'function') {
+      renderFields();
+    }
+  };
+
+  window.addRelationItem = function(element) {
+    try {
+      const container = element.closest('.relation-selector-container');
+      const pathJsonStr = container.dataset.path;
+      const value = element.dataset.value;
+      window.addRelationItemByValue(pathJsonStr, value);
+    } catch (err) {
+      alert("Error in addRelationItem: " + err.message);
+      console.error(err);
+    }
+  };
+
+  window.removeRelationItem = function(element) {
+    try {
+      const card = element.closest('.relation-item-card');
+      const container = element.closest('.relation-selector-container');
+      const pathJsonStr = container.dataset.path;
+      const value = card.dataset.value;
+      window.removeRelationItemByValue(pathJsonStr, value);
+    } catch (err) {
+      alert("Error in removeRelationItem: " + err.message);
+      console.error(err);
+    }
+  };
+
+  window.moveRelationItem = function(element, direction) {
+    try {
+      const card = element.closest('.relation-item-card');
+      const container = element.closest('.relation-selector-container');
+      const pathJsonStr = container.dataset.path;
+      const value = card.dataset.value;
+      
+      const path = JSON.parse(pathJsonStr);
+      let val = getNestedValue(ROOT_OBJECT, path);
+      if (!Array.isArray(val)) return;
+      
+      const index = val.indexOf(value);
+      if (index === -1) return;
+      
+      const targetIdx = index + direction;
+      if (targetIdx < 0 || targetIdx >= val.length) return;
+      
+      // Swap items
+      const temp = val[index];
+      val[index] = val[targetIdx];
+      val[targetIdx] = temp;
+      
+      window.syncPathValue(pathJsonStr, val);
+      
+      if (typeof renderBlocks === 'function') {
+        renderBlocks();
+      } else if (typeof renderFields === 'function') {
+        renderFields();
+      }
+    } catch (err) {
+      alert("Error in moveRelationItem: " + err.message);
+      console.error(err);
+    }
+  };
+
+  window.dragRelation = function(event) {
+    try {
+      const value = event.currentTarget.dataset.value;
+      event.dataTransfer.setData("text/plain", value);
+    } catch (err) {
+      console.error("Error in dragRelation:", err);
+    }
+  };
+
+  window.allowRelationDrop = function(event) {
+    event.preventDefault();
+    const listContainer = event.currentTarget.querySelector('.relation-list');
+    if (listContainer) {
+      listContainer.style.background = 'rgba(99, 102, 241, 0.06)';
+      listContainer.style.borderColor = 'var(--primary)';
+    }
+  };
+
+  window.leaveRelationDrop = function(event) {
+    const listContainer = event.currentTarget.querySelector('.relation-list');
+    if (listContainer) {
+      listContainer.style.background = '';
+      listContainer.style.borderColor = '';
+    }
+  };
+
+  window.dropRelation = function(event, action) {
+    try {
+      event.preventDefault();
+      const listContainer = event.currentTarget.querySelector('.relation-list');
+      if (listContainer) {
+        listContainer.style.background = '';
+        listContainer.style.borderColor = '';
+      }
+      const value = event.dataTransfer.getData("text/plain");
+      if (!value) return;
+      
+      const pathJsonStr = event.currentTarget.dataset.path;
+      
+      if (action === 'add') {
+        window.addRelationItemByValue(pathJsonStr, value);
+      } else if (action === 'remove') {
+        window.removeRelationItemByValue(pathJsonStr, value);
+      }
+    } catch (err) {
+      console.error("Error in dropRelation:", err);
+    }
   };
 
   window.syncMultiselect = function(pathJsonStr, optVal, checked) {
