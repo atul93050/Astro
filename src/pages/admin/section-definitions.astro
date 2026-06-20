@@ -6,7 +6,10 @@ import path from "node:path";
 export const prerender = false;
 
 const definitionsPath = path.resolve("src/data/section-definitions.json");
+const schemasPath = path.resolve("src/data/field-schemas.json");
+
 let allDefinitions: any[] = [];
+let allSchemas: any[] = [];
 
 try {
   if (fs.existsSync(definitionsPath)) {
@@ -16,30 +19,32 @@ try {
   console.error("Failed to load section definitions:", e);
 }
 
-const categories = ["hero", "content", "marketing", "social", "other"];
-const fieldTypes = [
-  "text", "textarea", "richtext", "markdown", "code", "html", "email", "tel", "url", "slug", "password", "hidden",
-  "number", "range", "percentage",
-  "checkbox", "toggle", "boolean",
-  "select", "multiselect", "radio", "button-group",
-  "image", "gallery", "svg", "icon", "file", "video", "audio",
-  "date", "time", "datetime", "month",
-  "color", "gradient",
-  "json", "css", "javascript",
-  "group", "object", "array", "repeater",
-  "link"
-];
-import "../../styles/admin/css/section-defination.css";
+try {
+  if (fs.existsSync(schemasPath)) {
+    allSchemas = JSON.parse(fs.readFileSync(schemasPath, "utf-8"));
+  }
+} catch (e) {}
 
+// Annotate each definition with its resolved schema name
+const definitionsWithMeta = allDefinitions.map(def => ({
+  ...def,
+  schemaName: allSchemas.find((s: any) => s.schema_key === def.schema_ref)?.schema_name || null,
+  schemaFieldCount: allSchemas.find((s: any) => s.schema_key === def.schema_ref)?.fields?.length ?? null
+}));
+import "../../styles/admin/css/section-defination.css";
 ---
 
 <AdminLayout title="Section Definitions — Developer Mode">
 
   <div class="dashboard-header">
     <div class="header-text">
-      <p class="subtitle">Developer zone: Define new section types. Each definition becomes a blueprint that content editors can instantiate from the Section Library.</p>
+      <p class="subtitle">Developers define Section Definitions here — each pairs a <strong>Field Schema</strong> with an <strong>Astro component</strong>. Multiple definitions can share one schema with different designs.</p>
     </div>
     <div class="header-actions">
+      <a href="/admin/field-schemas" class="btn btn-outline">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+        Manage Field Schemas
+      </a>
       <a href="/admin/sections" class="btn btn-outline">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path></svg>
         Section Library
@@ -55,30 +60,27 @@ import "../../styles/admin/css/section-defination.css";
   <div style="background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.08)); border: 1px solid rgba(99,102,241,0.25); border-radius: 10px; padding: 1.25rem 1.5rem; margin-bottom: 2rem; display:flex; gap: 1rem; align-items: flex-start;">
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:0.15rem;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
     <div>
-      <strong style="font-size:0.9rem; color:var(--text-main); display:block; margin-bottom:0.25rem;">How Section Definitions Work</strong>
+      <strong style="font-size:0.9rem; color:var(--text-main); display:block; margin-bottom:0.25rem;">3-Layer Model: Field Schema → Section Definition → Section Instance</strong>
       <p style="font-size:0.83rem; color:var(--text-muted); margin:0; line-height:1.6;">
-        Developers define the schema here — each definition maps to an Astro block component. 
-        The CMS reads the schema and auto-generates editor forms. 
-        Content editors then create <em>instances</em> from the <a href="/admin/sections" style="color:var(--primary);">Section Library</a>. 
-        The Astro component is always the source of truth for markup.
+        A <strong>Section Definition</strong> = a Field Schema reference + an Astro component path.
+        Manage the field structure in <a href="/admin/field-schemas" style="color:var(--primary);">Field Schemas</a>.
+        Multiple definitions can share one schema — useful for alternate designs of the same content.
       </p>
     </div>
   </div>
 
-  <!-- Category Tabs and Search Filter Bar -->
-  <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:1.75rem; flex-wrap:wrap; border-bottom: 1px solid var(--border-color); padding-bottom:0.35rem;">
-    <div class="def-tabs" style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-      <button class="def-tab-btn active" data-category="all">All ({allDefinitions.length})</button>
-      {categories.map(cat => (
-        <button class="def-tab-btn" data-category={cat} style="text-transform:capitalize;">
-          {cat} ({allDefinitions.filter(d => d.category === cat).length})
-        </button>
-      ))}
+  <!-- Search Filter Bar -->
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:1.75rem; flex-wrap:wrap;">
+    <div style="font-size:0.85rem; color:var(--text-dim);">
+      <strong style="color:var(--text-main);">{allDefinitions.length}</strong> definition{allDefinitions.length !== 1 ? 's' : ''} registered
+      {allSchemas.length === 0 && (
+        <span style="margin-left:0.75rem; color:var(--color-warning, #f59e0b); font-weight:600;">
+          ⚠ No Field Schemas found — <a href="/admin/field-schemas" style="color:var(--color-warning, #f59e0b);">create schemas first</a> or run the migration script.
+        </span>
+      )}
     </div>
-
-    <!-- Search Input Box -->
     <div style="position:relative; width:100%; max-width:320px;">
-      <input type="text" id="def-search" placeholder="Search blueprints by name, key..." style="padding-left:2.5rem; font-size:0.85rem;" />
+      <input type="text" id="def-search" placeholder="Search definitions by name or key..." style="padding-left:2.5rem; font-size:0.85rem;" />
       <span style="position:absolute; left:0.85rem; top:50%; transform:translateY(-50%); color:var(--text-dim); pointer-events:none; display:flex; align-items:center;">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
       </span>
@@ -86,22 +88,31 @@ import "../../styles/admin/css/section-defination.css";
   </div>
 
   <!-- Definition Cards Grid -->
-  <div class="defs-grid" id="defs-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; margin-bottom: 5rem;">
+  <div class="defs-grid" id="defs-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.5rem; margin-bottom: 5rem;">
     {allDefinitions.length === 0 ? (
       <div style="grid-column: 1/-1; text-align:center; padding: 5rem 2rem; border: 1px dashed var(--border-color); border-radius: 10px; background: var(--bg-surface); color: var(--text-dim);">
         <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.4; display:inline-block; margin-bottom:1rem;"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="9" y1="9" x2="15" y2="9"></line><line x1="9" y1="13" x2="15" y2="13"></line></svg>
         <h4 style="margin-bottom:0.5rem;">No Section Definitions Yet</h4>
-        <p style="font-size:0.875rem;">Click "New Section Definition" to create your first section blueprint.</p>
+        <p style="font-size:0.875rem;">First <a href="/admin/field-schemas" style="color:var(--primary);">create a Field Schema</a>, then click "New Section Definition" to add a design.</p>
       </div>
     ) : (
-      allDefinitions.map(def => (
-        <div class="def-card" data-category={def.category} data-key={def.key}>
+      definitionsWithMeta.map(def => (
+        <div class="def-card" data-key={def.key}>
           <div class="def-card-head">
             <div>
-              <span class="def-category-tag" style={`background: var(--cat-${def.category}-bg, rgba(99,102,241,0.1)); color: var(--cat-${def.category}-color, var(--primary));`}>{def.category}</span>
               <h4 class="def-card-name">{def.name}</h4>
+              <code class="def-key-tag">{def.key}</code>
             </div>
-            <code class="def-key-tag">{def.key}</code>
+            {def.schema_ref ? (
+              <div style="text-align:right;">
+                <span style="font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; background:rgba(16,185,129,0.1); color:var(--accent); padding:0.15rem 0.5rem; border-radius:4px; display:block; margin-bottom:0.3rem;">schema linked</span>
+                {def.schemaFieldCount !== null && (
+                  <span style="font-size:0.65rem; color:var(--text-dim);">{def.schemaFieldCount} fields</span>
+                )}
+              </div>
+            ) : (
+              <span style="font-size:0.65rem; font-weight:700; background:rgba(239,68,68,0.1); color:var(--color-error); padding:0.15rem 0.5rem; border-radius:4px; text-transform:uppercase;">no schema</span>
+            )}
           </div>
 
           {def.description && (
@@ -109,40 +120,36 @@ import "../../styles/admin/css/section-defination.css";
           )}
 
           <div class="def-meta">
+            {def.schema_ref && (
+              <div class="def-meta-row">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line></svg>
+                <span style="color:var(--accent);">{def.schema_ref}</span>
+                {def.schemaName && <em style="font-style:normal; color:var(--text-dim);">({def.schemaName})</em>}
+              </div>
+            )}
             {def.componentPath && (
               <div class="def-meta-row">
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
                 <span>{def.componentPath}</span>
               </div>
             )}
-            <div class="def-meta-row">
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line></svg>
-              <span>{def.fields?.length || 0} fields defined</span>
-            </div>
-          </div>
-
-          <!-- Fields Preview Chips -->
-          <div class="def-fields-preview">
-            {(def.fields || []).slice(0, 6).map((f: any) => (
-              <span class="field-chip" title={`${f.label} (${f.type})`}>
-                {f.name}
-                <em>{f.type}</em>
-              </span>
-            ))}
-            {(def.fields?.length || 0) > 6 && (
-              <span class="field-chip more">+{(def.fields?.length || 0) - 6} more</span>
-            )}
           </div>
 
           <div class="def-card-actions">
             <button class="btn btn-outline btn-sm edit-def-btn" data-key={def.key}>
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"></path></svg>
-              Edit Schema
+              Edit
             </button>
-            <a href={`/admin/sections?create=true&type=${def.key}`} class="btn btn-outline btn-sm" title="Create instance from this definition">
+            <a href={`/admin/sections?create=true&type=${def.key}`} class="btn btn-outline btn-sm" title="Create instance">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
               Add Instance
             </a>
+            {def.schema_ref && (
+              <a href={`/admin/field-schemas?edit=${def.schema_ref}`} class="btn btn-outline btn-sm" title="Edit linked schema">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                Edit Schema
+              </a>
+            )}
             <button class="btn-action delete-def-btn" data-key={def.key} data-name={def.name} title="Delete definition">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
             </button>
@@ -154,7 +161,7 @@ import "../../styles/admin/css/section-defination.css";
 
   <!-- CREATE/EDIT Definition Modal -->
   <div class="modal-overlay" id="def-modal-overlay">
-    <div class="modal-panel" style="max-width:800px; width:95vw;">
+    <div class="modal-panel" style="max-width:680px; width:95vw;">
       <div class="modal-head">
         <h4 id="def-modal-title">Create Section Definition</h4>
         <button class="close-modal-btn" id="close-def-modal">
@@ -163,62 +170,58 @@ import "../../styles/admin/css/section-defination.css";
       </div>
       <div class="modal-body" style="max-height:75vh; overflow-y:auto;">
 
-        <!-- Basic Info -->
+        <!-- Metadata -->
         <div class="modal-section">
           <h5 class="modal-section-title">Definition Metadata</h5>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
-              <div class="form-group">
+            <div class="form-group">
               <label>Display Name <span class="req">*</span></label>
-              <input type="text" id="def-name" placeholder="e.g. Hero Banner" />
+              <input type="text" id="def-name" placeholder="e.g. Hero Banner Dark" />
             </div>
             <div class="form-group">
               <label>Definition Key <span class="req">*</span></label>
-              <input type="text" id="def-key" placeholder="e.g. hero_banner (snake_case)" />
-              <span class="field-help">Lowercase letters, numbers, underscores only. Cannot be changed after creation.</span>
+              <input type="text" id="def-key" placeholder="e.g. hero_banner_dark (snake_case)" />
+              <span class="field-help">Lowercase letters, numbers, underscores only. Immutable after creation.</span>
               <span id="def-key-err" class="field-err"></span>
             </div>
             <div class="form-group">
-              <label>Category</label>
-              <select id="def-category">
-                {categories.map(c => <option value={c} style="text-transform:capitalize;">{c}</option>)}
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Astro Component Name</label>
-              <input type="text" id="def-component" placeholder="e.g. MyBlock" />
-              <span class="field-help">Component name under src/blocks/ (extension .astro is optional).</span>
+              <label>Astro Component Path</label>
+              <input type="text" id="def-component" placeholder="e.g. MyBlock (under src/blocks/)" />
+              <span class="field-help">Component under src/blocks/ — extension .astro optional.</span>
             </div>
             <div class="form-group">
               <label>Preview Image</label>
-              <div style="display: flex; gap: 0.5rem; align-items: center;">
-                <input type="text" id="def-preview" placeholder="/admin/previews/hero.png" style="flex: 1;" />
-                <button type="button" class="btn btn-outline" id="btn-pick-preview" style="height: 38px; white-space: nowrap;">Browse</button>
+              <div style="display:flex; gap:0.5rem; align-items:center;">
+                <input type="text" id="def-preview" placeholder="/uploads/preview.png" style="flex:1;" />
+                <button type="button" class="btn btn-outline" id="btn-pick-preview" style="height:38px; white-space:nowrap;">Browse</button>
               </div>
-              <span class="field-help">Path to a thumbnail shown in the Add-Section catalog.</span>
             </div>
-            <div class="form-group" style="grid-column: 1/-1;">
+            <div class="form-group" style="grid-column:1/-1;">
               <label>Description</label>
-              <textarea id="def-description" rows="2" placeholder="Brief description of what this section renders..."></textarea>
+              <textarea id="def-description" rows="2" placeholder="Brief description of what this layout renders..."></textarea>
             </div>
           </div>
         </div>
 
-        <!-- Field Builder -->
+        <!-- Field Schema Reference -->
         <div class="modal-section">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
-            <h5 class="modal-section-title" style="margin:0;">Field Schema Builder</h5>
-            <button type="button" class="btn btn-outline btn-sm" id="add-field-btn">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-              Add Field
-            </button>
+          <h5 class="modal-section-title">Field Schema Reference</h5>
+          <p style="font-size:0.82rem; color:var(--text-dim); margin-bottom:0.85rem; line-height:1.5;">
+            Select an existing Field Schema to link to this definition. The schema defines the content fields.
+            Multiple definitions can share the same schema (each with a different Astro component = different design).
+            <a href="/admin/field-schemas" target="_blank" style="color:var(--primary);">Manage Field Schemas →</a>
+          </p>
+          <div class="form-group">
+            <label>Field Schema <span class="req">*</span></label>
+            <select id="def-schema-ref">
+              <option value="">— Select a Field Schema —</option>
+            </select>
+            <span id="def-schema-ref-err" class="field-err"></span>
           </div>
-          <p style="font-size:0.8rem; color:var(--text-dim); margin-bottom:1rem;">Each field maps to a data property that Astro components receive as props. The CMS auto-generates input forms from these.</p>
-
-          <div id="fields-builder-list" style="display:flex; flex-direction:column; gap:0.75rem;">
-            <!-- Fields injected by JS -->
-            <div id="no-fields-msg" style="text-align:center; padding:2rem; border:1px dashed var(--border-color); border-radius:8px; color:var(--text-dim); font-size:0.85rem;">
-              No fields defined yet. Click "Add Field" to define your schema.
-            </div>
+          <!-- Schema preview: show fields once selected -->
+          <div id="schema-preview-box" style="display:none; margin-top:0.75rem; background:rgba(16,185,129,0.04); border:1px solid rgba(16,185,129,0.2); border-radius:6px; padding:0.85rem;">
+            <div style="font-size:0.75rem; font-weight:700; color:var(--accent); text-transform:uppercase; margin-bottom:0.5rem;">Schema Fields Preview</div>
+            <div id="schema-preview-chips" style="display:flex; flex-wrap:wrap; gap:0.3rem;"></div>
           </div>
         </div>
 
@@ -235,7 +238,7 @@ import "../../styles/admin/css/section-defination.css";
 
   <!-- Delete Confirm Modal -->
   <div class="modal-overlay" id="delete-modal-overlay">
-    <div class="modal-panel" style="max-width:460px;">
+    <div class="modal-panel" style="max-width:480px;">
       <div class="modal-head">
         <h4>Delete Section Definition</h4>
         <button class="close-modal-btn" id="close-delete-modal">
@@ -243,7 +246,11 @@ import "../../styles/admin/css/section-defination.css";
         </button>
       </div>
       <div class="modal-body">
-        <p style="color:var(--text-muted); font-size:0.9rem; line-height:1.65;">Are you sure you want to delete the definition <strong id="delete-def-name" style="color:var(--color-error);"></strong>? Existing section instances using this type will no longer have a matching schema (they won't be deleted, but their edit form will be empty).</p>
+        <p style="color:var(--text-muted); font-size:0.9rem; line-height:1.65;">
+          Delete definition <strong id="delete-def-name" style="color:var(--color-error);"></strong>?
+          If any Section Instances use this definition, deletion will be blocked.
+        </p>
+        <div id="delete-dep-instances" style="display:none; margin-top:0.75rem; background:rgba(239,68,68,0.06); border:1px solid rgba(239,68,68,0.2); border-radius:6px; padding:0.75rem; font-size:0.82rem; color:var(--color-error);"></div>
       </div>
       <div class="modal-foot">
         <button class="btn btn-outline" id="cancel-delete-btn">Cancel</button>
@@ -256,7 +263,7 @@ import "../../styles/admin/css/section-defination.css";
   <div class="media-modal-overlay" id="media-modal">
     <div class="media-modal">
       <div class="media-modal-header">
-        <h4 id="media-modal-title">Select Preview Image</h4>
+        <h4>Select Preview Image</h4>
         <button type="button" id="close-media-modal-btn" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:1.2rem;">✕</button>
       </div>
       <div class="media-grid" id="media-grid">
@@ -275,29 +282,6 @@ import "../../styles/admin/css/section-defination.css";
 </AdminLayout>
 
 <style is:global>
-  .def-tabs .def-tab-btn {
-    padding: 0.5rem 1rem;
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-    font-size: 0.85rem;
-    font-weight: 600;
-    border-radius: 6px 6px 0 0;
-    cursor: pointer;
-    transition: var(--transition);
-    border-bottom: 2px solid transparent;
-    white-space: nowrap;
-  }
-  .def-tab-btn.active {
-    color: var(--primary);
-    border-bottom-color: var(--primary);
-    background: rgba(99,102,241,0.06);
-  }
-  .def-tab-btn:hover:not(.active) {
-    color: var(--text-main);
-    background: rgba(255,255,255,0.03);
-  }
-
   .def-card {
     background: var(--bg-surface);
     border: 1px solid var(--border-color);
@@ -320,21 +304,11 @@ import "../../styles/admin/css/section-defination.css";
     align-items: flex-start;
     gap: 0.5rem;
   }
-  .def-category-tag {
-    font-size: 0.65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    padding: 0.15rem 0.5rem;
-    border-radius: 4px;
-    display: inline-block;
-    margin-bottom: 0.35rem;
-  }
   .def-card-name {
     font-size: 1rem;
     font-weight: 700;
     color: var(--text-main);
-    margin: 0;
+    margin: 0 0 0.25rem 0;
   }
   .def-key-tag {
     font-size: 0.7rem;
@@ -345,8 +319,6 @@ import "../../styles/admin/css/section-defination.css";
     border-radius: 4px;
     color: var(--text-muted);
     white-space: nowrap;
-    flex-shrink: 0;
-    margin-top: 0.25rem;
   }
   .def-description {
     font-size: 0.825rem;
@@ -367,55 +339,21 @@ import "../../styles/admin/css/section-defination.css";
     color: var(--text-dim);
     font-family: monospace;
   }
-  .def-fields-preview {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.3rem;
-  }
-  .field-chip {
-    font-size: 0.68rem;
-    background: var(--bg-base);
-    border: 1px solid var(--border-color);
-    padding: 0.15rem 0.5rem;
-    border-radius: 4px;
-    color: var(--text-muted);
-    font-family: monospace;
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-  }
-  .field-chip em {
-    font-style: normal;
-    font-size: 0.6rem;
-    color: var(--primary);
-    background: rgba(99,102,241,0.1);
-    padding: 0.05rem 0.3rem;
-    border-radius: 3px;
-  }
-  .field-chip.more {
-    color: var(--primary);
-    border-color: rgba(99,102,241,0.3);
-  }
   .def-card-actions {
     display: flex;
     gap: 0.5rem;
     align-items: center;
+    flex-wrap: wrap;
     margin-top: auto;
     padding-top: 0.5rem;
     border-top: 1px solid var(--border-color);
   }
   .def-card-actions .btn-action {
     margin-left: auto;
-    width: 30px;
-    height: 30px;
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
-    background: transparent;
-    color: var(--text-muted);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    width: 30px; height: 30px;
+    border-radius: 6px; border: 1px solid var(--border-color);
+    background: transparent; color: var(--text-muted);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
     transition: var(--transition);
   }
   .def-card-actions .btn-action:hover {
@@ -423,54 +361,26 @@ import "../../styles/admin/css/section-defination.css";
     color: var(--color-error);
     border-color: var(--color-error);
   }
-
-  /* Modal */
   .modal-overlay {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(8,12,20,0.75);
-    backdrop-filter: blur(8px);
-    z-index: 2000;
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0; pointer-events: none;
-    transition: opacity 0.2s ease;
+    position: fixed; top:0; left:0; right:0; bottom:0;
+    background: rgba(8,12,20,0.75); backdrop-filter: blur(8px);
+    z-index: 2000; display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
   }
   .modal-overlay.active { opacity: 1; pointer-events: auto; }
   .modal-panel {
-    background: var(--bg-surface-solid);
-    border: 1px solid var(--bg-surface-border);
-    border-radius: var(--radius-lg);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-    display: flex; flex-direction: column;
-    max-height: 92vh;
-    overflow: hidden;
+    background: var(--bg-surface-solid); border: 1px solid var(--bg-surface-border);
+    border-radius: var(--radius-lg); box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    display: flex; flex-direction: column; max-height: 92vh; overflow: hidden;
   }
-  .modal-head {
-    padding: 1.15rem 1.5rem;
-    border-bottom: 1px solid var(--bg-surface-border);
-    display: flex; justify-content: space-between; align-items: center;
-  }
+  .modal-head { padding: 1.15rem 1.5rem; border-bottom: 1px solid var(--bg-surface-border); display: flex; justify-content: space-between; align-items: center; }
   .modal-head h4 { font-size: 1.05rem; font-weight: 700; }
   .modal-body { padding: 1.5rem; }
-  .modal-foot {
-    padding: 1rem 1.5rem;
-    border-top: 1px solid var(--bg-surface-border);
-    display: flex; justify-content: flex-end; gap: 0.75rem;
-  }
+  .modal-foot { padding: 1rem 1.5rem; border-top: 1px solid var(--bg-surface-border); display: flex; justify-content: flex-end; gap: 0.75rem; }
   .modal-section { margin-bottom: 1.75rem; }
   .modal-section:last-child { margin-bottom: 0; }
-  .modal-section-title {
-    font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.06em; color: var(--text-muted);
-    margin-bottom: 1rem; padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--border-color);
-  }
-  .close-modal-btn {
-    width: 32px; height: 32px;
-    border-radius: 6px; border: 1px solid var(--border-color);
-    background: transparent; color: var(--text-muted);
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
-    transition: var(--transition);
-  }
+  .modal-section-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); }
+  .close-modal-btn { width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border-color); background: transparent; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--transition); }
   .close-modal-btn:hover { color: var(--text-main); background: rgba(255,255,255,0.05); }
   .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
   .form-group label { font-size: 0.83rem; font-weight: 600; color: var(--text-muted); }
@@ -478,55 +388,14 @@ import "../../styles/admin/css/section-defination.css";
   .field-help { font-size: 0.73rem; color: var(--text-dim); }
   .field-err { font-size: 0.75rem; color: var(--color-error); min-height: 1.1em; }
   input[type="text"], input[type="number"], select, textarea {
-    padding: 0.6rem 0.85rem;
-    border-radius: var(--radius-sm);
-    background-color: var(--input-bg);
-    border: 1px solid var(--input-border);
-    color: var(--text-main);
-    font-size: 0.88rem;
-    outline: none;
-    transition: var(--transition);
-    width: 100%;
-    box-sizing: border-box;
+    padding: 0.6rem 0.85rem; border-radius: var(--radius-sm);
+    background-color: var(--input-bg); border: 1px solid var(--input-border);
+    color: var(--text-main); font-size: 0.88rem; outline: none;
+    transition: var(--transition); width: 100%; box-sizing: border-box;
   }
   input:focus, select:focus, textarea:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+    border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
   }
-
-  /* Field Builder Rows */
-  .field-builder-row {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 1rem;
-    display: grid;
-    grid-template-columns: 1fr 1fr 160px auto;
-    gap: 0.75rem;
-    align-items: end;
-  }
-  .field-builder-row.has-options {
-    grid-template-columns: 1fr 1fr 160px 1fr auto;
-  }
-  .field-builder-options-row {
-    grid-column: 1 / -2;
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-  }
-  .field-builder-repeater-row {
-    grid-column: 1 / -1;
-  }
-  .remove-field-btn {
-    width: 32px; height: 32px;
-    border-radius: 6px; border: 1px solid var(--border-color);
-    background: transparent; color: var(--text-muted);
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
-    transition: var(--transition); flex-shrink: 0;
-  }
-  .remove-field-btn:hover { color: var(--color-error); border-color: var(--color-error); background: rgba(239,68,68,0.08); }
-
-  /* Toast */
   .toast-notification {
     position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999;
     background: var(--bg-surface-solid); border: 1px solid var(--border-color);
@@ -539,205 +408,199 @@ import "../../styles/admin/css/section-defination.css";
   .toast-notification.visible { transform: translateY(0); opacity: 1; }
   .toast-content { display: flex; align-items: center; gap: 0.5rem; }
   .toast-message { font-size: 0.88rem; color: var(--text-main); font-weight: 500; }
-
-  /* Searchable Field Type Dropdown Picker */
-  .type-picker-dropdown {
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6) !important;
-    border-color: var(--primary) !important;
-  }
-  .type-picker-search-input {
-    background: var(--bg-body) !important;
-    border: 1px solid var(--border-color) !important;
-    color: var(--text-main) !important;
-    border-radius: 6px;
-    padding: 0.35rem 0.5rem;
-    font-size: 0.8rem;
-    width: 100%;
-  }
-  .type-opt-btn {
-    transition: background 0.15s ease, color 0.15s ease;
-  }
-  .type-opt-btn:hover {
-    background: rgba(99, 102, 241, 0.18) !important;
-    color: var(--primary) !important;
-  }
-
-  /* Media picker modal */
-  .media-modal-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 9000; display: none; align-items: center; justify-content: center;
-  }
-  .media-modal-overlay.open { display: flex; }
-  .media-modal {
-    background: var(--bg-surface-solid);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    width: min(1200px,95vw);
-    height: min(850px,90vh);
-    display:flex;
-    flex-direction:column;
-    overflow:hidden;
-  }
-  .media-modal-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
-  .media-modal-header h4 { font-weight: 700; color: var(--text-main); }
-  .media-grid {
-    display:grid;
-    grid-template-columns: repeat(auto-fill,minmax(180px,1fr));
-    gap:1rem;
-    padding:1rem;
-    overflow-y:auto;
-    overflow-x:hidden;
-    flex:1;
-  }
-  .media-item {
-    position:relative;
-    height:180px;
-    border-radius:var(--radius-sm);
-    overflow:hidden;
-    border:2px solid transparent;
-    cursor:pointer;
-    background:#111827;
-  }
-  .media-item:hover { border-color: var(--primary); }
-  .media-item img {
-    display:block;
-    width:100%;
-    height:100%;
-    object-fit:cover;
-    object-position:center;
-  }
+  .media-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9000; display:none; align-items:center; justify-content:center; }
+  .media-modal-overlay.open { display:flex; }
+  .media-modal { background:var(--bg-surface-solid); border:1px solid var(--border-color); border-radius:var(--radius-lg); width:min(1200px,95vw); height:min(850px,90vh); display:flex; flex-direction:column; overflow:hidden; }
+  .media-modal-header { padding:1rem 1.25rem; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; }
+  .media-modal-header h4 { font-weight:700; color:var(--text-main); }
+  .media-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:1rem; padding:1rem; overflow-y:auto; flex:1; }
+  .media-item { position:relative; height:180px; border-radius:var(--radius-sm); overflow:hidden; border:2px solid transparent; cursor:pointer; background:#111827; }
+  .media-item:hover { border-color:var(--primary); }
+  .media-item img { display:block; width:100%; height:100%; object-fit:cover; }
 </style>
 
-<script is:inline define:vars={{ allDefinitions, categories, fieldTypes }}>
+<script is:inline define:vars={{ allDefinitions, allSchemas }}>
   let allDefs = allDefinitions || [];
+  const schemas = allSchemas || [];
   let editMode = false;
   let editingKey = null;
-  let fieldsData = [];
   let pendingDeleteKey = null;
   let keyInputManuallyEdited = false;
 
-  function getDisplayComponentName(path) {
-    if (!path) return '';
-    if (path.startsWith('src/blocks/')) {
-      let rel = path.substring('src/blocks/'.length);
-      if (rel.endsWith('.astro')) {
-        rel = rel.substring(0, rel.length - 6);
-      }
-      return rel;
-    }
-    return path;
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+
+  function getDisplayComponentName(p) {
+    if (!p) return '';
+    if (p.startsWith('src/blocks/')) { let r = p.slice('src/blocks/'.length); return r.endsWith('.astro') ? r.slice(0, -6) : r; }
+    return p;
   }
 
   function normalizeComponentPath(val) {
-    let path = val.trim();
-    if (!path) return '';
-    if (!path.endsWith('.astro')) {
-      path += '.astro';
-    }
-    if (path.startsWith('src/blocks/')) {
-      return path;
-    } else if (path.startsWith('/src/blocks/')) {
-      return path.substring(1);
-    } else if (path.startsWith('blocks/')) {
-      return 'src/' + path;
-    } else if (path.startsWith('/blocks/')) {
-      return 'src/' + path.substring(1);
-    } else {
-      if (path.startsWith('/')) {
-        path = path.substring(1);
-      }
-      return 'src/blocks/' + path;
-    }
+    let p = val.trim();
+    if (!p) return '';
+    if (!p.endsWith('.astro')) p += '.astro';
+    if (p.startsWith('src/blocks/')) return p;
+    if (p.startsWith('/src/blocks/')) return p.slice(1);
+    if (p.startsWith('blocks/')) return 'src/' + p;
+    if (p.startsWith('/blocks/')) return 'src/' + p.slice(1);
+    return 'src/blocks/' + (p.startsWith('/') ? p.slice(1) : p);
   }
 
-  const FIELD_GROUPS = {
-    "Basic": ["text", "textarea", "richtext", "markdown", "code", "html", "email", "tel", "url", "slug", "password", "hidden"],
-    "Number": ["number", "range", "percentage"],
-    "Boolean": ["checkbox", "toggle", "boolean"],
-    "Selection": ["select", "multiselect", "radio", "button-group"],
-    "Media": ["image", "gallery", "svg", "icon", "file", "video", "audio"],
-    "Date & Time": ["date", "time", "datetime", "month"],
-    "Design": ["color", "gradient"],
-    "Advanced": ["json", "css", "javascript"],
-    "Structure": ["group", "object", "array", "list", "repeater"],
-    "Link": ["link"]
-  };
+  // ── Schema ref dropdown ──────────────────────────────────────────────────────
+
+  function populateSchemaDropdown(selectedKey = '') {
+    const sel = document.getElementById('def-schema-ref');
+    sel.innerHTML = '<option value="">— Select a Field Schema —</option>';
+    schemas.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.schema_key;
+      opt.textContent = `${s.schema_name} (${s.schema_key}) — ${s.fields?.length || 0} fields`;
+      if (s.schema_key === selectedKey) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    updateSchemaPreview(selectedKey);
+  }
+
+  function updateSchemaPreview(schemaKey) {
+    const box = document.getElementById('schema-preview-box');
+    const chips = document.getElementById('schema-preview-chips');
+    if (!schemaKey) { box.style.display = 'none'; return; }
+    const schema = schemas.find(s => s.schema_key === schemaKey);
+    if (!schema || !schema.fields?.length) { box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    chips.innerHTML = schema.fields.slice(0, 10).map(f =>
+      `<span style="font-size:0.68rem;background:var(--bg-base);border:1px solid var(--border-color);padding:0.15rem 0.5rem;border-radius:4px;color:var(--text-muted);font-family:monospace;display:inline-flex;align-items:center;gap:0.3rem;">
+        ${f.name} <em style="font-style:normal;font-size:0.6rem;color:var(--primary);background:rgba(99,102,241,0.1);padding:0.05rem 0.3rem;border-radius:3px;">${f.type}</em>
+      </span>`
+    ).join('') + (schema.fields.length > 10 ? `<span style="font-size:0.68rem;color:var(--primary);">+${schema.fields.length-10} more</span>` : '');
+  }
+
+  document.getElementById('def-schema-ref')?.addEventListener('change', e => {
+    updateSchemaPreview(e.target.value);
+  });
+
+  // ── Search ───────────────────────────────────────────────────────────────────
 
   const searchInput = document.getElementById('def-search');
-
-  function filterDefinitions() {
-    const activeTab = document.querySelector('.def-tab-btn.active');
-    const cat = activeTab ? activeTab.dataset.category : 'all';
-    const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
-
-    document.querySelectorAll('.def-card').forEach(card => {
-      const cardCat = card.dataset.category;
-      const cardName = (card.querySelector('.def-card-name')?.textContent || '').toLowerCase();
-      const cardKey = (card.dataset.key || '').toLowerCase();
-      const cardDesc = (card.querySelector('.def-description')?.textContent || '').toLowerCase();
-
-      const categoryMatch = (cat === 'all' || cardCat === cat);
-      const searchMatch = !query || cardName.includes(query) || cardKey.includes(query) || cardDesc.includes(query);
-
-      card.style.display = (categoryMatch && searchMatch) ? '' : 'none';
-    });
-  }
-
-  document.querySelectorAll('.def-tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.def-tab-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      filterDefinitions();
-    });
-  });
-
   if (searchInput) {
-    searchInput.addEventListener('input', filterDefinitions);
-  }
-
-  const deleteBtn = document.getElementById('confirm-delete-btn');
-  if (deleteBtn) {
-    deleteBtn.addEventListener('click', async () => {
-      if (!pendingDeleteKey) return;
-      try {
-        const res = await fetch('/api/section-definitions-crud', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ key: pendingDeleteKey })
-        });
-        const data = await res.json();
-        if (data.success) {
-          showToast('Blueprint deleted successfully');
-          document.getElementById('delete-modal-overlay').classList.remove('active');
-          setTimeout(() => window.location.reload(), 700);
-        } else {
-          showToast('Failed to delete blueprint: ' + data.error, true);
-        }
-      } catch (e) {
-        showToast('Network error', true);
-      }
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.toLowerCase().trim();
+      document.querySelectorAll('.def-card').forEach(card => {
+        const name = (card.querySelector('.def-card-name')?.textContent || '').toLowerCase();
+        const key  = (card.dataset.key || '').toLowerCase();
+        card.style.display = (!q || name.includes(q) || key.includes(q)) ? '' : 'none';
+      });
     });
   }
 
-  document.getElementById('defs-grid').addEventListener('click', (e) => {
-    const editBtn = e.target.closest('.edit-def-btn');
-    const delBtn = e.target.closest('.delete-def-btn');
+  // ── Modal open/close ─────────────────────────────────────────────────────────
 
-    if (editBtn) {
-      const key = editBtn.dataset.key;
-      const def = allDefs.find(d => d.key === key);
-      if (def) openModal(true, def);
+  function openModal(isEdit, def = null) {
+    editMode = isEdit;
+    editingKey = isEdit ? def.key : null;
+    keyInputManuallyEdited = false;
+
+    document.getElementById('def-modal-title').textContent = isEdit ? `Edit Definition: ${def.name}` : 'Create Section Definition';
+    document.getElementById('def-key').value = isEdit ? def.key : '';
+    document.getElementById('def-key').disabled = isEdit;
+    document.getElementById('def-name').value = isEdit ? def.name : '';
+    document.getElementById('def-component').value = isEdit ? getDisplayComponentName(def.componentPath) : '';
+    document.getElementById('def-preview').value = isEdit ? (def.previewImage || '') : '';
+    document.getElementById('def-description').value = isEdit ? (def.description || '') : '';
+    document.getElementById('def-key-err').textContent = '';
+    document.getElementById('def-schema-ref-err').textContent = '';
+
+    populateSchemaDropdown(isEdit ? (def.schema_ref || '') : '');
+    document.getElementById('def-modal-overlay').classList.add('active');
+  }
+
+  function closeModal() {
+    document.getElementById('def-modal-overlay').classList.remove('active');
+    editMode = false; editingKey = null;
+  }
+
+  // ── Save ─────────────────────────────────────────────────────────────────────
+
+  async function saveDef() {
+    const key         = document.getElementById('def-key').value.trim();
+    const name        = document.getElementById('def-name').value.trim();
+    const schema_ref  = document.getElementById('def-schema-ref').value;
+    const componentPath = normalizeComponentPath(document.getElementById('def-component').value.trim());
+    const previewImage  = document.getElementById('def-preview').value.trim();
+    const description   = document.getElementById('def-description').value.trim();
+
+    document.getElementById('def-key-err').textContent = '';
+    document.getElementById('def-schema-ref-err').textContent = '';
+
+    if (!name) { showToast('Display Name is required', true); return; }
+    if (!editMode && !key) { document.getElementById('def-key-err').textContent = 'Key is required.'; return; }
+    if (!editMode && !/^[a-z0-9_]+$/.test(key)) {
+      document.getElementById('def-key-err').textContent = 'Only lowercase letters, numbers, underscores.';
+      return;
+    }
+    if (!schema_ref) {
+      document.getElementById('def-schema-ref-err').textContent = 'Please select a Field Schema.';
+      return;
     }
 
-    if (delBtn) {
-      const key = delBtn.dataset.key;
-      const name = delBtn.dataset.name;
-      pendingDeleteKey = key;
-      document.getElementById('delete-def-name').textContent = name;
-      document.getElementById('delete-modal-overlay').classList.add('active');
-    }
+    const payload = {
+      key: editMode ? editingKey : key,
+      name, schema_ref, componentPath, previewImage, description
+    };
+
+    try {
+      const res = await fetch('/api/section-definitions-crud', {
+        method: editMode ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        const baseMsg = editMode ? 'Definition updated!' : 'Definition created!';
+        showToast(data.warning ? `${baseMsg} ⚠ ${data.warning}` : baseMsg, !!data.warning);
+        if (data.warning) console.warn('[Section Definitions] componentPath warning:', data.warning);
+        closeModal();
+        setTimeout(() => window.location.reload(), 700);
+      } else {
+        showToast('Error: ' + data.error, true);
+        if (data.error?.includes('key')) document.getElementById('def-key-err').textContent = data.error;
+      }
+    } catch (e) { showToast('Network error', true); }
+  }
+
+  // ── Delete ───────────────────────────────────────────────────────────────────
+
+  document.getElementById('confirm-delete-btn').addEventListener('click', async () => {
+    if (!pendingDeleteKey) return;
+    try {
+      const res = await fetch('/api/section-definitions-crud', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: pendingDeleteKey })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Definition deleted');
+        document.getElementById('delete-modal-overlay').classList.remove('active');
+        setTimeout(() => window.location.reload(), 700);
+      } else {
+        showToast(data.error, true);
+        if (data.dependentInstances?.length) {
+          const depEl = document.getElementById('delete-dep-instances');
+          depEl.style.display = 'block';
+          depEl.innerHTML = `<strong>Blocking instances:</strong> ${data.dependentInstances.map(id => `<code>${id}</code>`).join(', ')}`;
+        }
+      }
+    } catch (e) { showToast('Network error', true); }
   });
+
+  // ── Event wiring ─────────────────────────────────────────────────────────────
 
   document.getElementById('open-create-def-btn').addEventListener('click', () => openModal(false));
+  document.getElementById('close-def-modal').addEventListener('click', closeModal);
+  document.getElementById('cancel-def-modal').addEventListener('click', closeModal);
+  document.getElementById('save-def-btn').addEventListener('click', saveDef);
+
   document.getElementById('close-delete-modal').addEventListener('click', () => {
     document.getElementById('delete-modal-overlay').classList.remove('active');
     pendingDeleteKey = null;
@@ -747,558 +610,79 @@ import "../../styles/admin/css/section-defination.css";
     pendingDeleteKey = null;
   });
 
-  document.getElementById('close-def-modal').addEventListener('click', closeModal);
-  document.getElementById('cancel-def-modal').addEventListener('click', closeModal);
+  document.getElementById('defs-grid').addEventListener('click', e => {
+    const editBtn = e.target.closest('.edit-def-btn');
+    const delBtn  = e.target.closest('.delete-def-btn');
 
-  document.getElementById('add-field-btn').addEventListener('click', () => {
-    fieldsData.push({ name: '', label: '', type: 'text', required: false, default: '', options: [], repeaterFields: [] });
-    renderFieldsBuilder();
-  });
-
-  document.getElementById('save-def-btn').addEventListener('click', saveDef);
-
-  function markFieldsAsManuallyEdited(fields) {
-    fields.forEach(f => {
-      f._nameManuallyEdited = true;
-      if (Array.isArray(f.repeaterFields)) {
-        markFieldsAsManuallyEdited(f.repeaterFields);
-      }
-    });
-  }
-
-  function openModal(isEdit, def = null) {
-    editMode = isEdit;
-    editingKey = isEdit ? def.key : null;
-    fieldsData = isEdit ? JSON.parse(JSON.stringify(def.fields || [])) : [];
-    if (isEdit) {
-      markFieldsAsManuallyEdited(fieldsData);
+    if (editBtn) {
+      const def = allDefs.find(d => d.key === editBtn.dataset.key);
+      if (def) openModal(true, def);
     }
-    keyInputManuallyEdited = false;
 
-    document.getElementById('def-modal-title').textContent = isEdit ? `Edit Definition: ${def.name}` : 'Create Section Definition';
-    document.getElementById('def-key').value = isEdit ? def.key : '';
-    document.getElementById('def-key').disabled = isEdit;
-    document.getElementById('def-name').value = isEdit ? def.name : '';
-    document.getElementById('def-category').value = isEdit ? (def.category || 'other') : 'other';
-    document.getElementById('def-component').value = isEdit ? getDisplayComponentName(def.componentPath) : '';
-    document.getElementById('def-preview').value = isEdit ? (def.previewImage || '') : '';
-    document.getElementById('def-description').value = isEdit ? (def.description || '') : '';
-
-    renderFieldsBuilder();
-    document.getElementById('def-modal-overlay').classList.add('active');
-  }
-
-  function closeModal() {
-    document.getElementById('def-modal-overlay').classList.remove('active');
-    editMode = false; editingKey = null; fieldsData = [];
-  }
-
-  function getFieldByPath(path) {
-    let target = fieldsData;
-    for (let i = 0; i < path.length; i++) {
-      if (target === undefined || target === null) return null;
-      target = target[path[i]];
-    }
-    return target;
-  }
-
-  window.updateFieldAtPath = function(pathStr, key, value) {
-    const path = JSON.parse(pathStr);
-    const target = getFieldByPath(path);
-    if (target) {
-      target[key] = value;
-      if (key === 'type') {
-        if (['repeater', 'group', 'object', 'array'].includes(value)) {
-          if (!target.repeaterFields) target.repeaterFields = [];
-        }
-        renderFieldsBuilder();
-      }
-    }
-  };
-
-  window.handleFieldLabelInput = function(pathId, pathStr, value) {
-    updateFieldAtPath(pathStr, 'label', value);
-    const nameInput = document.getElementById(`field-name-${pathId}`);
-    const path = JSON.parse(pathStr);
-    const field = getFieldByPath(path);
-    if (field && !field._nameManuallyEdited) {
-      const generated = value
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9_]+/g, '_')
-        .replace(/__+/g, '_')
-        .replace(/(^_|_$)/g, '');
-      if (nameInput) {
-        nameInput.value = generated;
-        updateFieldAtPath(pathStr, 'name', generated);
-      }
-    }
-  };
-
-  window.handleFieldNameInput = function(pathId, pathStr, value) {
-    updateFieldAtPath(pathStr, 'name', value);
-    const path = JSON.parse(pathStr);
-    const field = getFieldByPath(path);
-    if (field) {
-      field._nameManuallyEdited = true;
-    }
-  };
-
-  window.updateFieldOptions = function(pathStr, value) {
-    const path = JSON.parse(pathStr);
-    const target = getFieldByPath(path);
-    if (target) {
-      target.options = value.split(',').map(s => {
-        const item = s.trim();
-        if (item.includes(':')) {
-          const parts = item.split(':');
-          return { value: parts[0].trim(), label: parts.slice(1).join(':').trim() };
-        }
-        return item;
-      }).filter(Boolean);
-    }
-  };
-
-  window.updateValidationAtPath = function(pathStr, key, value) {
-    const path = JSON.parse(pathStr);
-    const target = getFieldByPath(path);
-    if (target) {
-      if (!target.validation) target.validation = {};
-      if (key === 'min') {
-        const num = value !== '' ? parseFloat(value) : undefined;
-        target.validation.min = num;
-        target.validation.minLength = num;
-      } else if (key === 'max') {
-        const num = value !== '' ? parseFloat(value) : undefined;
-        target.validation.max = num;
-        target.validation.maxLength = num;
-      } else {
-        target.validation[key] = value;
-      }
-    }
-  };
-
-  window.updateShowHideAtPath = function(pathStr, typeKey, subKey, value) {
-    const path = JSON.parse(pathStr);
-    const target = getFieldByPath(path);
-    if (target) {
-      if (!target[typeKey]) target[typeKey] = { field: '', value: '' };
-      let finalVal = value;
-      if (subKey === 'value') {
-        if (value === 'true') finalVal = true;
-        else if (value === 'false') finalVal = false;
-      }
-      target[typeKey][subKey] = finalVal;
-    }
-  };
-
-  window.addFieldAtPath = function(pathStr) {
-    const path = JSON.parse(pathStr);
-    const targetArray = getFieldByPath(path);
-    if (Array.isArray(targetArray)) {
-      targetArray.push({ name: '', label: '', type: 'text', required: false, default: '', options: [], repeaterFields: [] });
-      renderFieldsBuilder();
-    }
-  };
-
-  window.removeFieldAtPath = function(parentPathStr, idx) {
-    const parentPath = JSON.parse(parentPathStr);
-    const targetArray = getFieldByPath(parentPath);
-    if (Array.isArray(targetArray)) {
-      const f = targetArray[idx];
-      const fieldName = f ? f.name || 'this field' : 'this field';
-      window.customConfirm(`Are you sure you want to delete the field "${fieldName}"?`, () => {
-        targetArray.splice(idx, 1);
-        renderFieldsBuilder();
-      });
-    }
-  };
-
-  window.duplicateFieldAtPath = function(parentPathStr, idx) {
-    const parentPath = JSON.parse(parentPathStr);
-    const targetArray = getFieldByPath(parentPath);
-    if (Array.isArray(targetArray)) {
-      const sourceField = targetArray[idx];
-      if (!sourceField) return;
-      const duplicated = JSON.parse(JSON.stringify(sourceField));
-      duplicated.name = `${duplicated.name || 'field'}_copy`;
-      duplicated.label = `${duplicated.label || 'Field'} (Copy)`;
-      targetArray.splice(idx + 1, 0, duplicated);
-      renderFieldsBuilder();
-    }
-  };
-
-  window.moveFieldAtPath = function(parentPathStr, idx, dir) {
-    const parentPath = JSON.parse(parentPathStr);
-    const targetArray = getFieldByPath(parentPath);
-    if (Array.isArray(targetArray)) {
-      const targetIdx = idx + dir;
-      if (targetIdx < 0 || targetIdx >= targetArray.length) return;
-      const temp = targetArray[idx];
-      targetArray[idx] = targetArray[targetIdx];
-      targetArray[targetIdx] = temp;
-      renderFieldsBuilder();
-    }
-  };
-
-  window.toggleAdvSettings = function(pathId) {
-    const el = document.getElementById(`adv-settings-${pathId}`);
-    if (el) {
-      el.style.display = el.style.display === 'none' ? 'grid' : 'none';
-    }
-  };
-
-  let draggedIdx = null;
-  let dragParentPathStr = null;
-
-  window.handleDragStart = function(e, idx, parentPathStr) {
-    draggedIdx = idx;
-    dragParentPathStr = parentPathStr;
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', idx);
-  };
-
-  window.handleDragOver = function(e) {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  window.handleDrop = function(e, idx, parentPathStr) {
-    e.preventDefault();
-    if (draggedIdx === null || dragParentPathStr !== parentPathStr || draggedIdx === idx) return;
-    const parentPath = JSON.parse(parentPathStr);
-    const targetArray = getFieldByPath(parentPath);
-    if (Array.isArray(targetArray)) {
-      const draggedField = targetArray[draggedIdx];
-      targetArray.splice(draggedIdx, 1);
-      targetArray.splice(idx, 0, draggedField);
-      draggedIdx = null;
-      dragParentPathStr = null;
-      renderFieldsBuilder();
-    }
-  };
-
-  window.toggleTypePicker = function(pathId) {
-    const dropdown = document.getElementById(`type-picker-${pathId}`);
-    if (!dropdown) return;
-    const isHidden = dropdown.style.display === 'none';
-    document.querySelectorAll('.type-picker-dropdown').forEach(el => el.style.display = 'none');
-    if (isHidden) {
-      dropdown.style.display = 'block';
-      const searchInput = dropdown.querySelector('.type-picker-search-input');
-      if (searchInput) {
-        searchInput.value = '';
-        searchInput.focus();
-        const wrapper = document.getElementById(`type-select-wrap-${pathId}`);
-        const pathStr = wrapper ? wrapper.dataset.path : '';
-        filterTypeOptions(pathId, pathStr, '');
-      }
-    } else {
-      dropdown.style.display = 'none';
-    }
-  };
-
-  window.filterTypeOptions = function(pathId, pathStr, query) {
-    const dropdown = document.getElementById(`type-picker-${pathId}`);
-    if (!dropdown) return;
-    const listContainer = dropdown.querySelector('.type-picker-options');
-    if (!listContainer) return;
-    
-    const q = query.toLowerCase().trim();
-    let html = '';
-    
-    // Escape pathStr to prevent double quotes in JSON array string from breaking the HTML attribute markup
-    const escPathStr = String(pathStr || '').replace(/"/g, '&quot;');
-    
-    for (const [groupName, types] of Object.entries(FIELD_GROUPS)) {
-      const filteredTypes = types.filter(t => t.toLowerCase().includes(q));
-      if (filteredTypes.length > 0) {
-        html += `<div style="font-weight:600; color:var(--text-dim); margin-top:0.35rem; margin-bottom:0.15rem; font-size:0.75rem; text-transform:uppercase;">${groupName}</div>`;
-        filteredTypes.forEach(t => {
-          html += `
-            <button type="button" class="type-opt-btn" onclick="selectFieldType('${pathId}', '${escPathStr}', '${t}')" style="display:block; width:100%; text-align:left; background:none; border:none; color:var(--text-main); padding:0.35rem 0.5rem; border-radius:4px; cursor:pointer; font-size:0.8rem; margin-bottom:0.1rem;">
-              ${t}
-            </button>
-          `;
-        });
-      }
-    }
-    
-    if (!html) {
-      html = '<div style="color:var(--text-dim); text-align:center; padding:0.5rem 0;">No matching types</div>';
-    }
-    
-    listContainer.innerHTML = html;
-  };
-
-  window.selectFieldType = function(pathId, pathStr, type) {
-    const wrapper = document.getElementById(`type-select-wrap-${pathId}`);
-    const finalPathStr = pathStr || wrapper.parentElement.dataset.path;
-    updateFieldAtPath(finalPathStr, 'type', type);
-    const dropdown = document.getElementById(`type-picker-${pathId}`);
-    if (dropdown) dropdown.style.display = 'none';
-  };
-
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.custom-select-searchable')) {
-      document.querySelectorAll('.type-picker-dropdown').forEach(el => el.style.display = 'none');
+    if (delBtn) {
+      pendingDeleteKey = delBtn.dataset.key;
+      document.getElementById('delete-def-name').textContent = delBtn.dataset.name;
+      document.getElementById('delete-dep-instances').style.display = 'none';
+      document.getElementById('delete-dep-instances').innerHTML = '';
+      document.getElementById('delete-modal-overlay').classList.add('active');
     }
   });
 
-  function renderFieldsBuilder() {
-    const container = document.getElementById('fields-builder-list');
-    const noMsg = document.getElementById('no-fields-msg');
-    if (!container) return;
+  // Auto-generate key from name
+  window.addEventListener('DOMContentLoaded', () => {
+    const nameInput = document.getElementById('def-name');
+    const keyInput  = document.getElementById('def-key');
 
-    if (fieldsData.length === 0) {
-      container.innerHTML = '';
-      if (noMsg) {
-        noMsg.style.display = '';
-        container.appendChild(noMsg);
-      }
-      return;
-    }
-
-    if (noMsg) noMsg.style.display = 'none';
-    container.innerHTML = '';
-
-    renderFieldsList(fieldsData, container, []);
-  }
-
-  function renderFieldsList(fields, containerEl, parentPath = []) {
-    fields.forEach((field, idx) => {
-      const currentPath = [...parentPath, idx];
-      const pathStr = JSON.stringify(currentPath);
-      const parentPathStr = JSON.stringify(parentPath);
-      const pathId = currentPath.join('-');
-      
-      const row = document.createElement('div');
-      row.className = 'field-builder-row';
-      row.draggable = true;
-      row.setAttribute('ondragstart', `handleDragStart(event, ${idx}, '${parentPathStr}')`);
-      row.setAttribute('ondragover', `handleDragOver(event)`);
-      row.setAttribute('ondrop', `handleDrop(event, ${idx}, '${parentPathStr}')`);
-      row.style = 'background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; gap: 0.65rem; margin-bottom: 0.75rem;';
-
-      const needsOptions = ['select', 'multiselect', 'radio', 'button-group'].includes(field.type);
-      const hasSubfields = ['repeater', 'group', 'object', 'array'].includes(field.type);
-
-      // Pre-escape path strings for safe embedding inside onclick="..." HTML attributes.
-      // JSON.stringify of paths that contain string keys (e.g. "repeaterFields") produces
-      // double-quoted values like [0,"repeaterFields"] which break double-quoted HTML attributes.
-      const ePstr    = escHtml(pathStr);
-      const ePpstr   = escHtml(parentPathStr);
-      const eSubPath = escHtml(JSON.stringify([...currentPath, 'repeaterFields']));
-
-      row.innerHTML = `
-        <!-- Header Bar -->
-        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); margin-bottom: 0.5rem;">
-          <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <!-- Drag Handle -->
-            <div class="drag-handle" style="cursor: grab; display: flex; align-items: center; color: var(--text-dim);" title="Drag to reorder">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
-            </div>
-            <!-- Up/Down buttons -->
-            <div style="display: flex; gap: 0.25rem;">
-              <button type="button" class="btn btn-outline" style="padding: 2px; height: 24px; min-width: 26px; display: flex; align-items: center; justify-content: center;" onclick="moveFieldAtPath('${ePpstr}', ${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"></polyline></svg>
-              </button>
-              <button type="button" class="btn btn-outline" style="padding: 2px; height: 24px; min-width: 26px; display: flex; align-items: center; justify-content: center;" onclick="moveFieldAtPath('${ePpstr}', ${idx}, 1)" ${idx === fields.length - 1 ? 'disabled' : ''}>
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"></polyline></svg>
-              </button>
-            </div>
-            <!-- Field index indicator badge -->
-            <span style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); background: var(--bg-body); padding: 0.15rem 0.5rem; border-radius: 4px; border: 1px solid var(--border-color);">
-              Field #${idx + 1}
-            </span>
-          </div>
-
-          <div style="display: flex; align-items: center; gap: 1rem;">
-            <!-- Required checkbox -->
-            <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; font-weight: 600; cursor: pointer; margin: 0; user-select: none;">
-              <input type="checkbox" id="req-${pathId}" ${field.required ? 'checked' : ''} onchange="updateFieldAtPath('${ePstr}', 'required', this.checked)" style="width: auto; margin: 0;" />
-              <span>Required Field</span>
-            </label>
-            
-            <!-- Actions -->
-            <div style="display: flex; gap: 0.35rem; align-items: center;">
-              <button type="button" class="btn btn-outline btn-sm" style="height: 28px; padding: 0 0.5rem; font-size: 0.75rem;" onclick="toggleAdvSettings('${pathId}')" title="Configure Validation & Visibility">
-                ⚙️ Settings
-              </button>
-              <button type="button" class="btn btn-outline btn-sm" style="height: 28px; padding: 0 0.5rem; font-size: 0.75rem;" onclick="duplicateFieldAtPath('${ePpstr}', ${idx})" title="Duplicate field">
-                Duplicate
-              </button>
-              <button type="button" class="btn btn-sm btn-outline" style="height: 28px; width: 28px; min-width: unset; padding: 0; display: flex; align-items: center; justify-content: center; color: var(--color-error); border-color: rgba(239, 68, 68, 0.2);" onclick="removeFieldAtPath('${ePpstr}', ${idx})" title="Delete field">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Inputs Grid -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;">
-          <div class="form-group" style="margin: 0;">
-            <label style="font-size: 0.75rem; font-weight: 600;">Display Label</label>
-            <input type="text" value="${escHtml(field.label)}" placeholder="e.g. Section Title" oninput="handleFieldLabelInput('${pathId}', '${ePstr}', this.value)" />
-          </div>
-          <div class="form-group" style="margin: 0;">
-            <label style="font-size: 0.75rem; font-weight: 600;">Field Name / Key <span class="req" style="color: var(--color-error);">*</span></label>
-            <input type="text" class="code-font" id="field-name-${pathId}" style="font-family: monospace; font-size: 0.85rem;" value="${escHtml(field.name)}" placeholder="e.g. title_text" oninput="handleFieldNameInput('${pathId}', '${ePstr}', this.value)" />
-          </div>
-          <div class="form-group" style="position: relative; margin: 0;">
-            <label style="font-size: 0.75rem; font-weight: 600;">Field Type</label>
-            <div class="custom-select-searchable" id="type-select-wrap-${pathId}" data-path="${escHtml(pathStr)}">
-              <button type="button" class="btn btn-outline type-picker-btn" onclick="toggleTypePicker('${pathId}')" style="width: 100%; text-align: left; justify-content: space-between; font-weight: normal;">
-                <span style="font-weight: 600; color: var(--primary);">${field.type || 'text'}</span>
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-              </button>
-              <div class="type-picker-dropdown" id="type-picker-${pathId}" style="display: none; position: absolute; left: 0; right: 0; top: 105%; z-index: 2000; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.5rem; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
-                <input type="text" class="type-picker-search-input" placeholder="Search type..." oninput="filterTypeOptions('${pathId}', '${ePstr}', this.value)" style="margin-bottom: 0.5rem; padding: 0.35rem 0.5rem; font-size: 0.8rem; width: 100%; height: auto;" />
-                <div class="type-picker-options" style="max-height: 160px; overflow-y: auto; font-size: 0.8rem;">
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        ${needsOptions ? `
-          <div class="form-group" style="margin-top:0.25rem;">
-            <label style="font-size:0.75rem;">Select Options (comma-separated list, or format: val:Label)</label>
-            <input type="text" value="${escHtml((field.options || []).map(o => typeof o === 'object' ? `${o.value}:${o.label}` : String(o)).join(', '))}" placeholder="e.g. left, center, right OR active:Active State, inactive:Inactive State" oninput="updateFieldOptions('${ePstr}', this.value)" />
-          </div>
-        ` : ''}
-
-        <div class="advanced-settings-panel" id="adv-settings-${pathId}" style="display:none; margin-top:0.4rem; background:rgba(0,0,0,0.15); border:1px solid var(--border-color); padding:0.85rem; border-radius:6px; grid-template-columns:1fr 1fr; gap:0.65rem;">
-          <div class="form-group">
-            <label style="font-size:0.7rem;">Placeholder text</label>
-            <input type="text" value="${escHtml(field.placeholder)}" oninput="updateFieldAtPath('${ePstr}', 'placeholder', this.value)" />
-          </div>
-          <div class="form-group">
-            <label style="font-size:0.7rem;">Help Text / description</label>
-            <input type="text" value="${escHtml(field.helpText)}" oninput="updateFieldAtPath('${ePstr}', 'helpText', this.value)" />
-          </div>
-          <div class="form-group">
-            <label style="font-size:0.7rem;">Default Value</label>
-            <input type="text" value="${escHtml(typeof field.default === 'object' ? JSON.stringify(field.default) : String(field.default ?? ''))}" oninput="updateFieldAtPath('${ePstr}', 'default', this.value)" />
-          </div>
-          <div class="form-group">
-            <label style="font-size:0.7rem;">Validation RegEx regex</label>
-            <input type="text" value="${escHtml(field.validation?.regex)}" placeholder="e.g. ^[A-Za-z]+$" oninput="updateValidationAtPath('${ePstr}', 'regex', this.value)" />
-          </div>
-          <div class="form-group">
-            <label style="font-size:0.7rem;">Min Value / Min Length</label>
-            <input type="number" value="${field.validation?.min !== undefined ? field.validation.min : (field.validation?.minLength !== undefined ? field.validation.minLength : '')}" placeholder="e.g. 3" oninput="updateValidationAtPath('${ePstr}', 'min', this.value)" />
-          </div>
-          <div class="form-group">
-            <label style="font-size:0.7rem;">Max Value / Max Length</label>
-            <input type="number" value="${field.validation?.max !== undefined ? field.validation.max : (field.validation?.maxLength !== undefined ? field.validation.maxLength : '')}" placeholder="e.g. 100" oninput="updateValidationAtPath('${ePstr}', 'max', this.value)" />
-          </div>
-          <div class="form-group" style="grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; border-top:1px solid var(--border-color); padding-top:0.5rem;">
-            <div>
-              <label style="font-size:0.7rem; color:var(--text-dim);">Show If Field (Dependency)</label>
-              <input type="text" value="${escHtml(field.showIf?.field)}" placeholder="e.g. enable_cta" oninput="updateShowHideAtPath('${ePstr}', 'showIf', 'field', this.value)" />
-            </div>
-            <div>
-              <label style="font-size:0.7rem; color:var(--text-dim);">Show If Equals Value</label>
-              <input type="text" value="${escHtml(field.showIf?.value !== undefined ? String(field.showIf.value) : '')}" placeholder="e.g. true" oninput="updateShowHideAtPath('${ePstr}', 'showIf', 'value', this.value)" />
-            </div>
-          </div>
-          <div class="form-group" style="grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
-            <div>
-              <label style="font-size:0.7rem; color:var(--text-dim);">Hide If Field (Dependency)</label>
-              <input type="text" value="${escHtml(field.hideIf?.field)}" placeholder="e.g. hide_image" oninput="updateShowHideAtPath('${ePstr}', 'hideIf', 'field', this.value)" />
-            </div>
-            <div>
-              <label style="font-size:0.7rem; color:var(--text-dim);">Hide If Equals Value</label>
-              <input type="text" value="${escHtml(field.hideIf?.value !== undefined ? String(field.hideIf.value) : '')}" placeholder="e.g. true" oninput="updateShowHideAtPath('${ePstr}', 'hideIf', 'value', this.value)" />
-            </div>
-          </div>
-        </div>
-
-        ${hasSubfields ? `
-          <div style="background:rgba(99,102,241,0.03); border:1px dashed rgba(99,102,241,0.25); border-radius:6px; padding:0.85rem; margin-top:0.4rem;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-              <span style="font-size:0.7rem; font-weight:600; color:var(--text-muted); text-transform:uppercase;">Sub-fields (${field.type})</span>
-              <button type="button" class="btn btn-outline btn-sm" onclick="addFieldAtPath('${eSubPath}')">+ Add Sub-field</button>
-            </div>
-            <div id="subfields-container-${pathId}">
-            </div>
-          </div>
-        ` : ''}
-      `;
-      containerEl.appendChild(row);
-
-      if (hasSubfields) {
-        const subfieldsContainer = document.getElementById(`subfields-container-${pathId}`);
-        if (subfieldsContainer) {
-          if (!field.repeaterFields) field.repeaterFields = [];
-          renderFieldsList(field.repeaterFields, subfieldsContainer, [...currentPath, 'repeaterFields']);
-        }
+    nameInput?.addEventListener('input', () => {
+      if (!editMode && !keyInputManuallyEdited) {
+        const gen = nameInput.value.trim().toLowerCase()
+          .replace(/[^a-z0-9_]+/g, '_').replace(/__+/g, '_').replace(/(^_|_$)/g, '');
+        if (keyInput) keyInput.value = gen;
       }
     });
-  }
+    keyInput?.addEventListener('input', () => { keyInputManuallyEdited = true; });
 
-  function escHtml(str) {
-    return String(str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  }
-
-  async function saveDef() {
-    const key = document.getElementById('def-key').value.trim();
-    const name = document.getElementById('def-name').value.trim();
-    const category = document.getElementById('def-category').value;
-    const componentPath = normalizeComponentPath(document.getElementById('def-component').value.trim());
-    const previewImage = document.getElementById('def-preview').value.trim();
-    const description = document.getElementById('def-description').value.trim();
-
-    document.getElementById('def-key-err').textContent = '';
-
-    if (!name) { showToast('Display Name is required', true); return; }
-    if (!editMode && !key) { document.getElementById('def-key-err').textContent = 'Key is required.'; return; }
-    if (!editMode && !/^[a-z0-9_]+$/.test(key)) {
-      document.getElementById('def-key-err').textContent = 'Only lowercase letters, numbers, underscores.';
-      return;
+    // Handle ?edit= query param
+    const editKey = new URLSearchParams(window.location.search).get('edit');
+    if (editKey) {
+      const def = allDefs.find(d => d.key === editKey);
+      if (def) openModal(true, def);
     }
 
-    // Clean up temporary property _nameManuallyEdited before posting
-    const cleanFields = JSON.parse(JSON.stringify(fieldsData));
-    function removeTempProperties(fields) {
-      fields.forEach(f => {
-        delete f._nameManuallyEdited;
-        if (Array.isArray(f.repeaterFields)) {
-          removeTempProperties(f.repeaterFields);
-        }
-      });
-    }
-    removeTempProperties(cleanFields);
+    // Media picker
+    document.getElementById('btn-pick-preview')?.addEventListener('click', openMediaPicker);
+    document.getElementById('close-media-modal-btn')?.addEventListener('click', closeMediaPicker);
+  });
 
-    const payload = {
-      key: editMode ? editingKey : key,
-      name, category, componentPath, previewImage, description,
-      fields: cleanFields
-    };
+  // ── Media picker ─────────────────────────────────────────────────────────────
 
+  async function openMediaPicker() {
+    document.getElementById('media-modal').classList.add('open');
+    const gridEl = document.getElementById('media-grid');
+    gridEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-muted);">Loading...</div>';
     try {
-      const method = editMode ? 'PUT' : 'POST';
-      const res = await fetch('/api/section-definitions-crud', {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      const res = await fetch('/api/media-crud', { credentials: 'include' });
       const data = await res.json();
-      if (data.success) {
-        showToast(editMode ? 'Definition updated!' : 'Definition created!');
-        closeModal();
-        setTimeout(() => window.location.reload(), 700);
-      } else {
-        showToast('Error: ' + data.error, true);
-        if (data.error?.includes('key')) {
-          document.getElementById('def-key-err').textContent = data.error;
-        }
+      const images = (data.media || data.items || []).filter(item => ['image','svg'].includes(item.type));
+      if (!images.length) {
+        gridEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-muted);">No images found.</div>';
+        return;
       }
-    } catch (e) {
-      showToast('Network error', true);
+      gridEl.innerHTML = images.map(img =>
+        `<div class="media-item" onclick="selectMedia('${img.url}')"><img src="${img.url}" alt="${img.title||''}" loading="lazy" /></div>`
+      ).join('');
+    } catch {
+      gridEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--color-error);">Failed to load.</div>';
     }
   }
+
+  function closeMediaPicker() { document.getElementById('media-modal').classList.remove('open'); }
+
+  window.selectMedia = function(url) {
+    const input = document.getElementById('def-preview');
+    if (input) input.value = url;
+    closeMediaPicker();
+  };
 
   function showToast(msg, isError = false) {
     const t = document.getElementById('toast-notify');
@@ -1309,75 +693,4 @@ import "../../styles/admin/css/section-defination.css";
     t.classList.add('visible');
     setTimeout(() => t.classList.remove('visible'), 3000);
   }
-
-  window.openMediaPicker = async function() {
-    document.getElementById('media-modal').classList.add('open');
-    const gridEl = document.getElementById('media-grid');
-    gridEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-muted);">Loading...</div>';
-    try {
-      const res = await fetch('/api/media-crud', { credentials: 'include' });
-      const data = await res.json();
-      const images = (data.media || data.items || []).filter(item => ['image', 'svg'].includes(item.type));
-      if (!images.length) {
-        gridEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-muted);">No images in media library. Upload some first.</div>';
-        return;
-      }
-      gridEl.innerHTML = images.map(img =>
-        `<div class="media-item" onclick="window.selectMedia('${img.url}')">
-          <img src="${img.url}" alt="${img.title || ''}" loading="lazy" />
-        </div>`
-      ).join('');
-    } catch {
-      gridEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--color-error);">Failed to load media library</div>';
-    }
-  };
-
-  window.closeMediaPicker = function() {
-    document.getElementById('media-modal').classList.remove('open');
-  };
-
-  window.selectMedia = function(url) {
-    const input = document.getElementById('def-preview');
-    if (input) {
-      input.value = url;
-    }
-    closeMediaPicker();
-  };
-
-  window.addEventListener('DOMContentLoaded', () => {
-    const params = new URLSearchParams(window.location.search);
-    const editKey = params.get('edit');
-    if (editKey) {
-      const def = allDefs.find(d => d.key === editKey);
-      if (def) {
-        openModal(true, def);
-      }
-    }
-
-    // Bind event listeners for the media picker
-    document.getElementById('btn-pick-preview')?.addEventListener('click', window.openMediaPicker);
-    document.getElementById('close-media-modal-btn')?.addEventListener('click', window.closeMediaPicker);
-
-    // Auto-generate Definition Key from Display Name
-    const nameInput = document.getElementById('def-name');
-    const keyInput = document.getElementById('def-key');
-
-    nameInput?.addEventListener('input', () => {
-      if (!editMode && !keyInputManuallyEdited) {
-        const generated = nameInput.value
-          .trim()
-          .toLowerCase()
-          .replace(/[^a-z0-9_]+/g, '_')
-          .replace(/__+/g, '_')
-          .replace(/(^_|_$)/g, '');
-        if (keyInput) {
-          keyInput.value = generated;
-        }
-      }
-    });
-
-    keyInput?.addEventListener('input', () => {
-      keyInputManuallyEdited = true;
-    });
-  });
 </script>

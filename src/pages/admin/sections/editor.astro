@@ -23,13 +23,22 @@ try {
 
 // 1. Load section definitions registry
 const definitionsPath = path.resolve("src/data/section-definitions.json");
+const schemasPath = path.resolve("src/data/field-schemas.json");
 let allDefinitions: any[] = [];
+let allFieldSchemas: any[] = [];
 try {
   if (fs.existsSync(definitionsPath)) {
     allDefinitions = JSON.parse(fs.readFileSync(definitionsPath, "utf-8"));
   }
 } catch (e) {
   console.error("Failed to load section definitions:", e);
+}
+try {
+  if (fs.existsSync(schemasPath)) {
+    allFieldSchemas = JSON.parse(fs.readFileSync(schemasPath, "utf-8"));
+  }
+} catch (e) {
+  console.error("Failed to load field schemas:", e);
 }
 
 // 2. Fetch section instance data
@@ -48,8 +57,17 @@ if (fs.existsSync(filePath)) {
   if (parts.length >= 3) {
     try {
       sectionData = parse(parts[1]);
-      // Resolve schema from dynamic definitions registry (not BLOCK_REGISTRY)
-      blockConfig = allDefinitions.find((d: any) => d.key === sectionData.type) || null;
+      // Resolve definition, then hydrate fields from its schema_ref
+      const rawDef = allDefinitions.find((d: any) => d.key === sectionData.type) || null;
+      if (rawDef) {
+        const schema = rawDef.schema_ref
+          ? allFieldSchemas.find((s: any) => s.schema_key === rawDef.schema_ref)
+          : null;
+        // Merge fields into blockConfig so client-side renderSubFieldsHTML works unchanged
+        blockConfig = { ...rawDef, fields: schema?.fields || [] };
+      } else {
+        blockConfig = null;
+      }
     } catch (e) {
       console.error("YAML Parse error in section editor:", e);
     }
