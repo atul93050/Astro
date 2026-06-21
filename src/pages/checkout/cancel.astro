@@ -1,0 +1,36 @@
+---
+import MainLayout from '../../layouts/MainLayout.astro';
+
+export const prerender = false;
+
+const orderId = Astro.url.searchParams.get("order_id") || "";
+---
+<MainLayout title="Checkout Cancelled">
+
+  <div style="max-width:600px; margin:5rem auto; padding:2rem; background:#111827; border:1px solid #1F2937; border-radius:12px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+    <div style="width:64px; height:64px; border-radius:50%; background:rgba(239,68,68,0.1); color:#ef4444; display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem; border:2px solid rgba(239,68,68,0.25);">
+      <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </div>
+    <h2 style="font-size:1.8rem; font-weight:800; color:#fff; margin-bottom:0.75rem;">Payment Cancelled</h2>
+    <p style="color:#9CA3AF; font-size:1.0rem; line-height:1.5; margin-bottom:1.5rem;">
+      Your payment process was cancelled or was not completed. You have not been charged.
+    </p>
+
+    {orderId && (
+      <div style="background:#1F2937; border-radius:8px; padding:0.85rem 1.25rem; display:inline-block; margin-bottom:2rem; border:1px solid #374151;">
+        <span style="font-size:0.8rem; color:#9CA3AF; display:block; margin-bottom:2px;">Order Reference ID</span>
+        <strong style="color:#fff; font-family:monospace; font-size:1.0rem; letter-spacing:0.02em;">{orderId}</strong>
+      </div>
+    )}
+
+    <div style="display:flex; justify-content:center; gap:1rem;">
+      <a href="/" style="background:transparent; border:1px solid #374151; color:#9CA3AF; padding:0.65rem 1.5rem; border-radius:6px; font-weight:600; text-decoration:none; display:inline-block; transition:all 0.2s;">
+        Go to Home
+      </a>
+      <a href="/cart" style="background:#6366F1; color:#fff; padding:0.65rem 1.5rem; border-radius:6px; font-weight:600; text-decoration:none; display:inline-block; transition:all 0.2s;">
+        Back to Cart
+      </a>
+    </div>
+  </div>
+
+</MainLayout>

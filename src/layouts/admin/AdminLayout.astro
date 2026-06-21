@@ -1310,6 +1310,32 @@ if (session !== "authenticated-admin-session-2026") {
           </div>
         </div>
 
+        <!-- Shop Navigation Group -->
+        <div class="nav-group" id="nav-group-shop">
+          <button type="button" class="nav-group-header" id="btn-group-shop">
+            <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+            <span>Shop</span>
+            <svg class="chevron-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="nav-group-items" id="items-group-shop">
+            <a href="/admin/products" class="nav-sub-item" id="nav-shop-products">
+              <span>All Products</span>
+            </a>
+            <a href="/admin/products/create" class="nav-sub-item" id="nav-shop-create">
+              <span>Create Product</span>
+            </a>
+            <a href="/admin/products/categories" class="nav-sub-item" id="nav-shop-categories">
+              <span>Categories</span>
+            </a>
+            <a href="/admin/products/tags" class="nav-sub-item" id="nav-shop-tags">
+              <span>Tags</span>
+            </a>
+            <a href="/admin/orders" class="nav-sub-item" id="nav-shop-orders">
+              <span>Orders</span>
+            </a>
+          </div>
+        </div>
+
         <a href="/admin/sections" class="nav-item" id="nav-sections">
           <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
           <span>Sections</span>
@@ -1505,6 +1531,18 @@ if (session !== "authenticated-admin-session-2026") {
         activeId = "nav-blog-settings";
       } else if (pathName.includes("/admin/blog/edit")) {
         activeId = "nav-blog-posts";
+      } else if (pathName.includes("/admin/products/create")) {
+        activeId = "nav-shop-create";
+      } else if (pathName.includes("/admin/products/categories")) {
+        activeId = "nav-shop-categories";
+      } else if (pathName.includes("/admin/products/tags")) {
+        activeId = "nav-shop-tags";
+      } else if (pathName.includes("/admin/products/edit")) {
+        activeId = "nav-shop-products";
+      } else if (pathName.includes("/admin/products")) {
+        activeId = "nav-shop-products";
+      } else if (pathName.includes("/admin/orders")) {
+        activeId = "nav-shop-orders";
       }
       
       const activeLink = document.getElementById(activeId);
@@ -1600,6 +1638,19 @@ if (session !== "authenticated-admin-session-2026") {
             menusGroup.classList.toggle("open");
           });
           menusGroupBtn.dataset.hasListener = "true";
+        }
+      }
+
+      // Nav Group Toggle Handler for Shop
+      const shopGroupBtn = document.getElementById("btn-group-shop");
+      const shopGroup = document.getElementById("nav-group-shop");
+      if (shopGroupBtn && shopGroup) {
+        if (!shopGroupBtn.dataset.hasListener) {
+          shopGroupBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            shopGroup.classList.toggle("open");
+          });
+          shopGroupBtn.dataset.hasListener = "true";
         }
       }
     }

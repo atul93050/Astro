@@ -1,0 +1,670 @@
+---
+import AdminLayout from '../../../layouts/admin/AdminLayout.astro';
+import fs from 'node:fs';
+import path from 'node:path';
+import { parse } from 'yaml';
+
+export const prerender = false;
+
+const slug = Astro.url.searchParams.get("slug") || "";
+const filePath = path.resolve(`src/content/products/${slug}.md`);
+
+if (!slug || !fs.existsSync(filePath)) {
+  return Astro.redirect("/admin/products");
+}
+
+const fileContent = fs.readFileSync(filePath, "utf-8");
+const parts = fileContent.split(/^---$/m);
+const product = parse(parts[1]) || {};
+const body = parts.slice(2).join("---").trim();
+---
+<AdminLayout title={`Edit: ${product.name || 'Product'}`}>
+  <link rel="stylesheet" href="/vendor/quill/quill.snow.css" />
+
+  <div class="product-editor-layout">
+    <!-- Left Column: Product Info & Variants -->
+    <div class="editor-main">
+      <input type="text" id="prod-name" class="title-input" placeholder="Product Name *" required value={product.name} autocomplete="off" />
+      <span class="field-error" id="name-error"></span>
+
+      <!-- Slug row -->
+      <div style="display:flex; align-items:center; gap:0.5rem; margin-top:-0.5rem;">
+        <span style="font-size:0.8rem; color:var(--text-dim);">Slug: /products/</span>
+        <input type="text" id="prod-slug" placeholder="product-slug" value={product.slug} style="background:transparent; border:none; border-bottom:1px solid var(--border-color); color:var(--text-muted); font-size:0.8rem; outline:none; font-family:monospace; padding:2px;" disabled autocomplete="off" />
+        <span style="font-size:0.75rem; color:var(--text-dim);">(Slug cannot be changed after creation)</span>
+      </div>
+
+      <!-- Richtext Description -->
+      <div style="margin-top:1rem;">
+        <label class="form-label">Description</label>
+        <div class="quill-wrapper">
+          <div id="editor-container"></div>
+        </div>
+      </div>
+
+      <!-- Images Gallery -->
+      <div class="form-card" style="background:var(--bg-surface-solid); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1.25rem; margin-top:1.5rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+          <h4 style="margin:0; font-size:0.9rem; color:var(--text-main); font-weight:700;">Product Image Gallery</h4>
+          <button type="button" class="btn btn-outline btn-sm" id="btn-add-image">+ Add Image</button>
+        </div>
+        <div id="gallery-container" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:0.75rem;">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- Price & Stock / Variants Section -->
+      <div class="form-card" style="background:var(--bg-surface-solid); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1.25rem; margin-top:1.5rem; margin-bottom:6rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:0.75rem; margin-bottom:1rem;">
+          <h4 style="margin:0; font-size:0.9rem; color:var(--text-main); font-weight:700;">Pricing, Stock & Variants</h4>
+          <label class="checkbox-label" style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer; font-size:0.8rem; font-weight:600; color:var(--text-muted);">
+            <input type="checkbox" id="toggle-variants" checked={product.variants && product.variants.length > 0} />
+            <span>This product has variants (e.g. Size, Color)</span>
+          </label>
+        </div>
+
+        <!-- Standard Mode (No variants) -->
+        <div id="standard-pricing-section" style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+          <div class="field-group">
+            <label class="form-label">Base Price (INR) *</label>
+            <input type="number" id="base-price" class="form-input" placeholder="e.g. 2999" value={product.basePrice || 0} />
+          </div>
+          <div class="field-group">
+            <label class="form-label">Main Stock Quantity *</label>
+            <input type="number" id="main-stock" class="form-input" placeholder="e.g. 100" value={product.stock || 0} />
+          </div>
+        </div>
+
+        <!-- Variants Mode -->
+        <div id="variants-section" style="display:none;">
+          <!-- Attribute Types list -->
+          <div style="background:rgba(255,255,255,0.02); border:1px dashed var(--border-color); border-radius:var(--radius-sm); padding:0.75rem 1rem; margin-bottom:1.25rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+              <span style="font-size:0.8rem; font-weight:600; color:var(--text-muted);">Attribute Fields (e.g. size, color)</span>
+              <button type="button" class="btn btn-outline btn-sm" id="btn-add-attr-type" style="padding:0.15rem 0.4rem; font-size:0.75rem;">+ Add Attribute</button>
+            </div>
+            <div id="attr-types-container" style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- Variants Repeater Table -->
+          <div class="admin-table-wrapper" style="border:1px solid var(--border-color); border-radius:var(--radius-sm); overflow:hidden; margin-bottom:1rem;">
+            <table class="admin-table" style="width:100%; border-collapse:collapse; font-size:0.85rem;" id="variants-table">
+              <thead>
+                <tr style="background:rgba(255,255,255,0.01); border-bottom:1px solid var(--border-color);">
+                  <th id="var-attrs-header" style="padding:0.5rem 0.75rem; text-align:left; color:var(--text-muted); font-weight:600;">Attributes</th>
+                  <th style="padding:0.5rem 0.75rem; text-align:left; color:var(--text-muted); font-weight:600; width:130px;">SKU *</th>
+                  <th style="padding:0.5rem 0.75rem; text-align:left; color:var(--text-muted); font-weight:600; width:100px;">Price (INR) *</th>
+                  <th style="padding:0.5rem 0.75rem; text-align:left; color:var(--text-muted); font-weight:600; width:110px;">Compare Price</th>
+                  <th style="padding:0.5rem 0.75rem; text-align:left; color:var(--text-muted); font-weight:600; width:80px;">Stock *</th>
+                  <th style="padding:0.5rem 0.75rem; text-align:right; color:var(--text-muted); font-weight:600; width:50px;"></th>
+                </tr>
+              </thead>
+              <tbody id="variants-tbody">
+                <!-- Rows rendered via JS -->
+              </tbody>
+            </table>
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" id="btn-add-variant-row">+ Add Variant</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Sidebar: Controls, Category, Tags, SEO -->
+    <div class="editor-sidebar">
+      <!-- Publish Actions Card -->
+      <div class="sidebar-card">
+        <div class="sidebar-card-header">Publish</div>
+        <div class="sidebar-card-body" style="display:flex; flex-direction:column; gap:0.75rem;">
+          <div class="status-row" style="display:flex; gap:0.4rem;">
+            <button type="button" class="status-btn" id="btn-status-draft" style="flex:1;">Draft</button>
+            <button type="button" class="status-btn" id="btn-status-published" style="flex:1;">Publish</button>
+          </div>
+          <button class="btn btn-primary" id="btn-save-product" style="width:100%; margin-top:0.25rem;">Update Product</button>
+        </div>
+      </div>
+
+      <!-- Categories Card -->
+      <div class="sidebar-card">
+        <div class="sidebar-card-header">Category</div>
+        <div class="sidebar-card-body">
+          <select class="form-select" id="prod-category" data-selected={product.category}>
+            <option value="">Loading categories...</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Tags Card -->
+      <div class="sidebar-card">
+        <div class="sidebar-card-header">Tags</div>
+        <div class="sidebar-card-body">
+          <div class="tags-container" id="tags-container" onclick="document.getElementById('tag-input').focus()">
+            <input type="text" class="tag-input" id="tag-input" placeholder="Add tag, press Enter..." />
+          </div>
+          <div id="tag-suggestions" style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-top:0.25rem;"></div>
+        </div>
+      </div>
+
+      <!-- Low Stock Card -->
+      <div class="sidebar-card">
+        <div class="sidebar-card-header">Stock Threshold</div>
+        <div class="sidebar-card-body">
+          <label class="form-label">Low Stock Threshold</label>
+          <input type="number" id="low-stock-threshold" class="form-input" value={product.lowStockThreshold || 5} />
+          <span style="font-size:0.7rem; color:var(--text-dim);">Triggers a "Low Stock" warning badge in list view if stock falls below this quantity.</span>
+        </div>
+      </div>
+
+      <!-- SEO Accordion -->
+      <div class="sidebar-card">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          SEO Meta Settings
+          <svg class="accordion-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="accordion-body" id="seo-body" style="display:none; padding:1rem; flex-direction:column; gap:0.75rem; border-top:1px solid var(--border-color);">
+          <div>
+            <label class="form-label">Meta Title</label>
+            <input type="text" class="form-input" id="seo-meta-title" value={product.seo?.metaTitle || ''} placeholder="SEO title..." />
+          </div>
+          <div>
+            <label class="form-label">Meta Description</label>
+            <textarea class="form-textarea" id="seo-meta-desc" placeholder="SEO description..." rows="3">{product.seo?.metaDescription || ''}</textarea>
+          </div>
+          <div>
+            <label class="form-label">Focus Keyword</label>
+            <input type="text" class="form-input" id="seo-focus-kw" value={product.seo?.focusKeyword || ''} placeholder="primary keyword" />
+          </div>
+          <div>
+            <label class="form-label">Canonical URL</label>
+            <input type="text" class="form-input" id="seo-canonical" value={product.seo?.canonicalUrl || ''} placeholder="https://..." />
+          </div>
+          <div>
+            <label class="form-label">Robots Directive</label>
+            <select class="form-select" id="seo-robots" data-selected={product.seo?.robots || 'index, follow'}>
+              <option value="index, follow">index, follow</option>
+              <option value="noindex, nofollow">noindex, nofollow</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-notification" id="toast"><div class="toast-content"><span id="toast-msg"></span></div></div>
+
+  <!-- Pass raw initial states to script via data vars -->
+  <div id="product-meta-data" 
+       data-status={product.status || 'draft'}
+       data-tags={JSON.stringify(product.tags || [])}
+       data-images={JSON.stringify(product.images || [])}
+       data-variants={JSON.stringify(product.variants || [])}
+       data-body={body}
+       style="display:none;"></div>
+
+</AdminLayout>
+
+<style is:global>
+  .product-editor-layout { display: grid; grid-template-columns: 1fr 300px; gap: 1.5rem; align-items: start; }
+  @media (max-width: 1000px) { .product-editor-layout { grid-template-columns: 1fr; } }
+  .editor-main { display: flex; flex-direction: column; gap: 1.25rem; }
+  .title-input { width: 100%; font-size: 1.8rem; font-weight: 700; font-family: var(--font-heading); background: transparent; border: none; border-bottom: 2px solid var(--border-color); color: var(--text-main); padding: 0.5rem 0; outline: none; transition: var(--transition); }
+  .title-input:focus { border-bottom-color: var(--primary); }
+  .quill-wrapper { background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden; }
+  .quill-wrapper .ql-toolbar { background: rgba(255,255,255,0.02); border-color: var(--border-color) !important; border-bottom: 1px solid var(--border-color); }
+  .quill-wrapper .ql-container { border: none !important; min-height: 350px; font-family: var(--font-body); font-size: 0.95rem; }
+  .quill-wrapper .ql-editor { color: var(--text-main); }
+  .form-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.3rem; display: block; }
+  .form-input, .form-select, .form-textarea { width: 100%; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: var(--radius-sm); color: var(--text-main); padding: 0.55rem 0.85rem; font-size: 0.85rem; font-family: var(--font-body); outline: none; transition: var(--transition); box-sizing: border-box; }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+  .form-textarea { resize: vertical; }
+  .form-select option { background: var(--bg-surface-solid); color: var(--text-main); }
+  .sidebar-card { background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden; margin-bottom: 1rem; }
+  .sidebar-card-header { padding: 0.85rem 1.1rem; border-bottom: 1px solid var(--border-color); font-weight: 600; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; justify-content: space-between; }
+  .sidebar-card-body { padding: 1rem 1.1rem; }
+  .status-btn { background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); color: var(--text-muted); padding: 0.45rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: var(--transition); }
+  .status-btn.active-draft { background: rgba(156,163,175,0.12); border-color:#9ca3af; color:#fff; }
+  .status-btn.active-published { background: var(--primary); border-color:var(--primary); color:#fff; }
+  .accordion-header { padding: 0.85rem 1.1rem; font-weight:600; font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; display:flex; align-items:center; justify-content:space-between; cursor:pointer; }
+  .accordion-chevron { transition: var(--transition); }
+  .tags-container { display:flex; flex-wrap:wrap; gap:0.4rem; background:var(--input-bg); border:1px solid var(--input-border); border-radius:var(--radius-sm); padding:0.4rem 0.6rem; min-height:36px; cursor:text; }
+  .tag-input { border:none !important; background:transparent !important; color:var(--text-main) !important; outline:none !important; padding:0 !important; font-size:0.82rem; flex:1; min-width:60px; }
+  .tag-pill { display:inline-flex; align-items:center; gap:0.35rem; background:rgba(99,102,241,0.1); color:var(--primary); font-size:0.78rem; font-weight:600; padding:0.15rem 0.45rem; border-radius:4px; border:1px solid rgba(99,102,241,0.2); }
+  .tag-pill .remove-tag { cursor:pointer; font-size:0.65rem; color:var(--text-dim); transition:var(--transition); }
+  .tag-pill .remove-tag:hover { color:var(--color-error); }
+</style>
+
+<script>
+  let quillEditor: any = null;
+  let currentStatus = 'draft';
+  let currentTags: string[] = [];
+  let availableTags: any[] = [];
+  
+  // Gallery images list
+  let galleryImages: string[] = [];
+
+  // Variants state
+  let hasVariants = false;
+  let attributeTypes: string[] = []; 
+  let variants: any[] = [];
+
+  function showToast(msg: string) {
+    const t = document.getElementById('toast');
+    const m = document.getElementById('toast-msg');
+    if (t && m) { m.textContent = msg; t.classList.add('active'); setTimeout(() => t.classList.remove('active'), 3000); }
+  }
+
+  function initQuill() {
+    const el = document.getElementById('editor-container');
+    if (!el || (window as any).quillEditor) return;
+
+    quillEditor = new (window as any).Quill('#editor-container', {
+      modules: {
+        toolbar: [
+          [{ 'header': [1, 2, 3, false] }],
+          ['bold', 'italic', 'underline', 'strike'],
+          ['link', 'blockquote', 'code-block'],
+          [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+          ['clean']
+        ]
+      },
+      placeholder: 'Enter detailed product description...',
+      theme: 'snow'
+    });
+    
+    // Set initial content
+    const metaDataEl = document.getElementById('product-meta-data');
+    if (metaDataEl && metaDataEl.dataset.body) {
+      quillEditor.root.innerHTML = metaDataEl.dataset.body;
+    }
+    
+    (window as any).quillEditor = quillEditor;
+  }
+
+  function setStatus(status: string) {
+    currentStatus = status;
+    const draftBtn = document.getElementById('btn-status-draft');
+    const publishBtn = document.getElementById('btn-status-published');
+    if (draftBtn && publishBtn) {
+      draftBtn.className = 'status-btn';
+      publishBtn.className = 'status-btn';
+      if (status === 'draft') draftBtn.classList.add('active-draft');
+      else publishBtn.classList.add('active-published');
+    }
+  }
+
+  // Accordion toggle
+  (window as any).toggleAccordion = function(header: HTMLElement) {
+    const body = header.nextElementSibling as HTMLElement;
+    const chevron = header.querySelector('.accordion-chevron') as HTMLElement;
+    if (body.style.display === 'none') {
+      body.style.display = 'flex';
+      chevron.style.transform = 'rotate(180deg)';
+    } else {
+      body.style.display = 'none';
+      chevron.style.transform = '';
+    }
+  };
+
+  // ── Categories & Tags Suggestions ──────────────────────────────────────────
+  async function loadCategories() {
+    try {
+      const res = await fetch('/api/products-crud?action=categories');
+      const data = await res.json();
+      const sel = document.getElementById('prod-category') as HTMLSelectElement;
+      if (sel) {
+        const selected = sel.dataset.selected || '';
+        sel.innerHTML = (data.categories || []).map((c: any) =>
+          `<option value="${c.slug}" ${c.slug === selected ? 'selected' : ''}>${c.name}</option>`
+        ).join('');
+      }
+    } catch {}
+  }
+
+  async function loadTags() {
+    try {
+      const res = await fetch('/api/products-crud?action=tags');
+      const data = await res.json();
+      availableTags = data.tags || [];
+      const sug = document.getElementById('tag-suggestions');
+      if (sug) {
+        sug.innerHTML = availableTags.map(t =>
+          `<span style="background:rgba(99,102,241,0.06); color:var(--primary); border:1px solid rgba(99,102,241,0.15); padding:0.15rem 0.45rem; border-radius:4px; font-size:0.75rem; cursor:pointer;" onclick="addTag('${t.slug}')">${t.name}</span>`
+        ).join('');
+      }
+      renderTags();
+    } catch {}
+  }
+
+  (window as any).addTag = function(slug: string) {
+    if (currentTags.includes(slug)) return;
+    currentTags.push(slug);
+    renderTags();
+  };
+
+  (window as any).removeTag = function(slug: string) {
+    currentTags = currentTags.filter(t => t !== slug);
+    renderTags();
+  };
+
+  function renderTags() {
+    const container = document.getElementById('tags-container');
+    const input = document.getElementById('tag-input');
+    if (!container || !input) return;
+    container.querySelectorAll('.tag-pill').forEach(pill => pill.remove());
+    currentTags.forEach(slug => {
+      const name = availableTags.find(t => t.slug === slug)?.name || slug;
+      const pill = document.createElement('span');
+      pill.className = 'tag-pill';
+      pill.innerHTML = `${name}<span class="remove-tag" onclick="removeTag('${slug}')">✕</span>`;
+      container.insertBefore(pill, input);
+    });
+  }
+
+  // ── Gallery Images ─────────────────────────────────────────────────────────
+  function addGalleryImage(url: string) {
+    if (galleryImages.includes(url)) return;
+    galleryImages.push(url);
+    renderGallery();
+  }
+
+  (window as any).removeGalleryImage = function(idx: number) {
+    galleryImages.splice(idx, 1);
+    renderGallery();
+  };
+
+  function renderGallery() {
+    const container = document.getElementById('gallery-container');
+    if (!container) return;
+    container.innerHTML = galleryImages.map((img, idx) => `
+      <div style="position:relative; width:110px; height:110px; border-radius:8px; border:1px solid var(--border-color); overflow:hidden;">
+        <img src="${img}" style="width:100%; height:100%; object-fit:cover;" />
+        <button type="button" onclick="removeGalleryImage(${idx})" style="position:absolute; top:4px; right:4px; background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:50%; width:20px; height:20px; font-size:0.7rem; display:flex; align-items:center; justify-content:center; cursor:pointer;">✕</button>
+      </div>
+    `).join('');
+  }
+
+  // ── Variants Logic ─────────────────────────────────────────────────────────
+  function updateVariantsMode() {
+    const isChecked = (document.getElementById('toggle-variants') as HTMLInputElement).checked;
+    hasVariants = isChecked;
+    document.getElementById('standard-pricing-section')!.style.display = isChecked ? 'none' : 'grid';
+    document.getElementById('variants-section')!.style.display = isChecked ? 'block' : 'none';
+  }
+
+  function renderAttributeTypes() {
+    const container = document.getElementById('attr-types-container');
+    if (!container) return;
+    container.innerHTML = attributeTypes.map((t, idx) => `
+      <span class="tag-pill" style="background:rgba(255,255,255,0.03); color:var(--text-muted); border-color:var(--border-color);">
+        ${t}
+        <span onclick="removeAttributeType(${idx})" style="cursor:pointer; font-size:0.7rem; margin-left:3px; color:var(--text-dim);">✕</span>
+      </span>
+    `).join('');
+    
+    updateVariantsTableHeader();
+    renderVariantRows();
+  }
+
+  (window as any).removeAttributeType = function(idx: number) {
+    attributeTypes.splice(idx, 1);
+    renderAttributeTypes();
+  };
+
+  function updateVariantsTableHeader() {
+    const headCell = document.getElementById('var-attrs-header');
+    if (!headCell) return;
+    headCell.textContent = attributeTypes.length > 0 ? `Attributes (${attributeTypes.join(', ')})` : 'Attributes';
+  }
+
+  function renderVariantRows() {
+    const tbody = document.getElementById('variants-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = variants.map((v, vIdx) => {
+      // Build attribute input fields dynamically
+      const attrFields = attributeTypes.map(type => {
+        const val = v.attributes?.[type] || '';
+        return `<input type="text" data-vidx="${vIdx}" data-attr="${type}" class="form-input variant-attr-input" value="${val}" placeholder="${type}" style="padding:0.35rem 0.5rem; font-size:0.8rem; flex:1;" />`;
+      }).join('');
+
+      return `
+        <tr>
+          <td style="padding:0.6rem 0.75rem; vertical-align:middle;">
+            <div style="display:flex; gap:0.35rem; flex-wrap:wrap;">
+              ${attrFields || '<span style="color:var(--text-dim); font-size:0.78rem;">Define attributes</span>'}
+            </div>
+          </td>
+          <td style="padding:0.6rem 0.75rem; vertical-align:middle;">
+            <input type="text" data-vidx="${vIdx}" class="form-input variant-sku" value="${v.sku||''}" placeholder="e.g. PROD-RED-XL" style="padding:0.35rem 0.5rem; font-size:0.8rem;" />
+          </td>
+          <td style="padding:0.6rem 0.75rem; vertical-align:middle;">
+            <input type="number" data-vidx="${vIdx}" class="form-input variant-price" value="${v.price!==undefined?v.price:0}" placeholder="2999" style="padding:0.35rem 0.5rem; font-size:0.8rem;" />
+          </td>
+          <td style="padding:0.6rem 0.75rem; vertical-align:middle;">
+            <input type="number" data-vidx="${vIdx}" class="form-input variant-compare" value="${v.compareAtPrice!==undefined?v.compareAtPrice:''}" placeholder="3800" style="padding:0.35rem 0.5rem; font-size:0.8rem;" />
+          </td>
+          <td style="padding:0.6rem 0.75rem; vertical-align:middle;">
+            <input type="number" data-vidx="${vIdx}" class="form-input variant-stock" value="${v.stock!==undefined?v.stock:10}" placeholder="10" style="padding:0.35rem 0.5rem; font-size:0.8rem;" />
+          </td>
+          <td style="padding:0.6rem 0.75rem; vertical-align:middle; text-align:right;">
+            <button type="button" onclick="removeVariantRow(${vIdx})" style="background:transparent; border:none; color:var(--color-error); font-size:1.1rem; cursor:pointer;">✕</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // Wire inputs
+    tbody.querySelectorAll('.variant-attr-input').forEach(input => {
+      input.addEventListener('input', (e) => {
+        const target = e.target as HTMLInputElement;
+        const vidx = parseInt(target.dataset.vidx!);
+        const attr = target.dataset.attr!;
+        if (!variants[vidx].attributes) variants[vidx].attributes = {};
+        variants[vidx].attributes[attr] = target.value;
+      });
+    });
+
+    tbody.querySelectorAll('.variant-sku').forEach(input => {
+      input.addEventListener('input', (e) => {
+        const target = e.target as HTMLInputElement;
+        const vidx = parseInt(target.dataset.vidx!);
+        variants[vidx].sku = target.value;
+      });
+    });
+
+    tbody.querySelectorAll('.variant-price').forEach(input => {
+      input.addEventListener('input', (e) => {
+        const target = e.target as HTMLInputElement;
+        const vidx = parseInt(target.dataset.vidx!);
+        variants[vidx].price = Number(target.value || 0);
+      });
+    });
+
+    tbody.querySelectorAll('.variant-compare').forEach(input => {
+      input.addEventListener('input', (e) => {
+        const target = e.target as HTMLInputElement;
+        const vidx = parseInt(target.dataset.vidx!);
+        variants[vidx].compareAtPrice = target.value ? Number(target.value) : undefined;
+      });
+    });
+
+    tbody.querySelectorAll('.variant-stock').forEach(input => {
+      input.addEventListener('input', (e) => {
+        const target = e.target as HTMLInputElement;
+        const vidx = parseInt(target.dataset.vidx!);
+        variants[vidx].stock = Number(target.value || 0);
+      });
+    });
+  }
+
+  (window as any).removeVariantRow = function(idx: number) {
+    variants.splice(idx, 1);
+    renderVariantRows();
+  };
+
+  // ── Save Operation ─────────────────────────────────────────────────────────
+  async function handleSave() {
+    const name = (document.getElementById('prod-name') as HTMLInputElement).value.trim();
+    if (!name) {
+      document.getElementById('name-error')!.textContent = 'Product name is required';
+      return;
+    }
+
+    const slug = (document.getElementById('prod-slug') as HTMLInputElement).value;
+    const body = quillEditor ? quillEditor.root.innerHTML : '';
+    const category = (document.getElementById('prod-category') as HTMLSelectElement).value;
+    const basePrice = Number((document.getElementById('base-price') as HTMLInputElement).value || 0);
+    const mainStock = Number((document.getElementById('main-stock') as HTMLInputElement).value || 0);
+    const lowStockThreshold = Number((document.getElementById('low-stock-threshold') as HTMLInputElement).value || 5);
+
+    const payload = {
+      name,
+      slug,
+      status: currentStatus,
+      category,
+      tags: [...currentTags],
+      basePrice: hasVariants ? 0 : basePrice,
+      stock: hasVariants ? 0 : mainStock,
+      lowStockThreshold,
+      featuredImage: galleryImages[0] || '',
+      images: [...galleryImages],
+      variants: hasVariants ? variants : [],
+      body,
+      seo: {
+        metaTitle: (document.getElementById('seo-meta-title') as HTMLInputElement).value.trim(),
+        metaDescription: (document.getElementById('seo-meta-desc') as HTMLTextAreaElement).value.trim(),
+        focusKeyword: (document.getElementById('seo-focus-kw') as HTMLInputElement).value.trim(),
+        canonicalUrl: (document.getElementById('seo-canonical') as HTMLInputElement).value.trim(),
+        robots: (document.getElementById('seo-robots') as HTMLSelectElement).value,
+      }
+    };
+
+    const saveBtn = document.getElementById('btn-save-product') as HTMLButtonElement;
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+
+    try {
+      const res = await fetch('/api/products-crud', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Product updated successfully!');
+      } else {
+        showToast(data.error || 'Update failed');
+      }
+    } catch {
+      showToast('Network error');
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Update Product';
+    }
+  }
+
+  function init() {
+    // Read raw data from DOM elements
+    const metaDataEl = document.getElementById('product-meta-data');
+    if (metaDataEl) {
+      currentStatus = metaDataEl.dataset.status || 'draft';
+      try { currentTags = JSON.parse(metaDataEl.dataset.tags || '[]'); } catch {}
+      try { galleryImages = JSON.parse(metaDataEl.dataset.images || '[]'); } catch {}
+      try { variants = JSON.parse(metaDataEl.dataset.variants || '[]'); } catch {}
+    }
+
+    // Deduce attributes from variants if any
+    const attrSet = new Set<string>();
+    variants.forEach(v => {
+      if (v.attributes) {
+        Object.keys(v.attributes).forEach(k => attrSet.add(k));
+      }
+    });
+    attributeTypes = attrSet.size > 0 ? Array.from(attrSet) : ['size', 'color'];
+    hasVariants = variants.length > 0;
+
+    loadCategories();
+    loadTags();
+
+    if (typeof (window as any).Quill === 'undefined') {
+      const script = document.createElement('script');
+      script.src = '/vendor/quill/quill.min.js';
+      script.onload = () => { initQuill(); };
+      document.head.appendChild(script);
+    } else {
+      initQuill();
+    }
+
+    document.getElementById('toggle-variants')?.addEventListener('change', updateVariantsMode);
+    document.getElementById('btn-save-product')?.addEventListener('click', handleSave);
+
+    const tagInput = document.getElementById('tag-input') as HTMLInputElement;
+    tagInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        const val = tagInput.value.trim().toLowerCase().replace(/\s+/g, '-');
+        if (val) addTag(val);
+        tagInput.value = '';
+      }
+    });
+
+    document.getElementById('btn-add-image')?.addEventListener('click', () => {
+      if ((window as any).openWPMediaPicker) {
+        (window as any).openWPMediaPicker({
+          title: 'Add Image to Gallery',
+          btnLabel: 'Add to gallery',
+          onSelect: (url: string) => {
+            addGalleryImage(url);
+          }
+        });
+      }
+    });
+
+    document.getElementById('btn-add-attr-type')?.addEventListener('click', () => {
+      const key = window.prompt('Enter attribute name (e.g. size, color):');
+      if (key && key.trim()) {
+        const val = key.trim().toLowerCase();
+        if (!attributeTypes.includes(val)) {
+          attributeTypes.push(val);
+          renderAttributeTypes();
+        }
+      }
+    });
+
+    document.getElementById('btn-add-variant-row')?.addEventListener('click', () => {
+      const attrsObj: Record<string, string> = {};
+      attributeTypes.forEach(t => attrsObj[t] = '');
+      
+      variants.push({
+        sku: '',
+        price: 0,
+        compareAtPrice: undefined,
+        stock: 10,
+        attributes: attrsObj
+      });
+      renderVariantRows();
+    });
+
+    // Populate robots selection
+    const seoRobots = document.getElementById('seo-robots') as HTMLSelectElement;
+    if (seoRobots && seoRobots.dataset.selected) {
+      seoRobots.value = seoRobots.dataset.selected;
+    }
+
+    // Publish status click events
+    document.getElementById('btn-status-draft')?.addEventListener('click', () => setStatus('draft'));
+    document.getElementById('btn-status-published')?.addEventListener('click', () => setStatus('published'));
+
+    setStatus(currentStatus);
+    updateVariantsMode();
+    renderGallery();
+    renderAttributeTypes();
+  }
+
+  if (document.readyState !== 'loading') {
+    init();
+  } else {
+    document.addEventListener('DOMContentLoaded', init);
+  }
+  document.addEventListener('astro:page-load', init);
+</script>

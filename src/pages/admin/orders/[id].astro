@@ -1,0 +1,265 @@
+---
+import AdminLayout from '../../../layouts/admin/AdminLayout.astro';
+import fs from 'node:fs';
+import path from 'node:path';
+import { parse } from 'yaml';
+
+export const prerender = false;
+
+const { id } = Astro.params;
+const filePath = path.resolve(`src/content/orders/${id}.md`);
+
+if (!id || !fs.existsSync(filePath)) {
+  return Astro.redirect("/admin/orders");
+}
+
+const fileContent = fs.readFileSync(filePath, "utf-8");
+const parts = fileContent.split(/^---$/m);
+const order = parse(parts[1]) || {};
+
+const formattedDate = order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-GB', {
+  day: '2-digit',
+  month: 'long',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit'
+}) : '—';
+---
+<AdminLayout title={`Order Details: ${id}`}>
+
+  <div style="margin-bottom:2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+    <div style="display:flex; align-items:center; gap:0.75rem;">
+      <a href="/admin/orders" class="btn btn-outline btn-sm" style="padding:0.35rem 0.6rem; font-size:0.8rem; display:inline-flex; align-items:center; gap:0.25rem;">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        Back to Orders
+      </a>
+      <span style="font-size:0.85rem; color:var(--text-dim);">{formattedDate}</span>
+    </div>
+    <span class={`order-status-badge order-status-${order.status}`} style="font-size:0.85rem; padding:0.35rem 0.75rem; border-radius:6px; letter-spacing:0.02em;">
+      {order.status}
+    </span>
+  </div>
+
+  <div class="order-details-grid" style="display:grid; grid-template-columns:1fr 320px; gap:1.5rem; align-items:start; margin-bottom:5rem;">
+    
+    <!-- Left Column: Items, Payment Info -->
+    <div style="display:flex; flex-direction:column; gap:1.5rem;">
+      <!-- Ordered Items -->
+      <div class="form-card" style="background:var(--bg-surface-solid); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1.5rem;">
+        <h3 style="font-size:1.0rem; font-weight:700; color:var(--text-main); margin-bottom:1.15rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Line Items</h3>
+        <div style="display:flex; flex-direction:column; gap:1rem;">
+          {(order.items || []).map((item: any) => (
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed var(--border-color); padding-bottom:0.75rem;">
+              <div>
+                <strong style="color:var(--text-main); font-size:0.92rem; display:block;">${item.label}</strong>
+                {item.variantSku && (
+                  <span style="font-size:0.78rem; color:var(--text-dim); font-family:monospace; display:block; margin-top:2px;">SKU: ${item.variantSku}</span>
+                )}
+              </div>
+              <div style="text-align:right; font-size:0.9rem;">
+                <span style="color:var(--text-muted); font-size:0.85rem;">₹${item.price} × ${item.quantity}</span>
+                <strong style="color:var(--text-main); display:block; margin-top:2px;">₹${item.price * item.quantity}</strong>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1.25rem; font-size:1.05rem;">
+          <strong style="color:var(--text-main);">Order Total:</strong>
+          <strong style="color:var(--primary); font-size:1.15rem;">₹{order.totalAmount}</strong>
+        </div>
+      </div>
+
+      <!-- Payment / Transaction details -->
+      <div class="form-card" style="background:var(--bg-surface-solid); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1.5rem;">
+        <h3 style="font-size:1.0rem; font-weight:700; color:var(--text-main); margin-bottom:1.15rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Transaction & Gateway Details</h3>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.1rem; font-size:0.85rem;">
+          <div>
+            <span style="color:var(--text-dim); display:block; margin-bottom:2px;">Gateway Provider</span>
+            <strong style="color:var(--text-muted); text-transform:uppercase;">{order.gateway || '—'}</strong>
+          </div>
+          {order.gatewaySessionId && (
+            <div style="grid-column: 1 / -1;">
+              <span style="color:var(--text-dim); display:block; margin-bottom:2px;">Gateway Session ID</span>
+              <strong style="color:var(--text-muted); font-family:monospace; word-break:break-all;">{order.gatewaySessionId}</strong>
+            </div>
+          )}
+          {order.transactionId && (
+            <div style="grid-column: 1 / -1;">
+              <span style="color:var(--text-dim); display:block; margin-bottom:2px;">Payment Transaction ID</span>
+              <strong style="color:var(--text-muted); font-family:monospace; word-break:break-all;">{order.transactionId}</strong>
+            </div>
+          )}
+          {order.refundId && (
+            <div style="grid-column: 1 / -1;">
+              <span style="color:var(--text-dim); display:block; margin-bottom:2px;">Gateway Refund ID</span>
+              <strong style="color:var(--color-error); font-family:monospace; word-break:break-all;">{order.refundId}</strong>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Customer Details, Status Override & Refund Trigger -->
+    <div style="display:flex; flex-direction:column; gap:1.5rem;">
+      <!-- Customer Info Card -->
+      <div class="sidebar-card">
+        <div class="sidebar-card-header">Customer Info</div>
+        <div class="sidebar-card-body" style="padding:1rem; font-size:0.85rem; display:flex; flex-direction:column; gap:0.75rem;">
+          <div>
+            <span style="color:var(--text-dim); display:block; margin-bottom:2px;">Name</span>
+            <strong style="color:var(--text-main); font-size:0.9rem;">{order.customer?.name || '—'}</strong>
+          </div>
+          <div>
+            <span style="color:var(--text-dim); display:block; margin-bottom:2px;">Email Address</span>
+            <strong style="color:var(--text-main); word-break:break-all;"><a href={`mailto:${order.customer?.email}`} style="color:var(--primary); text-decoration:none;">{order.customer?.email || '—'}</a></strong>
+          </div>
+          {order.customer?.phone && (
+            <div>
+              <span style="color:var(--text-dim); display:block; margin-bottom:2px;">Phone Number</span>
+              <strong style="color:var(--text-main);">{order.customer?.phone}</strong>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <!-- Change Order Status Card -->
+      <div class="sidebar-card">
+        <div class="sidebar-card-header">Manage Status</div>
+        <div class="sidebar-card-body" style="padding:1rem; display:flex; flex-direction:column; gap:0.75rem;">
+          <div>
+            <label class="form-label" for="manual-status-select">Order Status</label>
+            <select class="form-select" id="manual-status-select" data-selected={order.status}>
+              <option value="pending">Pending</option>
+              <option value="paid">Paid</option>
+              <option value="shipped">Shipped</option>
+              <option value="delivered">Delivered</option>
+              <option value="refunded" disabled>Refunded (Use Refund action)</option>
+              <option value="failed">Failed</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" id="btn-update-status" style="width:100%;">Update Status</button>
+        </div>
+      </div>
+
+      <!-- Refund Panel -->
+      {(order.status === 'paid' || order.status === 'shipped' || order.status === 'delivered') && (
+        <div class="sidebar-card" style="border-color:rgba(239,68,68,0.25); background:rgba(239,68,68,0.015);">
+          <div class="sidebar-card-header" style="color:#ef4444; border-bottom-color:rgba(239,68,68,0.15);">Refund Panel</div>
+          <div class="sidebar-card-body" style="padding:1rem;">
+            <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.75rem; line-height:1.4;">
+              Refunding calls the payment gateway (Stripe/Razorpay) refund API and automatically replenishes/restocks all quantities back in the product inventories.
+            </p>
+            <button class="btn" id="btn-trigger-refund" style="width:100%; background:#ef4444; color:#fff; border:1px solid #ef4444; padding:0.5rem; font-size:0.82rem; font-weight:600; cursor:pointer;">
+              Refund Order
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+
+  <div class="toast-notification" id="toast"><div class="toast-content"><span id="toast-msg"></span></div></div>
+
+  <!-- Pass Order ID to scripts -->
+  <input type="hidden" id="order-meta-id" value={id} />
+
+</AdminLayout>
+
+<style is:global>
+  .order-status-badge { display:inline-flex; align-items:center; padding:0.25rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:600; border:1px solid transparent; text-transform:capitalize; }
+  .order-status-pending { background: rgba(245,158,11,0.1); color:#f59e0b; border-color: rgba(245,158,11,0.2); }
+  .order-status-paid { background: rgba(59,130,246,0.1); color:#3b82f6; border-color: rgba(59,130,246,0.2); }
+  .order-status-shipped { background: rgba(139,92,246,0.1); color:#8b5cf6; border-color: rgba(139,92,246,0.2); }
+  .order-status-delivered { background: rgba(16,185,129,0.1); color:#10B981; border-color: rgba(16,185,129,0.2); }
+  .order-status-refunded { background: rgba(156,163,175,0.1); color:#9ca3af; border-color: rgba(156,163,175,0.2); }
+  .order-status-failed { background: rgba(239,68,68,0.1); color:#ef4444; border-color: rgba(239,68,68,0.2); }
+</style>
+
+<script>
+  function showToast(msg: string) {
+    const t = document.getElementById('toast');
+    const m = document.getElementById('toast-msg');
+    if (t && m) { m.textContent = msg; t.classList.add('active'); setTimeout(() => t.classList.remove('active'), 3000); }
+  }
+
+  async function updateStatus() {
+    const id = (document.getElementById('order-meta-id') as HTMLInputElement).value;
+    const status = (document.getElementById('manual-status-select') as HTMLSelectElement).value;
+
+    const btn = document.getElementById('btn-update-status') as HTMLButtonElement;
+    btn.disabled = true;
+    btn.textContent = 'Updating...';
+
+    try {
+      const res = await fetch('/api/orders-crud', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Order status updated!');
+        setTimeout(() => location.reload(), 1000);
+      } else {
+        showToast(data.error || 'Update failed');
+        btn.disabled = false;
+        btn.textContent = 'Update Status';
+      }
+    } catch {
+      showToast('Network error');
+      btn.disabled = false;
+      btn.textContent = 'Update Status';
+    }
+  }
+
+  async function triggerRefund() {
+    const id = (document.getElementById('order-meta-id') as HTMLInputElement).value;
+
+    if (window.customConfirm) {
+      window.customConfirm("Refunding is irreversible. Refunding will charge back the client and replenish items stock. Proceed?", async () => {
+        const btn = document.getElementById('btn-trigger-refund') as HTMLButtonElement;
+        btn.disabled = true;
+        btn.textContent = 'Refunding...';
+
+        try {
+          const res = await fetch('/api/orders-crud', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'refund', id })
+          });
+          const data = await res.json();
+          if (data.success) {
+            showToast('Order refunded successfully!');
+            setTimeout(() => location.reload(), 1000);
+          } else {
+            showToast(data.error || 'Refund failed');
+            btn.disabled = false;
+            btn.textContent = 'Refund Order';
+          }
+        } catch {
+          showToast('Network error');
+          btn.disabled = false;
+          btn.textContent = 'Refund Order';
+        }
+      });
+    }
+  }
+
+  function init() {
+    // Populate select values
+    const select = document.getElementById('manual-status-select') as HTMLSelectElement;
+    if (select && select.dataset.selected) {
+      select.value = select.dataset.selected;
+    }
+
+    document.getElementById('btn-update-status')?.addEventListener('click', updateStatus);
+    document.getElementById('btn-trigger-refund')?.addEventListener('click', triggerRefund);
+  }
+
+  if (document.readyState !== 'loading') {
+    init();
+  } else {
+    document.addEventListener('DOMContentLoaded', init);
+  }
+  document.addEventListener('astro:page-load', init);
+</script>

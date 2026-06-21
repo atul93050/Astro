@@ -1,0 +1,219 @@
+---
+import AdminLayout from '../../../layouts/admin/AdminLayout.astro';
+
+export const prerender = false;
+---
+<AdminLayout title="Product Tags">
+
+  <div class="cats-header" style="margin-bottom: 2rem;">
+    <p class="cats-subtitle" style="color:var(--text-muted); margin:0; font-size:0.92rem;">
+      Manage product tags for grouping and taxonomy filters. Tags contain name and slug parameters only.
+    </p>
+  </div>
+
+  <div class="cats-layout" style="display:grid; grid-template-columns:350px 1fr; gap:1.5rem; align-items:start; margin-bottom:5rem;">
+    <!-- Form Panel -->
+    <div class="form-card" style="background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1.5rem; position:sticky; top:1.5rem;">
+      <h3 id="form-title" style="font-size:1.1rem; font-weight:700; margin-bottom:1.25rem; color:var(--text-main);">New Tag</h3>
+      <form id="tag-form" onsubmit="return false;" style="display:flex; flex-direction:column; gap:1.1rem;">
+        <input type="hidden" id="edit-id" value="" />
+
+        <div style="display:flex; flex-direction:column; gap:0.35rem;">
+          <label for="tag-name" style="font-size:0.8rem; font-weight:600; color:var(--text-muted);">Name *</label>
+          <input type="text" id="tag-name" placeholder="e.g. Sale" style="background:var(--input-bg); border:1px solid var(--input-border); color:var(--text-main); padding:0.55rem 0.85rem; border-radius:var(--radius-sm); font-size:0.85rem; outline:none;" required autocomplete="off" />
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:0.35rem;">
+          <label for="tag-slug" style="font-size:0.8rem; font-weight:600; color:var(--text-muted);">Slug (auto-generated)</label>
+          <input type="text" id="tag-slug" placeholder="sale" style="background:var(--input-bg); border:1px solid var(--input-border); color:var(--text-main); padding:0.55rem 0.85rem; border-radius:var(--radius-sm); font-size:0.85rem; outline:none;" autocomplete="off" />
+        </div>
+
+        <div style="display:flex; gap:0.5rem; justify-content:flex-end; margin-top:0.5rem;">
+          <button type="button" id="btn-cancel-edit" class="btn btn-outline" style="display:none; padding:0.4rem 0.85rem; font-size:0.85rem;">Cancel</button>
+          <button type="submit" id="btn-save" class="btn btn-primary" style="padding:0.4rem 0.85rem; font-size:0.85rem;">Save Tag</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Table List -->
+    <div class="admin-table-wrapper" style="background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius-lg); overflow:hidden;">
+      <div style="padding:1.15rem 1.5rem; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="font-size:1.1rem; font-weight:700; color:var(--text-main);">All Tags</h3>
+        <span id="tag-count" style="background:var(--primary-light); color:var(--primary); font-size:0.75rem; font-weight:700; padding:0.15rem 0.5rem; border-radius:10px;">0</span>
+      </div>
+
+      <div id="table-loading" style="display:flex; flex-direction:column; align-items:center; padding:3rem; gap:1rem; color:var(--text-dim);">
+        <div class="loading-spinner" style="width:24px; height:24px; border:2px solid var(--border-color); border-top-color:var(--primary); border-radius:50%; animation:spin 0.8s linear infinite;"></div>
+        <span>Loading tags...</span>
+      </div>
+
+      <table class="admin-table" id="tags-table" style="display:none; width:100%; border-collapse:collapse; text-align:left; font-size:0.9rem;">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border-color); background:rgba(255,255,255,0.01);">
+            <th style="padding:0.85rem 1.25rem; font-weight:600; color:var(--text-muted);">Name</th>
+            <th style="padding:0.85rem 1.25rem; font-weight:600; color:var(--text-muted);">Slug</th>
+            <th style="padding:0.85rem 1.25rem; font-weight:600; color:var(--text-muted); text-align:center; width:100px;">Products</th>
+            <th style="padding:0.85rem 1.25rem; font-weight:600; color:var(--text-muted); text-align:right; width:150px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tags-tbody">
+          <!-- Rendered via JS -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="toast-notification" id="toast"><div class="toast-content"><span id="toast-msg"></span></div></div>
+
+</AdminLayout>
+
+<script>
+  let allTags: any[] = [];
+  let editingId: string | null = null;
+
+  function showToast(msg: string) {
+    const t = document.getElementById('toast');
+    const m = document.getElementById('toast-msg');
+    if (t && m) { m.textContent = msg; t.classList.add('active'); setTimeout(() => t.classList.remove('active'), 3000); }
+  }
+
+  async function loadTags() {
+    const table = document.getElementById('tags-table');
+    const loading = document.getElementById('table-loading');
+    const tbody = document.getElementById('tags-tbody');
+    const countEl = document.getElementById('tag-count');
+    if (!tbody || !loading || !table || !countEl) return;
+
+    table.style.display = 'none';
+    loading.style.display = 'flex';
+
+    try {
+      const res = await fetch('/api/products-crud?action=tags');
+      const data = await res.json();
+      loading.style.display = 'none';
+      if (data.success) {
+        allTags = data.tags || [];
+        countEl.textContent = String(allTags.length);
+        tbody.innerHTML = allTags.map(t => `
+          <tr>
+            <td style="padding:0.85rem 1.25rem; vertical-align:middle;">
+              <strong style="color:var(--text-main); font-weight:600;">${t.name}</strong>
+            </td>
+            <td style="padding:0.85rem 1.25rem; vertical-align:middle; color:var(--text-muted); font-family:monospace; font-size:0.8rem;">${t.slug}</td>
+            <td style="padding:0.85rem 1.25rem; vertical-align:middle; text-align:center; color:var(--text-main); font-weight:500;">${t.productCount || 0}</td>
+            <td style="padding:0.85rem 1.25rem; vertical-align:middle; text-align:right;">
+              <div style="display:inline-flex; gap:0.4rem;">
+                <button class="btn btn-outline btn-sm" onclick="startEdit('${t.id}', '${t.name.replace(/'/g, "\\'")}', '${t.slug}')" style="padding:0.2rem 0.5rem; font-size:0.75rem;">Edit</button>
+                <button class="btn btn-sm" onclick="deleteTag('${t.id}')" style="padding:0.2rem 0.5rem; font-size:0.75rem; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); color:#ef4444;">Delete</button>
+              </div>
+            </td>
+          </tr>
+        `).join('');
+        table.style.display = 'table';
+      }
+    } catch {
+      loading.style.display = 'none';
+    }
+  }
+
+  (window as any).startEdit = function(id: string, name: string, slug: string) {
+    editingId = id;
+    (document.getElementById('edit-id') as HTMLInputElement).value = id;
+    (document.getElementById('tag-name') as HTMLInputElement).value = name;
+    (document.getElementById('tag-slug') as HTMLInputElement).value = slug;
+    
+    document.getElementById('form-title')!.textContent = 'Edit Tag';
+    document.getElementById('btn-save')!.textContent = 'Update Tag';
+    document.getElementById('btn-cancel-edit')!.style.display = 'inline-block';
+  };
+
+  function resetForm() {
+    editingId = null;
+    (document.getElementById('edit-id') as HTMLInputElement).value = '';
+    (document.getElementById('tag-name') as HTMLInputElement).value = '';
+    (document.getElementById('tag-slug') as HTMLInputElement).value = '';
+    
+    document.getElementById('form-title')!.textContent = 'New Tag';
+    document.getElementById('btn-save')!.textContent = 'Save Tag';
+    document.getElementById('btn-cancel-edit')!.style.display = 'none';
+  }
+
+  (window as any).deleteTag = function(id: string) {
+    if (window.customConfirm) {
+      window.customConfirm("Delete this tag?", async () => {
+        try {
+          const res = await fetch('/api/product-tags-crud', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+          });
+          const data = await res.json();
+          if (data.success) {
+            showToast('Tag deleted');
+            if (editingId === id) resetForm();
+            loadTags();
+          } else {
+            showToast(data.error || 'Delete failed');
+          }
+        } catch {
+          showToast('Network error');
+        }
+      });
+    }
+  };
+
+  async function handleSave() {
+    const name = (document.getElementById('tag-name') as HTMLInputElement).value.trim();
+    const slug = (document.getElementById('tag-slug') as HTMLInputElement).value.trim();
+    if (!name) return;
+
+    const payload = editingId ? { id: editingId, name, slug } : { name, slug };
+    const method = editingId ? 'PUT' : 'POST';
+
+    try {
+      const res = await fetch('/api/product-tags-crud', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(editingId ? 'Tag updated' : 'Tag created');
+        resetForm();
+        loadTags();
+      } else {
+        showToast(data.error || 'Save failed');
+      }
+    } catch {
+      showToast('Network error');
+    }
+  }
+
+  function init() {
+    loadTags();
+
+    document.getElementById('tag-form')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      handleSave();
+    });
+
+    document.getElementById('btn-cancel-edit')?.addEventListener('click', resetForm);
+
+    // Auto-slug generation
+    document.getElementById('tag-name')?.addEventListener('input', (e) => {
+      if (editingId) return;
+      const val = (e.target as HTMLInputElement).value;
+      const slugInput = document.getElementById('tag-slug') as HTMLInputElement;
+      if (slugInput) {
+        slugInput.value = val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      }
+    });
+  }
+
+  if (document.readyState !== 'loading') {
+    init();
+  } else {
+    document.addEventListener('DOMContentLoaded', init);
+  }
+  document.addEventListener('astro:page-load', init);
+</script>

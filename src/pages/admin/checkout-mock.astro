@@ -1,0 +1,134 @@
+---
+import AdminLayout from '../../layouts/admin/AdminLayout.astro';
+import fs from 'node:fs';
+import path from 'node:path';
+import { parse } from 'yaml';
+
+export const prerender = false;
+
+const orderId = Astro.url.searchParams.get("orderId") || "";
+const filePath = path.resolve(`src/content/orders/${orderId}.md`);
+
+if (!orderId || !fs.existsSync(filePath)) {
+  return Astro.redirect("/admin/orders");
+}
+
+const fileContent = fs.readFileSync(filePath, "utf-8");
+const parts = fileContent.split(/^---$/m);
+const order = parse(parts[1]) || {};
+---
+<AdminLayout title="Mock Gateway Checkout Simulator">
+
+  <div style="max-width:550px; margin:2rem auto; display:flex; flex-direction:column; gap:1.5rem;">
+    <!-- Info warning -->
+    <div style="background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.2); padding:1rem; border-radius:var(--radius-md); font-size:0.85rem; color:var(--text-muted); line-height:1.4;">
+      💡 <strong>Mock Gateway Mode Active</strong>: You were redirected here because payment providers are set to Mock. You can simulate success/failure to test webhooks and stock decrements.
+    </div>
+
+    <!-- Simulator Card -->
+    <div class="form-card" style="background:var(--bg-surface-solid); border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:2rem; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+      <h3 style="font-size:1.15rem; font-weight:700; color:var(--text-main); margin-bottom:1.5rem; text-align:center; border-bottom:1px solid var(--border-color); padding-bottom:0.75rem;">
+        Checkout Payment Simulator
+      </h3>
+
+      <div style="display:flex; flex-direction:column; gap:1.1rem; font-size:0.9rem; margin-bottom:2rem;">
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:var(--text-dim);">Order Reference:</span>
+          <strong style="color:var(--text-main); font-family:monospace;">{orderId}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:var(--text-dim);">Customer Name:</span>
+          <strong style="color:var(--text-main);">{order.customer?.name || '—'}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:var(--text-dim);">Customer Email:</span>
+          <strong style="color:var(--text-muted);">{order.customer?.email || '—'}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; border-top:1px dashed var(--border-color); padding-top:0.75rem;">
+          <span style="color:var(--text-dim);">Total Amount to Pay:</span>
+          <strong style="color:var(--primary); font-size:1.1rem;">₹{order.totalAmount}</strong>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div style="display:flex; flex-direction:column; gap:0.75rem;">
+        <button class="btn" id="btn-mock-success" style="background:var(--primary); color:#fff; border:none; padding:0.75rem; font-size:0.9rem; font-weight:700; border-radius:var(--radius-sm); cursor:pointer; width:100%;">
+          Simulate SUCCESSFUL Payment
+        </button>
+        <button class="btn btn-outline" id="btn-mock-fail" style="color:#ef4444; border-color:rgba(239,68,68,0.3); background:transparent; padding:0.75rem; font-size:0.9rem; font-weight:700; border-radius:var(--radius-sm); cursor:pointer; width:100%;">
+          Simulate FAILED Payment
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-notification" id="toast"><div class="toast-content"><span id="toast-msg"></span></div></div>
+
+  <!-- Pass values to scripts -->
+  <input type="hidden" id="order-meta-id" value={orderId} />
+
+</AdminLayout>
+
+<script>
+  function showToast(msg: string) {
+    const t = document.getElementById('toast');
+    const m = document.getElementById('toast-msg');
+    if (t && m) { m.textContent = msg; t.classList.add('active'); setTimeout(() => t.classList.remove('active'), 3000); }
+  }
+
+  async function simulatePayment(status: 'paid' | 'failed') {
+    const orderId = (document.getElementById('order-meta-id') as HTMLInputElement).value;
+    const btnSuccess = document.getElementById('btn-mock-success') as HTMLButtonElement;
+    const btnFail = document.getElementById('btn-mock-fail') as HTMLButtonElement;
+
+    btnSuccess.disabled = true;
+    btnFail.disabled = true;
+
+    try {
+      showToast('Contacting mock gateway webhook...');
+      // Post payload to webhook just like Stripe/Razorpay webhook would
+      const res = await fetch('/api/webhooks/payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-signature': 'mock-valid-signature' // Simulated validation pass signature
+        },
+        body: JSON.stringify({
+          orderId,
+          status,
+          transactionId: `mock_tx_${Date.now()}`
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast(status === 'paid' ? 'Simulated success! Redirecting...' : 'Simulated failure! Redirecting...');
+        setTimeout(() => {
+          window.location.href = status === 'paid' 
+            ? `/checkout/success?order_id=${orderId}` 
+            : `/checkout/cancel?order_id=${orderId}`;
+        }, 1200);
+      } else {
+        showToast(data.error || 'Simulation failed');
+        btnSuccess.disabled = false;
+        btnFail.disabled = false;
+      }
+    } catch (err: any) {
+      showToast('Network error: ' + err.message);
+      btnSuccess.disabled = false;
+      btnFail.disabled = false;
+    }
+  }
+
+  function init() {
+    document.getElementById('btn-mock-success')?.addEventListener('click', () => simulatePayment('paid'));
+    document.getElementById('btn-mock-fail')?.addEventListener('click', () => simulatePayment('failed'));
+  }
+
+  if (document.readyState !== 'loading') {
+    init();
+  } else {
+    document.addEventListener('DOMContentLoaded', init);
+  }
+  document.addEventListener('astro:page-load', init);
+</script>

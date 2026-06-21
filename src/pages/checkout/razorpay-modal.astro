@@ -1,0 +1,106 @@
+---
+import MainLayout from '../../layouts/MainLayout.astro';
+
+export const prerender = false;
+
+const orderId = Astro.url.searchParams.get("order_id") || "";
+const razorpayOrderId = Astro.url.searchParams.get("razorpay_order_id") || "";
+const key = Astro.url.searchParams.get("key") || "";
+const amount = Astro.url.searchParams.get("amount") || "0";
+---
+<MainLayout title="Processing Secure Payment">
+
+  <div style="max-width:600px; margin:5rem auto; padding:3rem; background:#111827; border:1px solid #1F2937; border-radius:12px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+    <div class="spinner" style="width:36px; height:36px; border:3px solid #374151; border-top-color:#6366F1; border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 1.5rem;"></div>
+    <h2 style="font-size:1.4rem; font-weight:800; color:#fff; margin-bottom:0.75rem;">Opening Secure Checkout...</h2>
+    <p style="color:#9CA3AF; font-size:0.95rem; line-height:1.5;">
+      Do not close or refresh this page. We are initiating a secure gateway window to process your payment.
+    </p>
+  </div>
+
+  <!-- Pass query params to frontend JS safely -->
+  <input type="hidden" id="rzp-key" value={key} />
+  <input type="hidden" id="rzp-amount" value={amount} />
+  <input type="hidden" id="rzp-order-id" value={orderId} />
+  <input type="hidden" id="rzp-gateway-order-id" value={razorpayOrderId} />
+
+</MainLayout>
+
+<style is:global>
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+<script>
+  function openRazorpay() {
+    const key = (document.getElementById('rzp-key') as HTMLInputElement).value;
+    const amount = parseInt((document.getElementById('rzp-amount') as HTMLInputElement).value || '0');
+    const orderId = (document.getElementById('rzp-order-id') as HTMLInputElement).value;
+    const gatewayOrderId = (document.getElementById('rzp-gateway-order-id') as HTMLInputElement).value;
+
+    if (!key || !gatewayOrderId) {
+      console.error('Missing key or order details');
+      return;
+    }
+
+    const options = {
+      key: key,
+      amount: amount,
+      currency: "INR",
+      name: "EWAC Alloys Limited",
+      description: `Payment for Order ${orderId}`,
+      order_id: gatewayOrderId,
+      handler: async function (response: any) {
+        // Successful payment logic
+        try {
+          const res = await fetch('/api/webhooks/payment', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-signature': response.razorpay_signature
+            },
+            body: JSON.stringify({
+              orderId,
+              status: 'paid',
+              transactionId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+              razorpayOrderId: response.razorpay_order_id
+            })
+          });
+
+          if (res.ok) {
+            window.location.href = `/checkout/success?order_id=${orderId}`;
+          } else {
+            window.location.href = `/checkout/cancel?order_id=${orderId}`;
+          }
+        } catch {
+          window.location.href = `/checkout/cancel?order_id=${orderId}`;
+        }
+      },
+      modal: {
+        ondismiss: function () {
+          window.location.href = `/checkout/cancel?order_id=${orderId}`;
+        }
+      },
+      theme: {
+        color: "#6366F1"
+      }
+    };
+
+    const rzp = new (window as any).Razorpay(options);
+    rzp.open();
+  }
+
+  function init() {
+    if (!(window as any).Razorpay) {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = openRazorpay;
+      document.head.appendChild(script);
+    } else {
+      openRazorpay();
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('astro:page-load', init);
+</script>
