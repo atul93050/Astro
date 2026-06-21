@@ -16,6 +16,23 @@ const megaMenus = getAllMegaMenus();
 // Content sources for "Add from content" panel
 const pages = await getCollection('pages').catch(() => []);
 const posts = await getCollection('blog').catch(() => []);
+
+// Generate normalized valid paths for broken link detection
+const validPaths = [
+  '/',
+  ...pages.map(p => `/${p.data.slug || ''}`),
+  ...pages.map(p => `/${p.id || ''}`),
+  ...posts.map(p => `/blog/${p.data.slug || p.id}`),
+  ...posts.map(p => `/blog/${p.id}`)
+]
+  .map(url => {
+    let u = url.trim().toLowerCase();
+    if (u.length > 1 && u.endsWith('/')) {
+      u = u.slice(0, -1);
+    }
+    return u;
+  });
+const uniqueValidPaths = [...new Set(validPaths)];
 ---
 
 <AdminLayout title={`Edit: ${menu.name}`}>
@@ -29,15 +46,29 @@ const posts = await getCollection('blog').catch(() => []);
       </a>
       <span class="editor-bc-sep">/</span>
       <span class="editor-bc-current">{menu.name}</span>
+      <span class={`status-badge status-${menu.status || 'published'}`} id="menu-status-badge">
+        {menu.status === 'draft' ? 'Draft' : 'Published'}
+      </span>
     </div>
     <div class="editor-topbar-actions">
+      <button class="btn btn-outline btn-sm" id="undo-btn" title="Undo" disabled style="padding: 0.35rem 0.6rem;">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg>
+      </button>
+      <button class="btn btn-outline btn-sm" id="redo-btn" title="Redo" disabled style="padding: 0.35rem 0.6rem;">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 7v6h-6"></path><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"></path></svg>
+      </button>
       <button class="btn btn-outline btn-sm" id="preview-nav-btn">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
         Preview
       </button>
-      <button class="btn btn-primary" id="save-menu-btn">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline></svg>
-        Save Menu
+      <button class="btn btn-outline btn-sm" id="clone-menu-btn" title="Clone Menu">
+        Clone
+      </button>
+      <button class="btn btn-outline btn-sm" id="save-draft-btn">
+        Save Draft
+      </button>
+      <button class="btn btn-primary btn-sm" id="publish-menu-btn">
+        Publish
       </button>
     </div>
   </div>
@@ -110,12 +141,37 @@ const posts = await getCollection('blog').catch(() => []);
 
     <!-- Center Panel: Menu Tree -->
     <main class="menu-tree-panel">
-      <div class="menu-tree-header">
-        <h3 class="panel-title">Menu Structure</h3>
-        <span class="item-count" id="item-count">0 items</span>
+      <div class="menu-tree-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 class="panel-title" style="border-bottom:none; padding:0; background:none; margin:0;">Menu Structure</h3>
+        <div style="display:flex; align-items:center; gap:0.5rem; padding-right:1rem;">
+          <input type="search" id="tree-search" placeholder="Filter items..." style="font-size:0.78rem; padding:0.25rem 0.5rem; width:150px; border-radius:4px; border:1px solid var(--border-color); background:var(--bg-base); color:var(--text-main);" />
+          <span class="item-count" id="item-count">0 items</span>
+        </div>
       </div>
 
-      <div id="menu-tree-root" class="menu-tree-root sortable-list">
+      <div class="tree-utility-row" style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem 1.25rem; border-bottom:1px solid var(--border-color); background:rgba(156,163,175,0.01);">
+        <div style="display:flex; gap:0.4rem;">
+          <button class="btn btn-outline btn-xs" id="export-json-btn" style="font-size:0.72rem; padding:0.2rem 0.4rem;" title="Export menu structure as JSON file">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:2px; vertical-align:middle;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Export JSON
+          </button>
+          <button class="btn btn-outline btn-xs" id="import-json-btn" style="font-size:0.72rem; padding:0.2rem 0.4rem;" title="Import menu structure from JSON file">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:2px; vertical-align:middle;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            Import JSON
+          </button>
+          <input type="file" id="import-json-file" accept=".json" style="display:none;" />
+        </div>
+      </div>
+
+      <div id="menu-tree-root" class="menu-tree-root sortable-list" style="padding-bottom:0.5rem;">
+        <!-- Rendered by JS -->
+      </div>
+
+      <div class="pinned-section-divider" style="margin: 1rem 1.25rem 0.5rem 1.25rem; border-top: 1px dashed var(--border-color); padding-top: 1rem; display: none;">
+        <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.05em;">Pinned to End</span>
+      </div>
+
+      <div id="menu-tree-pinned" class="menu-tree-pinned-list" style="padding: 0.5rem 1.25rem 1.25rem 1.25rem; display: flex; flex-direction: column; gap: 0.5rem;">
         <!-- Rendered by JS -->
       </div>
 
@@ -149,6 +205,10 @@ const posts = await getCollection('blog').catch(() => []);
 
   <div class="toast-notification" id="editor-toast"><div class="toast-content"><span id="editor-toast-msg"></span></div></div>
 
+  <datalist id="valid-urls-list">
+    {uniqueValidPaths.map(p => <option value={p}></option>)}
+  </datalist>
+
 </AdminLayout>
 
 <style is:global>
@@ -158,7 +218,7 @@ const posts = await getCollection('blog').catch(() => []);
   .editor-back:hover { text-decoration:underline; }
   .editor-bc-sep { color:var(--text-dim); }
   .editor-bc-current { color:var(--text-muted); }
-  .editor-topbar-actions { display:flex; gap:0.75rem; }
+  .editor-topbar-actions { display:flex; gap:0.75rem; align-items:center; }
 
   .menu-editor-layout { display:grid; grid-template-columns:280px 1fr; gap:1.5rem; align-items:start; }
   @media(max-width:900px) { .menu-editor-layout { grid-template-columns:1fr; } }
@@ -189,7 +249,7 @@ const posts = await getCollection('blog').catch(() => []);
   .menu-item-row { display:flex; align-items:center; gap:0.5rem; padding:0.65rem 0.85rem; }
   .menu-item-handle { cursor:grab; color:var(--text-dim); flex-shrink:0; padding:0.15rem; }
   .menu-item-handle:active { cursor:grabbing; }
-  .menu-item-label { flex:1; font-size:0.88rem; font-weight:600; color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .menu-item-label { font-size:0.88rem; font-weight:600; color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .menu-item-type { font-size:0.68rem; font-weight:700; text-transform:uppercase; color:var(--text-dim); background:rgba(156,163,175,0.07); padding:0.1rem 0.4rem; border-radius:4px; flex-shrink:0; }
   .menu-item-actions { display:flex; gap:0.25rem; flex-shrink:0; }
   .menu-item-toggle { width:24px; height:24px; border-radius:4px; background:none; border:none; color:var(--text-dim); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:var(--transition); flex-shrink:0; }
@@ -207,10 +267,99 @@ const posts = await getCollection('blog').catch(() => []);
 
   /* Drop target hint */
   .sortable-list .sortable-ghost { opacity:0.3; background:var(--primary-light); border:1px dashed var(--primary); border-radius:var(--radius-sm); }
-</style>
 
-<script define:vars={{ menuData: menu, megaMenusList: megaMenus }}>
+  /* Menu Status Badge */
+  .status-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    margin-left: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+  }
+  .status-badge.status-draft {
+    background: rgba(245, 158, 11, 0.15);
+    color: #F59E0B;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+  }
+  .status-badge.status-published {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10B981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+
+  /* Broken Link Warning */
+  .broken-link-warning {
+    color: #EF4444;
+    margin-left: 0.4rem;
+    cursor: help;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* Pinned Items Visual Styling */
+  .menu-item-card.is-pinned {
+    border-color: rgba(156,163,175,0.25) !important;
+    background: rgba(156,163,175,0.02) !important;
+    opacity: 0.95;
+  }
+  .menu-item-card.is-pinned .menu-item-label {
+    color: var(--text-muted);
+  }
+
+  /* Drag Indicator Warning */
+  .drag-enforce-indicator {
+    background: rgba(239, 68, 68, 0.95);
+    color: white;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.35rem 0.7rem;
+    border-radius: 4px;
+    position: fixed;
+    z-index: 99999;
+    pointer-events: none;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(239, 68, 68, 0.5);
+    transition: opacity 0.15s ease;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+
+  /* Drag-drop Polish & Animations */
+  .menu-item-card {
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  }
+  .menu-item-card.sortable-chosen {
+    transform: scale(1.02);
+    box-shadow: 0 10px 25px rgba(99, 102, 241, 0.25);
+    border-color: var(--primary) !important;
+    background: rgba(99, 102, 241, 0.05) !important;
+  }
+  .menu-item-card.sortable-ghost {
+    background: rgba(99, 102, 241, 0.12) !important;
+    border: 2px dashed var(--primary) !important;
+    opacity: 0.75;
+  }
+
+  /* Nesting Guidelines */
+  .menu-item-children {
+    border-left: 1px dotted rgba(99, 102, 241, 0.2);
+    transition: border-color 0.2s, background-color 0.2s;
+    min-height: 20px;
+  }
+  .menu-item-children:hover,
+  .menu-item-children.sortable-chosen {
+    border-left-color: rgba(99, 102, 241, 0.6);
+  }
+</style>
+<script define:vars={{ menuData: menu, megaMenusList: megaMenus, validPaths: uniqueValidPaths }}>
   let items = JSON.parse(JSON.stringify(menuData.items || []));
+  let menuStatus = menuData.status || 'published';
+
+  // History Stack for Undo/Redo
+  let historyStack = [];
+  let historyIndex = -1;
 
   // ── Utilities ──────────────────────────────────────────────────────────────
 
@@ -235,11 +384,163 @@ const posts = await getCollection('blog').catch(() => []);
     if (t && m) { m.textContent = msg; t.classList.add('active'); setTimeout(() => t.classList.remove('active'), 3000); }
   }
 
+  // ── History Stack Manager ──────────────────────────────────────────────────
+
+  function saveState() {
+    const serialized = JSON.stringify(items);
+    if (historyIndex >= 0 && historyStack[historyIndex] === serialized) return;
+
+    historyStack = historyStack.slice(0, historyIndex + 1);
+    historyStack.push(serialized);
+    historyIndex = historyStack.length - 1;
+    updateUndoRedoButtons();
+  }
+
+  function updateUndoRedoButtons() {
+    const undoBtn = document.getElementById('undo-btn');
+    const redoBtn = document.getElementById('redo-btn');
+    if (undoBtn) (undoBtn).disabled = historyIndex <= 0;
+    if (redoBtn) (redoBtn).disabled = historyIndex >= historyStack.length - 1;
+  }
+
+  function undoAction() {
+    if (historyIndex > 0) {
+      historyIndex--;
+      items = JSON.parse(historyStack[historyIndex]);
+      renderTree();
+      updateUndoRedoButtons();
+      showToast('Undo applied');
+    }
+  }
+
+  function redoAction() {
+    if (historyIndex < historyStack.length - 1) {
+      historyIndex++;
+      items = JSON.parse(historyStack[historyIndex]);
+      renderTree();
+      updateUndoRedoButtons();
+      showToast('Redo applied');
+    }
+  }
+
+  // ── Safety Helpers ─────────────────────────────────────────────────────────
+
+  function isUrlExternal(url) {
+    if (!url) return false;
+    const isAbsolute = /^(https?:)?\/\//.test(url);
+    if (!isAbsolute) return false;
+    try {
+      const urlObj = new URL(url, window.location.origin);
+      return urlObj.hostname !== window.location.hostname;
+    } catch {
+      return true;
+    }
+  }
+
+  function checkUrlBroken(url, type) {
+    if (!url) return false;
+    if (['phone', 'email', 'anchor', 'external-url'].includes(type)) {
+      return false;
+    }
+    if (/^(https?:)?\/\//.test(url)) {
+      return false;
+    }
+    let path = url.split('#')[0].split('?')[0].trim().toLowerCase();
+    if (path.length > 1 && path.endsWith('/')) {
+      path = path.slice(0, -1);
+    }
+    return !validPaths.includes(path);
+  }
+
+  function validateItemLink(card, item) {
+    const warning = card.querySelector('.broken-link-warning');
+    if (warning) {
+      if (checkUrlBroken(item.url, item.type)) {
+        warning.style.display = 'inline-flex';
+      } else {
+        warning.style.display = 'none';
+      }
+    }
+  }
+
+  function countMegaMenuLinks(megaMenuId) {
+    if (!megaMenuId) return 0;
+    const mega = megaMenusList.find(m => m.slug === megaMenuId);
+    if (!mega || !mega.columns) return 0;
+    let count = 0;
+    for (const col of mega.columns) {
+      if (col.items && Array.isArray(col.items)) {
+        count += col.items.length;
+      }
+      if (col.cta && col.cta.buttonUrl) {
+        count += 1;
+      }
+    }
+    return count;
+  }
+
+  function updateStatusBadge() {
+    const badge = document.getElementById('menu-status-badge');
+    if (badge) {
+      badge.textContent = menuStatus === 'draft' ? 'Draft' : 'Published';
+      badge.className = `status-badge status-${menuStatus}`;
+    }
+  }
+
+  // ── Drag Rejection Indicators ──────────────────────────────────────────────
+
+  function showDragIndicator(msg, x, y) {
+    let ind = document.getElementById('drag-enforce-indicator');
+    if (!ind) {
+      ind = document.createElement('div');
+      ind.id = 'drag-enforce-indicator';
+      ind.className = 'drag-enforce-indicator';
+      document.body.appendChild(ind);
+    }
+    ind.textContent = msg;
+    ind.style.display = 'block';
+    ind.style.left = (x + 15) + 'px';
+    ind.style.top = (y + 15) + 'px';
+  }
+
+  function hideDragIndicator() {
+    const ind = document.getElementById('drag-enforce-indicator');
+    if (ind) ind.style.display = 'none';
+  }
+
+  document.addEventListener('mouseup', hideDragIndicator);
+  document.addEventListener('dragend', hideDragIndicator);
+
+  function getSubtreeHeight(el) {
+    const childrenContainer = el.querySelector(':scope > .menu-item-children');
+    if (!childrenContainer) return 1;
+    const children = childrenContainer.querySelectorAll(':scope > .menu-item-card');
+    if (children.length === 0) return 1;
+    let maxHeight = 0;
+    children.forEach(child => {
+      maxHeight = Math.max(maxHeight, getSubtreeHeight(child));
+    });
+    return 1 + maxHeight;
+  }
+
+  function getContainerDepth(container) {
+    if (container.id === 'menu-tree-root') return 0;
+    const parentCard = container.closest('.menu-item-card');
+    if (!parentCard) return 0;
+    let depth = 1;
+    let current = parentCard.parentElement.closest('.menu-item-card');
+    while (current) {
+      depth++;
+      current = current.parentElement.closest('.menu-item-card');
+    }
+    return depth;
+  }
+
   // ── Build item card HTML ────────────────────────────────────────────────────
 
   function buildItemCard(item, depth = 0) {
     const card = document.createElement('div');
-    card.className = 'menu-item-card';
+    card.className = `menu-item-card ${item.pinned ? 'is-pinned' : ''}`;
     card.dataset.id = item.id;
 
     const badgeOpts = '<option value="">None</option><option value="new">New</option><option value="hot">Hot</option><option value="featured">Featured</option><option value="custom">Custom</option>';
@@ -248,20 +549,33 @@ const posts = await getCollection('blog').catch(() => []);
       .map(t => `<option value="${t}" ${item.type===t?'selected':''}>${t}</option>`).join('');
     const megaOpts = `<option value="">— None —</option>` + megaMenusList.map(m => `<option value="${m.slug}" ${item.megaMenuId===m.slug?'selected':''}>${m.name}</option>`).join('');
 
+    const handleHtml = item.pinned ? `
+      <div class="menu-item-handle-disabled" style="color:var(--text-dim); opacity:0.3; flex-shrink:0; padding:0.15rem; cursor:not-allowed;" title="Pinned items cannot be reordered by drag-drop">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
+      </div>
+    ` : `
+      <div class="menu-item-handle" title="Drag to reorder">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
+      </div>
+    `;
+
     card.innerHTML = `
       <div class="menu-item-row">
-        <div class="menu-item-handle" title="Drag to reorder">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
-        </div>
+        ${handleHtml}
         <span class="menu-item-label">${item.label || 'Untitled'}</span>
+        <span class="broken-link-warning" style="display: none; align-items: center; color: var(--color-error, #EF4444); cursor: help; margin-left: 0.4rem;" title="Page not found">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align: middle;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        </span>
         <span class="menu-item-type">${item.type}</span>
         <div class="menu-item-actions">
           <button class="menu-item-toggle settings-toggle" title="Item Settings">
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
           </button>
+          ${depth < 2 && !item.pinned ? `
           <button class="menu-item-toggle add-child-toggle" title="Add Child Item">
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           </button>
+          ` : ''}
           <button class="menu-item-toggle duplicate-toggle" title="Duplicate">
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
           </button>
@@ -279,7 +593,7 @@ const posts = await getCollection('blog').catch(() => []);
           </div>
           <div class="form-field">
             <label>URL / Link</label>
-            <input type="text" class="field-url" value="${escHtml(item.url)}" placeholder="/ or https://..." />
+            <input type="text" class="field-url" value="${escHtml(item.url)}" list="valid-urls-list" placeholder="/ or https://..." />
           </div>
           <div class="form-field">
             <label>Type</label>
@@ -313,22 +627,33 @@ const posts = await getCollection('blog').catch(() => []);
             <label>Description</label>
             <input type="text" class="field-description" value="${escHtml(item.description)}" placeholder="Short description shown in dropdown" />
           </div>
+          <div class="form-field" style="grid-column:1/-1; padding-top:0.4rem; border-top:1px solid rgba(255,255,255,0.03);">
+            <label class="checkbox-label" style="display:inline-flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.75rem; font-weight:600; color:var(--text-muted);">
+              <input type="checkbox" class="field-pinned" ${item.pinned ? 'checked' : ''} />
+              <span>Pin to the end of the menu</span>
+            </label>
+          </div>
         </div>
       </div>
 
-      ${depth < 3 ? `<div class="menu-item-children sortable-list" data-parent="${item.id}"></div>` : ''}
+      ${depth < 2 && !item.pinned ? `<div class="menu-item-children sortable-list" data-parent="${item.id}"></div>` : ''}
     `;
 
     // Wire settings fields
     wireItemFields(card, item);
 
+    // Initial check for broken link
+    validateItemLink(card, item);
+
     // Render children
-    if (depth < 3) {
+    if (depth < 2 && !item.pinned) {
       const childrenContainer = card.querySelector('.menu-item-children');
-      (item.children || []).forEach(child => {
-        childrenContainer.appendChild(buildItemCard(child, depth + 1));
-      });
-      initSortable(childrenContainer, item.children || []);
+      if (childrenContainer) {
+        (item.children || []).forEach(child => {
+          childrenContainer.appendChild(buildItemCard(child, depth + 1));
+        });
+        initSortable(childrenContainer, item.children || []);
+      }
     }
 
     return card;
@@ -342,9 +667,21 @@ const posts = await getCollection('blog').catch(() => []);
     });
 
     card.querySelector('.delete-toggle')?.addEventListener('click', () => {
+      if (item.type === 'mega-menu' && item.megaMenuId) {
+        const linkCount = countMegaMenuLinks(item.megaMenuId);
+        if (linkCount > 0) {
+          window.customConfirm(`This item has a Mega Menu with ${linkCount} link(s). Deleting it will remove them too. Continue?`, () => {
+            removeItemById(items, item.id);
+            renderTree();
+            saveState();
+          });
+          return;
+        }
+      }
       window.customConfirm('Delete this menu item?', () => {
         removeItemById(items, item.id);
         renderTree();
+        saveState();
       });
     });
 
@@ -356,6 +693,7 @@ const posts = await getCollection('blog').catch(() => []);
       const idx = parentArr.findIndex(i => i.id === item.id);
       parentArr.splice(idx + 1, 0, clone);
       renderTree();
+      saveState();
     });
 
     card.querySelector('.add-child-toggle')?.addEventListener('click', () => {
@@ -363,6 +701,7 @@ const posts = await getCollection('blog').catch(() => []);
       if (!item.children) item.children = [];
       item.children.push(child);
       renderTree();
+      saveState();
     });
 
     const labelInput = card.querySelector('.field-label');
@@ -370,13 +709,40 @@ const posts = await getCollection('blog').catch(() => []);
       item.label = e.target.value;
       card.querySelector('.menu-item-label').textContent = e.target.value || 'Untitled';
     });
+    labelInput?.addEventListener('change', saveState);
 
-    card.querySelector('.field-url')?.addEventListener('input', e => { item.url = e.target.value; });
+    card.querySelector('.field-url')?.addEventListener('input', e => {
+      let val = e.target.value.trim();
+      
+      // Auto-prepend https:// if external but has no protocol
+      if (/^(www\.|[a-zA-Z0-9-]+\.(com|in|org|net|co|io|edu|gov))/i.test(val) && !/^(https?:)?\/\//.test(val)) {
+        val = 'https://' + val;
+        e.target.value = val;
+      }
+
+      item.url = val;
+      validateItemLink(card, item);
+
+      // Auto detect external and open in new tab
+      if (isUrlExternal(val)) {
+        item.target = '_blank';
+        item.rel = 'noopener noreferrer';
+        const targetSelect = card.querySelector('.field-target');
+        if (targetSelect) targetSelect.value = '_blank';
+      }
+    });
+    card.querySelector('.field-url')?.addEventListener('change', saveState);
+
     card.querySelector('.field-description')?.addEventListener('input', e => { item.description = e.target.value; });
+    card.querySelector('.field-description')?.addEventListener('change', saveState);
+    
     card.querySelector('.field-class')?.addEventListener('input', e => { item.cssClass = e.target.value; });
+    card.querySelector('.field-class')?.addEventListener('change', saveState);
+    
     card.querySelector('.field-icon')?.addEventListener('input', e => {
       item.icon = e.target.value ? { type: 'fa', value: e.target.value } : null;
     });
+    card.querySelector('.field-icon')?.addEventListener('change', saveState);
 
     const typeSelect = card.querySelector('.field-type');
     typeSelect?.addEventListener('change', e => {
@@ -384,19 +750,42 @@ const posts = await getCollection('blog').catch(() => []);
       card.querySelector('.menu-item-type').textContent = item.type;
       const megaWrap = card.querySelector('.field-mega-wrap');
       if (megaWrap) megaWrap.style.display = item.type === 'mega-menu' ? '' : 'none';
+      validateItemLink(card, item);
+      saveState();
     });
 
-    card.querySelector('.field-target')?.addEventListener('change', e => { item.target = e.target.value; });
-    card.querySelector('.field-mega-id')?.addEventListener('change', e => { item.megaMenuId = e.target.value || null; });
+    card.querySelector('.field-target')?.addEventListener('change', e => {
+      item.target = e.target.value;
+      if (item.target === '_blank') {
+        item.rel = 'noopener noreferrer';
+      } else {
+        item.rel = '';
+      }
+      saveState();
+    });
+
+    card.querySelector('.field-mega-id')?.addEventListener('change', e => { item.megaMenuId = e.target.value || null; saveState(); });
 
     const badgeStyleSelect = card.querySelector('.field-badge-style');
     badgeStyleSelect?.addEventListener('change', e => {
       item.badge = e.target.value ? { style: e.target.value, text: item.badge?.text || e.target.value.toUpperCase() } : null;
       const wrap = card.querySelector('.field-badge-text-wrap');
       if (wrap) wrap.style.display = e.target.value ? '' : 'none';
+      saveState();
     });
     card.querySelector('.field-badge-text')?.addEventListener('input', e => {
       if (item.badge) item.badge.text = e.target.value;
+    });
+    card.querySelector('.field-badge-text')?.addEventListener('change', saveState);
+
+    card.querySelector('.field-pinned')?.addEventListener('change', e => {
+      item.pinned = e.target.checked;
+      if (item.pinned) {
+        item.parentId = null;
+        item.children = [];
+      }
+      renderTree();
+      saveState();
     });
   }
 
@@ -423,23 +812,40 @@ const posts = await getCollection('blog').catch(() => []);
   function addItem(newItem) {
     items.push(newItem);
     renderTree();
+    saveState();
   }
 
   // ── Render entire tree ──────────────────────────────────────────────────────
 
   function renderTree() {
     const root = document.getElementById('menu-tree-root');
+    const pinnedContainer = document.getElementById('menu-tree-pinned');
+    const divider = document.querySelector('.pinned-section-divider');
     const empty = document.getElementById('menu-tree-empty');
-    if (!root) return;
+    if (!root || !pinnedContainer) return;
+
     root.innerHTML = '';
+    pinnedContainer.innerHTML = '';
+
+    const sortableItems = items.filter(i => !i.pinned);
+    const pinnedItems = items.filter(i => i.pinned);
 
     if (items.length === 0) {
       empty && (empty.style.display = 'flex');
+      divider && ((divider).style.display = 'none');
     } else {
       empty && (empty.style.display = 'none');
-      items.forEach(item => root.appendChild(buildItemCard(item, 0)));
+      
+      sortableItems.forEach(item => root.appendChild(buildItemCard(item, 0)));
+      
+      if (pinnedItems.length > 0) {
+        divider && ((divider).style.display = 'block');
+        pinnedItems.forEach(item => pinnedContainer.appendChild(buildItemCard(item, 0)));
+      } else {
+        divider && ((divider).style.display = 'none');
+      }
     }
-    initSortable(root, items);
+    initSortable(root, sortableItems);
     updateCount();
   }
 
@@ -453,23 +859,45 @@ const posts = await getCollection('blog').catch(() => []);
       animation: 150,
       handle: '.menu-item-handle',
       ghostClass: 'sortable-ghost',
+      onMove(evt, originalEvent) {
+        const draggedEl = evt.dragged;
+        const targetContainer = evt.to;
+        
+        const height = getSubtreeHeight(draggedEl);
+        const depth = getContainerDepth(targetContainer);
+        
+        if (depth + height > 3) {
+          const x = originalEvent ? originalEvent.clientX : 0;
+          const y = originalEvent ? originalEvent.clientY : 0;
+          showDragIndicator("Max nesting reached", x, y);
+          return false; // reject drop
+        }
+        hideDragIndicator();
+        return true;
+      },
       onEnd(evt) {
-        // Rebuild the items array from DOM order after drag
+        hideDragIndicator();
         syncFromDOM();
+        saveState();
         updateCount();
       },
     });
   }
 
   function syncFromDOM() {
-    function readLevel(container) {
+    function readLevel(container, parentId = null) {
       const result = [];
-      container.querySelectorAll(':scope > .menu-item-card').forEach(card => {
+      container.querySelectorAll(':scope > .menu-item-card').forEach((card, idx) => {
         const id = card.dataset.id;
         let item = findById(items, id);
         if (!item) return;
         const childContainer = card.querySelector(':scope > .menu-item-children');
-        item = { ...item, children: childContainer ? readLevel(childContainer) : [] };
+        
+        // Update in-memory local state parameters immediately
+        item.order = idx;
+        item.parentId = parentId;
+
+        item = { ...item, order: idx, parentId, children: childContainer ? readLevel(childContainer, item.id) : [] };
         result.push(item);
       });
       return result;
@@ -483,7 +911,12 @@ const posts = await getCollection('blog').catch(() => []);
       return null;
     }
     const root = document.getElementById('menu-tree-root');
-    if (root) items = readLevel(root);
+    const pinnedContainer = document.getElementById('menu-tree-pinned');
+    let sortableList = [];
+    let pinnedList = [];
+    if (root) sortableList = readLevel(root, null);
+    if (pinnedContainer) pinnedList = readLevel(pinnedContainer, null);
+    items = [...sortableList, ...pinnedList];
   }
 
   // ── Add items panel ─────────────────────────────────────────────────────────
@@ -497,11 +930,24 @@ const posts = await getCollection('blog').catch(() => []);
 
     document.getElementById('quick-add-btn')?.addEventListener('click', () => {
       const label = (document.getElementById('quick-label')).value.trim();
-      const url = (document.getElementById('quick-url')).value.trim();
+      let url = (document.getElementById('quick-url')).value.trim() || '/';
       const type = (document.getElementById('quick-type')).value;
       const megaId = (document.getElementById('quick-mega-id'))?.value || null;
       if (!label) { (document.getElementById('quick-label')).focus(); return; }
-      addItem({ id: uid(), label, url: url||'/', type, target: '_self', icon: null, image: null, badge: null, description: '', cssClass: '', customId: '', visibility: { device: 'all', auth: 'all' }, megaMenuId: megaId, children: [] });
+
+      // Auto-prepend https:// if external but has no protocol
+      if (/^(www\.|[a-zA-Z0-9-]+\.(com|in|org|net|co|io|edu|gov))/i.test(url) && !/^(https?:)?\/\//.test(url)) {
+        url = 'https://' + url;
+      }
+
+      let target = '_self';
+      let rel = '';
+      if (isUrlExternal(url)) {
+        target = '_blank';
+        rel = 'noopener noreferrer';
+      }
+
+      addItem({ id: uid(), label, url, type, target, rel, icon: null, image: null, badge: null, description: '', cssClass: '', customId: '', visibility: { device: 'all', auth: 'all' }, megaMenuId: megaId, children: [] });
       (document.getElementById('quick-label')).value = '';
       (document.getElementById('quick-url')).value = '';
     });
@@ -517,7 +963,6 @@ const posts = await getCollection('blog').catch(() => []);
       });
     });
 
-    // Search filters
     document.getElementById('pages-search')?.addEventListener('input', function() {
       const q = this.value.toLowerCase();
       document.querySelectorAll('#pages-list .add-content-item').forEach(item => {
@@ -534,30 +979,54 @@ const posts = await getCollection('blog').catch(() => []);
 
   // ── Save ───────────────────────────────────────────────────────────────────
 
+  async function saveMenuAction(status) {
+    syncFromDOM();
+    const draftBtn = document.getElementById('save-draft-btn');
+    const publishBtn = document.getElementById('publish-menu-btn');
+    const activeBtn = status === 'draft' ? draftBtn : publishBtn;
+    
+    if (draftBtn) draftBtn.disabled = true;
+    if (publishBtn) publishBtn.disabled = true;
+    if (activeBtn) activeBtn.textContent = 'Saving…';
+
+    try {
+      const res = await fetch('/api/menus-crud', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: menuData.slug, items, status }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        menuStatus = status;
+        updateStatusBadge();
+        showToast(status === 'draft' ? 'Draft saved!' : 'Menu published live!');
+      } else {
+        showToast(data.error || 'Save failed');
+      }
+    } catch {
+      showToast('Network error');
+    } finally {
+      if (draftBtn) { draftBtn.disabled = false; draftBtn.innerHTML = 'Save Draft'; }
+      if (publishBtn) { publishBtn.disabled = false; publishBtn.innerHTML = 'Publish'; }
+    }
+  }
+
   function initSave() {
-    document.getElementById('save-menu-btn')?.addEventListener('click', async () => {
-      syncFromDOM();
-      const btn = document.getElementById('save-menu-btn');
-      btn.disabled = true; btn.textContent = 'Saving…';
-      try {
-        const res = await fetch('/api/menus-crud', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: menuData.slug, items }),
-        });
-        const data = await res.json();
-        if (data.success) showToast('Menu saved!');
-        else showToast(data.error || 'Save failed');
-      } catch { showToast('Network error'); }
-      finally { btn.disabled = false; btn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path></svg> Save Menu'; }
-    });
+    document.getElementById('save-draft-btn')?.addEventListener('click', () => saveMenuAction('draft'));
+    document.getElementById('publish-menu-btn')?.addEventListener('click', () => saveMenuAction('published'));
   }
 
   // ── Preview ────────────────────────────────────────────────────────────────
 
   function initPreview() {
     const overlay = document.getElementById('nav-preview-overlay');
-    document.getElementById('preview-nav-btn')?.addEventListener('click', () => overlay?.classList.add('active'));
+    const iframe = document.getElementById('preview-iframe');
+    document.getElementById('preview-nav-btn')?.addEventListener('click', () => {
+      if (iframe) {
+        iframe.src = `/?menu_preview=${menuData.slug}`;
+      }
+      overlay?.classList.add('active');
+    });
     document.getElementById('close-preview')?.addEventListener('click', () => overlay?.classList.remove('active'));
     document.querySelectorAll('.device-btn').forEach(btn => {
       btn.addEventListener('click', function() {
@@ -565,6 +1034,123 @@ const posts = await getCollection('blog').catch(() => []);
         this.classList.add('active');
         const vp = document.getElementById('preview-viewport');
         if (vp) { vp.className = `device-viewport ${this.dataset.device}`; }
+      });
+    });
+  }
+
+  // ── Export / Import / Filter / Clone Actions ───────────────────────────────
+
+  function initExtendedControls() {
+    // Undo/Redo Click Listeners
+    document.getElementById('undo-btn')?.addEventListener('click', undoAction);
+    document.getElementById('redo-btn')?.addEventListener('click', redoAction);
+    
+    // Ctrl+Z / Ctrl+Y shortcuts
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        undoAction();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+        e.preventDefault();
+        redoAction();
+      }
+    });
+
+    // Clone Menu Click Listener
+    document.getElementById('clone-menu-btn')?.addEventListener('click', () => {
+      const newName = window.prompt(`Clone Menu "${menuData.name}" as:`, `${menuData.name} (Copy)`);
+      if (!newName || !newName.trim()) return;
+
+      const btn = document.getElementById('clone-menu-btn');
+      if (btn) btn.disabled = true;
+
+      syncFromDOM();
+      fetch('/api/menus-crud', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newName.trim(),
+          description: menuData.description,
+          items,
+          status: 'draft'
+        })
+      }).then(r => r.json()).then(data => {
+        if (data.success) {
+          showToast('Menu cloned successfully!');
+          setTimeout(() => {
+            window.location.href = `/admin/menu-editor?id=${data.menu.slug}`;
+          }, 800);
+        } else {
+          showToast(data.error || 'Cloning failed');
+          if (btn) btn.disabled = false;
+        }
+      }).catch(() => {
+        showToast('Network error');
+        if (btn) btn.disabled = false;
+      });
+    });
+
+    // Export JSON
+    document.getElementById('export-json-btn')?.addEventListener('click', () => {
+      syncFromDOM();
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(items, null, 2));
+      const a = document.createElement('a');
+      a.setAttribute("href",     dataStr);
+      a.setAttribute("download", `menu-${menuData.slug}.json`);
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      showToast('Export downloaded');
+    });
+
+    // Import JSON
+    const importFile = document.getElementById('import-json-file');
+    document.getElementById('import-json-btn')?.addEventListener('click', () => {
+      importFile?.click();
+    });
+
+    importFile?.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const parsed = JSON.parse(evt.target.result);
+          if (Array.isArray(parsed)) {
+            items = parsed;
+            renderTree();
+            saveState();
+            showToast('JSON Imported successfully!');
+          } else {
+            showToast('Invalid JSON structure: Must be an array');
+          }
+        } catch {
+          showToast('JSON parsing failed');
+        }
+        e.target.value = '';
+      };
+      reader.readAsText(file);
+    });
+
+    // Live search filter
+    document.getElementById('tree-search')?.addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      document.querySelectorAll('.menu-item-card').forEach(card => {
+        const label = card.querySelector('.menu-item-label').textContent.toLowerCase();
+        const urlInput = card.querySelector('.field-url');
+        const url = urlInput ? urlInput.value.toLowerCase() : '';
+
+        if (!q) {
+          card.style.opacity = '1';
+          card.style.borderColor = '';
+        } else if (label.includes(q) || url.includes(q)) {
+          card.style.opacity = '1';
+          card.style.borderColor = 'var(--primary)';
+        } else {
+          card.style.opacity = '0.35';
+          card.style.borderColor = '';
+        }
       });
     });
   }
@@ -580,6 +1166,9 @@ const posts = await getCollection('blog').catch(() => []);
     initAddPanel();
     initSave();
     initPreview();
+    initExtendedControls();
+    saveState(); // push initial state to history stack
+    updateStatusBadge();
   }
 
   // Load SortableJS then init

@@ -69,6 +69,7 @@ function iconHtml(icon: MenuItem['icon']) {
             <a
               href={href}
               target={item.target}
+              rel={item.rel || undefined}
               class="primary-nav__link primary-nav__link--button"
               id={item.customId || undefined}
               aria-label={item.description || item.label}
@@ -93,6 +94,7 @@ function iconHtml(icon: MenuItem['icon']) {
             <a
               href={href}
               target={item.target}
+              rel={item.rel || undefined}
               class:list={['primary-nav__link', isActive && 'is-active']}
               id={item.customId || undefined}
               aria-label={item.description || undefined}
@@ -115,6 +117,7 @@ function iconHtml(icon: MenuItem['icon']) {
                     <a
                       href={childHref}
                       target={child.target}
+                      rel={child.rel || undefined}
                       class:list={['primary-nav__dropdown-link', childActive && 'is-active']}
                       aria-current={childActive ? 'page' : undefined}
                     >
@@ -130,7 +133,7 @@ function iconHtml(icon: MenuItem['icon']) {
                       <ul class="primary-nav__dropdown primary-nav__dropdown--level3" role="list">
                         {child.children.map((grand) => (
                           <li role="none">
-                            <a href={resolveItemUrl(grand)} target={grand.target} class="primary-nav__dropdown-link">
+                            <a href={resolveItemUrl(grand)} target={grand.target} rel={grand.rel || undefined} class="primary-nav__dropdown-link">
                               {grand.label}
                             </a>
                           </li>

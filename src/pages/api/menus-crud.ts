@@ -43,6 +43,7 @@ export const POST: APIRoute = async ({ request }) => {
     description: body.description || '',
     settings: { ...DEFAULT_SETTINGS, ...body.settings },
     items: body.items || [],
+    status: body.status || 'published',
     createdAt: now,
     updatedAt: now,
   };
@@ -64,6 +65,7 @@ export const PUT: APIRoute = async ({ request }) => {
     description: body.description ?? existing.description,
     settings: { ...existing.settings, ...(body.settings || {}) },
     items: body.items ?? existing.items,
+    status: body.status ?? existing.status ?? 'published',
     updatedAt: new Date().toISOString(),
   };
   saveMenu(updated);

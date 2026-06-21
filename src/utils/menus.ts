@@ -40,6 +40,10 @@ export interface MenuItem {
   type: 'page' | 'section' | 'blog-post' | 'blog-category' | 'custom-url' | 'external-url' | 'anchor' | 'phone' | 'email' | 'button' | 'mega-menu';
   url: string;
   target: '_self' | '_blank';
+  rel?: string;
+  pinned?: boolean;
+  order?: number;
+  parentId?: string | null;
   icon: MenuItemIcon | null;
   image: MenuItemImage | null;
   badge: MenuItemBadge | null;
@@ -65,6 +69,7 @@ export interface Menu {
   name: string;
   slug: string;
   description: string;
+  status?: 'draft' | 'published';
   settings: MenuSettings;
   items: MenuItem[];
   createdAt: string;
@@ -82,7 +87,7 @@ export interface MegaMenuColumn {
   width: string;
   type: 'links' | 'html' | 'section' | 'cta';
   heading?: string;
-  items?: Array<{ label: string; url: string; icon?: string; description?: string }>;
+  items?: Array<{ label: string; url: string; icon?: string; description?: string; columnId?: string; order?: number }>;
   html?: string;
   sectionId?: string;
   cta?: { image?: string; heading?: string; text?: string; buttonLabel?: string; buttonUrl?: string; buttonStyle?: string };
@@ -103,7 +108,7 @@ export interface MegaMenu {
 export function getAllMenus(): Menu[] {
   ensureDir(MENUS_DIR);
   return readdirSync(MENUS_DIR)
-    .filter(f => f.endsWith('.json'))
+    .filter(f => f.endsWith('.json') && !f.endsWith('.published.json'))
     .map(f => {
       try { return JSON.parse(readFileSync(join(MENUS_DIR, f), 'utf-8')) as Menu; }
       catch { return null; }
@@ -121,12 +126,20 @@ export function getMenu(slug: string): Menu | null {
 export function saveMenu(menu: Menu): void {
   ensureDir(MENUS_DIR);
   menu.updatedAt = new Date().toISOString();
+  // Always save source of truth
   writeFileSync(join(MENUS_DIR, `${menu.slug}.json`), JSON.stringify(menu, null, 2));
+
+  // Save copy for production if published
+  if (menu.status === 'published' || !menu.status) {
+    writeFileSync(join(MENUS_DIR, `${menu.slug}.published.json`), JSON.stringify(menu, null, 2));
+  }
 }
 
 export function deleteMenu(slug: string): void {
   const p = join(MENUS_DIR, `${slug}.json`);
   if (existsSync(p)) unlinkSync(p);
+  const pub = join(MENUS_DIR, `${slug}.published.json`);
+  if (existsSync(pub)) unlinkSync(pub);
 }
 
 // ─── Menu Location Helpers ────────────────────────────────────────────────────
@@ -141,12 +154,34 @@ export function saveMenuLocations(data: Record<string, MenuLocation>): void {
   writeFileSync(LOCATIONS_PATH, JSON.stringify(data, null, 2));
 }
 
-/** Returns the Menu assigned to a location key, or null if unassigned. */
-export function getMenuAtLocation(locationKey: string): Menu | null {
+/** Returns the Menu assigned to a location key, or null if unassigned. Supports draft/preview logic. */
+export function getMenuAtLocation(locationKey: string, previewId?: string | null): Menu | null {
   const locations = getMenuLocations();
   const loc = locations[locationKey];
   if (!loc?.menuId) return null;
-  return getMenu(loc.menuId);
+
+  // Render draft source if preview mode matches
+  if (previewId && previewId === loc.menuId) {
+    return getMenu(loc.menuId);
+  }
+
+  // Load published copy if exists
+  const publishedPath = join(MENUS_DIR, `${loc.menuId}.published.json`);
+  if (existsSync(publishedPath)) {
+    try {
+      return JSON.parse(readFileSync(publishedPath, 'utf-8')) as Menu;
+    } catch {
+      // Fallback
+    }
+  }
+
+  // Backward compatibility fallback to source of truth
+  const menu = getMenu(loc.menuId);
+  if (menu && (menu.status === 'published' || !menu.status)) {
+    return menu;
+  }
+
+  return null;
 }
 
 // ─── Mega Menu Helpers ────────────────────────────────────────────────────────

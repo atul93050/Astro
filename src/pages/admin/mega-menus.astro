@@ -146,9 +146,10 @@ const megaMenus = getAllMegaMenus();
     const contentArea = el.querySelector('.col-content-area') as HTMLElement;
     if (col.type === 'links') {
       contentArea.innerHTML = `
-        <div class="col-links-list" style="display:flex; flex-direction:column; gap:0.4rem;">
+        <div class="col-links-list" style="display:flex; flex-direction:column; gap:0.4rem; min-height:40px; border:1px dashed rgba(255,255,255,0.05); padding:0.25rem; border-radius:4px;">
           ${(col.items||[]).map((item: any, i: number) => `
             <div class="link-row" style="display:flex; gap:0.5rem; align-items:center;">
+              <span class="link-row-handle" style="cursor:grab; color:var(--text-dim); font-size:0.9rem; padding:2px; user-select:none;">⋮⋮</span>
               <input type="text" class="link-label" data-col="${idx}" data-li="${i}" value="${item.label||''}" placeholder="Label" style="flex:0.45;" />
               <input type="text" class="link-url" data-col="${idx}" data-li="${i}" value="${item.url||''}" placeholder="URL" style="flex:0.55;" />
               <button type="button" class="btn-action-sm" data-remove-link="${i}" title="Remove">×</button>
@@ -203,10 +204,59 @@ const megaMenus = getAllMegaMenus();
     return el;
   }
 
+  function syncColumnsFromDOM() {
+    document.querySelectorAll('.mega-col-editor').forEach((editor) => {
+      const idx = parseInt((editor as HTMLElement).dataset.colIdx!);
+      if (isNaN(idx) || !columns[idx]) return;
+
+      if (columns[idx].type === 'links') {
+        const newItems: any[] = [];
+        const colId = columns[idx].id || `col-${idx}`;
+        editor.querySelectorAll('.link-row').forEach((row, rIdx) => {
+          const labelInput = row.querySelector('.link-label') as HTMLInputElement;
+          const urlInput = row.querySelector('.link-url') as HTMLInputElement;
+          if (labelInput && urlInput) {
+            newItems.push({
+              label: labelInput.value,
+              url: urlInput.value,
+              columnId: colId,
+              order: rIdx
+            });
+          }
+        });
+        columns[idx].items = newItems;
+      }
+    });
+    renderColumns();
+  }
+
+  function initColSortables() {
+    if (!(window as any).Sortable) {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js';
+      script.onload = () => { initColSortables(); };
+      document.head.appendChild(script);
+      return;
+    }
+
+    document.querySelectorAll('.col-links-list').forEach(container => {
+      new (window as any).Sortable(container, {
+        group: 'mega-col-links',
+        animation: 150,
+        handle: '.link-row-handle',
+        ghostClass: 'sortable-ghost',
+        onEnd() {
+          syncColumnsFromDOM();
+        }
+      });
+    });
+  }
+
   function renderColumns() {
     const list = document.getElementById('mega-columns-list')!;
     list.innerHTML = '';
     columns.forEach((col, i) => list.appendChild(buildColEditor(col, i)));
+    initColSortables();
   }
 
   function openModal(id?: string) {

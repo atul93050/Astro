@@ -39,6 +39,7 @@ export const prerender = false;
           <div class="form-group">
             <label for="tag-name">Tag Name <span style="color:var(--color-error);">*</span></label>
             <input type="text" id="tag-name" placeholder="e.g. JavaScript, Design, Tutorial" autocomplete="off" />
+            <span class="field-error" id="tag-name-error"></span>
           </div>
 
           <div class="form-group">
@@ -48,29 +49,7 @@ export const prerender = false;
               <input type="text" id="tag-slug" placeholder="auto-generated-slug" autocomplete="off" />
             </div>
             <span class="field-help">Auto-generated from name. You can customise it.</span>
-          </div>
-
-          <div class="form-group">
-            <label for="tag-description">Description</label>
-            <textarea id="tag-description" rows="3" placeholder="Brief description of this tag (optional)"></textarea>
-          </div>
-
-          <div class="form-group">
-            <label>Tag Color</label>
-            <div class="color-picker-row">
-              <div class="color-presets" id="color-presets">
-                <!-- preset swatches injected by JS -->
-              </div>
-              <div class="color-custom-wrap">
-                <label class="color-custom-label" for="tag-color-custom">
-                  <span>Custom</span>
-                  <input type="color" id="tag-color-custom" value="#6366F1" />
-                </label>
-              </div>
-            </div>
-            <div class="tag-preview-pill" id="tag-preview-pill">
-              <span id="tag-preview-text">Preview</span>
-            </div>
+            <span class="field-error" id="tag-slug-error"></span>
           </div>
 
           <div class="form-actions" id="form-actions">
@@ -270,6 +249,11 @@ export const prerender = false;
     flex-direction: column;
     gap: 0.35rem;
   }
+  .field-error {
+    color: var(--color-error);
+    font-size: 0.75rem;
+    min-height: 0.95rem;
+  }
   .slug-field-wrap {
     display: flex;
     align-items: center;
@@ -309,85 +293,6 @@ export const prerender = false;
     border-color: transparent !important;
   }
 
-  /* ─── Color Picker ─────────────────────────────────────────────── */
-  .color-picker-row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-  }
-  .color-presets {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    flex: 1;
-  }
-  .color-swatch {
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    cursor: pointer;
-    border: 2.5px solid transparent;
-    transition: var(--transition);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    flex-shrink: 0;
-  }
-  .color-swatch:hover {
-    transform: scale(1.15);
-  }
-  .color-swatch.selected {
-    border-color: white;
-    transform: scale(1.1);
-    box-shadow: 0 0 0 2px rgba(255,255,255,0.5), 0 3px 10px rgba(0,0,0,0.4);
-  }
-  .color-custom-wrap {
-    flex-shrink: 0;
-  }
-  .color-custom-label {
-    display: flex !important;
-    align-items: center;
-    gap: 0.4rem;
-    cursor: pointer;
-    font-size: 0.78rem !important;
-    font-weight: 600 !important;
-    color: var(--text-muted) !important;
-    background: var(--input-bg);
-    border: 1px solid var(--input-border);
-    border-radius: var(--radius-sm);
-    padding: 0.35rem 0.65rem;
-    transition: var(--transition);
-    margin: 0 !important;
-    height: auto !important;
-  }
-  .color-custom-label:hover {
-    border-color: var(--primary);
-    color: var(--text-main) !important;
-  }
-  input[type="color"] {
-    width: 20px !important;
-    height: 20px !important;
-    padding: 0 !important;
-    border: none !important;
-    background: transparent !important;
-    border-radius: 50% !important;
-    cursor: pointer !important;
-    outline: none !important;
-  }
-
-  /* ─── Tag Preview Pill ─────────────────────────────────────────── */
-  .tag-preview-pill {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.35rem 0.9rem;
-    border-radius: 20px;
-    font-size: 0.82rem;
-    font-weight: 600;
-    margin-top: 0.25rem;
-    align-self: flex-start;
-    transition: var(--transition);
-    cursor: default;
-    user-select: none;
-  }
 
   /* ─── Form Actions ─────────────────────────────────────────────── */
   .form-actions {
@@ -581,7 +486,6 @@ export const prerender = false;
 
   let allTags = [];
   let editingTagId = null;
-  let selectedColor = '#6366F1';
   let slugManuallyEdited = false;
   let searchQuery = '';
 
@@ -593,48 +497,8 @@ export const prerender = false;
     if (!saveBtn || saveBtn.dataset.bound) return;
     saveBtn.dataset.bound = 'true';
 
-    buildColorPresets();
     bindFormEvents();
     loadTags();
-  }
-
-  // ──────────────────────────────────────────────────────────────────
-  //  COLOR PRESETS
-  // ──────────────────────────────────────────────────────────────────
-  function buildColorPresets() {
-    const container = document.getElementById('color-presets');
-    if (!container) return;
-    container.innerHTML = PRESET_COLORS.map(c => `
-      <button type="button" class="color-swatch ${c === selectedColor ? 'selected' : ''}"
-        style="background:${c};"
-        data-color="${c}"
-        title="${c}"
-        onclick="selectColor('${c}')"></button>
-    `).join('');
-  }
-
-  window.selectColor = function(color) {
-    selectedColor = color;
-    document.querySelectorAll('.color-swatch').forEach(s => {
-      s.classList.toggle('selected', s.dataset.color === color);
-    });
-    const customPicker = document.getElementById('tag-color-custom');
-    if (customPicker) customPicker.value = color;
-    updatePreviewPill();
-  };
-
-  function updatePreviewPill() {
-    const pill = document.getElementById('tag-preview-pill');
-    const text = document.getElementById('tag-preview-text');
-    const nameInput = document.getElementById('tag-name');
-    if (!pill || !text) return;
-    const label = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : 'Tag Preview';
-    text.textContent = label;
-    const rgb = hexToRgb(selectedColor);
-    pill.style.background = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`;
-    pill.style.color = selectedColor;
-    pill.style.border = `1.5px solid rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.3)`;
-    pill.style.boxShadow = `0 0 12px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.18)`;
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -643,7 +507,6 @@ export const prerender = false;
   function bindFormEvents() {
     const nameInput = document.getElementById('tag-name');
     const slugInput = document.getElementById('tag-slug');
-    const colorCustom = document.getElementById('tag-color-custom');
     const saveBtn = document.getElementById('btn-save-tag');
     const cancelBtn = document.getElementById('btn-cancel-edit');
     const searchInput = document.getElementById('tags-search');
@@ -654,7 +517,6 @@ export const prerender = false;
           const slug = slugify(nameInput.value);
           if (slugInput) slugInput.value = slug;
         }
-        updatePreviewPill();
       });
     }
 
@@ -662,14 +524,6 @@ export const prerender = false;
       slugInput.addEventListener('input', () => {
         slugManuallyEdited = true;
         slugInput.value = slugify(slugInput.value, true);
-      });
-    }
-
-    if (colorCustom) {
-      colorCustom.addEventListener('input', () => {
-        selectedColor = colorCustom.value;
-        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
-        updatePreviewPill();
       });
     }
 
@@ -687,8 +541,6 @@ export const prerender = false;
         renderTable();
       });
     }
-
-    updatePreviewPill();
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -720,19 +572,20 @@ export const prerender = false;
   async function handleSaveTag() {
     const nameInput = document.getElementById('tag-name');
     const slugInput = document.getElementById('tag-slug');
-    const descInput = document.getElementById('tag-description');
     const saveBtn = document.getElementById('btn-save-tag');
     const saveLbl = document.getElementById('btn-save-label');
 
     const name = nameInput ? nameInput.value.trim() : '';
     const slug = slugInput ? slugInput.value.trim() : '';
-    const description = descInput ? descInput.value.trim() : '';
+    const normalizedSlug = slug || slugify(name);
+    clearInlineErrors();
 
     if (!name) {
       showToast('Please enter a tag name.', 'error');
       nameInput && nameInput.focus();
       return;
     }
+    if (hasTagDuplicate(name, normalizedSlug)) return;
 
     saveBtn.disabled = true;
     saveLbl.textContent = editingTagId ? 'Updating…' : 'Creating…';
@@ -740,9 +593,8 @@ export const prerender = false;
     const payload = {
       action: 'tag',
       name,
-      slug: slug || slugify(name),
-      description,
-      color: selectedColor
+      slug: normalizedSlug,
+      color: colorForName(name)
     };
 
     try {
@@ -787,9 +639,13 @@ export const prerender = false;
   window.deleteTag = function(id) {
     const tag = allTags.find(t => (t.id || t._id) == id);
     const name = tag ? tag.name : 'this tag';
+    const count = tag ? (tag.post_count || tag.postCount || 0) : 0;
+    const message = count > 0
+      ? `This tag is used on ${count} post(s). Remove tag from those posts and delete?`
+      : `Delete the tag "${name}"? This cannot be undone.`;
     window.customConfirm
-      ? window.customConfirm(`Delete the tag "${name}"? This cannot be undone.`, async () => { await doDeleteTag(id); })
-      : (confirm(`Delete tag "${name}"?`) && doDeleteTag(id));
+      ? window.customConfirm(message, async () => { await doDeleteTag(id); })
+      : (confirm(message) && doDeleteTag(id));
   };
 
   async function doDeleteTag(id) {
@@ -828,20 +684,12 @@ export const prerender = false;
     document.getElementById('tag-id').value = tagId;
     document.getElementById('tag-name').value = tag.name || '';
     document.getElementById('tag-slug').value = tag.slug || '';
-    document.getElementById('tag-description').value = tag.description || '';
-
-    selectedColor = tag.color || '#6366F1';
-    document.getElementById('tag-color-custom').value = selectedColor;
-    document.querySelectorAll('.color-swatch').forEach(s => {
-      s.classList.toggle('selected', s.dataset.color === selectedColor);
-    });
+    clearInlineErrors();
 
     document.getElementById('form-title').textContent = 'Edit Tag';
     document.getElementById('btn-save-label').textContent = 'Update Tag';
     document.getElementById('btn-cancel-edit').style.display = '';
     document.querySelector('.tag-form-card').classList.add('editing-mode');
-
-    updatePreviewPill();
 
     // Scroll form into view on mobile
     document.querySelector('.tags-left-col').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -854,25 +702,17 @@ export const prerender = false;
   function resetForm() {
     editingTagId = null;
     slugManuallyEdited = false;
-    selectedColor = '#6366F1';
 
     document.getElementById('tag-id').value = '';
     document.getElementById('tag-name').value = '';
     document.getElementById('tag-slug').value = '';
-    document.getElementById('tag-description').value = '';
-    document.getElementById('tag-color-custom').value = '#6366F1';
-
-    document.querySelectorAll('.color-swatch').forEach(s => {
-      s.classList.toggle('selected', s.dataset.color === '#6366F1');
-    });
+    clearInlineErrors();
 
     document.getElementById('form-title').textContent = 'New Tag';
     document.getElementById('btn-save-label').textContent = 'Create Tag';
     document.getElementById('btn-cancel-edit').style.display = 'none';
     document.querySelector('.tag-form-card').classList.remove('editing-mode');
     document.getElementById('btn-save-tag').disabled = false;
-
-    updatePreviewPill();
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -895,7 +735,7 @@ export const prerender = false;
       const count = tag.post_count || tag.postCount || 0;
       const ratio = count / maxCount;
       const size = ratio > 0.75 ? 'xl' : ratio > 0.5 ? 'lg' : ratio > 0.25 ? 'md' : 'sm';
-      const color = tag.color || '#6366F1';
+      const color = colorForName(tag.name || tag.slug || '');
       const rgb = hexToRgb(color);
       const id = tag.id || tag._id;
 
@@ -936,8 +776,7 @@ export const prerender = false;
     const filtered = searchQuery
       ? allTags.filter(t =>
           (t.name || '').toLowerCase().includes(searchQuery) ||
-          (t.slug || '').toLowerCase().includes(searchQuery) ||
-          (t.description || '').toLowerCase().includes(searchQuery)
+          (t.slug || '').toLowerCase().includes(searchQuery)
         )
       : allTags;
 
@@ -960,7 +799,7 @@ export const prerender = false;
 
     tbody.innerHTML = filtered.map(tag => {
       const id = tag.id || tag._id;
-      const color = tag.color || '#6366F1';
+      const color = colorForName(tag.name || tag.slug || '');
       const count = tag.post_count || tag.postCount || 0;
       const rgb = hexToRgb(color);
 
@@ -973,7 +812,6 @@ export const prerender = false;
           </td>
           <td>
             <span class="tag-name-cell">${escHtml(tag.name || '')}</span>
-            ${tag.description ? `<br><span style="font-size:0.77rem; color:var(--text-dim);">${escHtml(tag.description.substring(0, 60))}${tag.description.length > 60 ? '…' : ''}</span>` : ''}
           </td>
           <td>
             <code class="tag-slug-cell">${escHtml(tag.slug || '')}</code>
@@ -1019,6 +857,44 @@ export const prerender = false;
   // ──────────────────────────────────────────────────────────────────
   //  TOAST NOTIFICATION
   // ──────────────────────────────────────────────────────────────────
+  function hasTagDuplicate(name, slug) {
+    const normalizedName = name.toLowerCase();
+    const normalizedSlug = slug.toLowerCase();
+    const currentId = String(editingTagId || '');
+    const duplicateName = allTags.find(tag =>
+      String(tag.id || tag._id || '') !== currentId &&
+      (tag.name || '').toLowerCase() === normalizedName
+    );
+    const duplicateSlug = allTags.find(tag =>
+      String(tag.id || tag._id || '') !== currentId &&
+      (tag.slug || '').toLowerCase() === normalizedSlug
+    );
+
+    if (duplicateName) setInlineError('tag-name-error', 'A tag with this name already exists.');
+    if (duplicateSlug) setInlineError('tag-slug-error', 'A tag with this slug already exists.');
+    return !!(duplicateName || duplicateSlug);
+  }
+
+  function setInlineError(id, message) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = message;
+  }
+
+  function clearInlineErrors() {
+    setInlineError('tag-name-error', '');
+    setInlineError('tag-slug-error', '');
+  }
+
+  function colorForName(name) {
+    const key = String(name || '').toLowerCase();
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) {
+      hash = ((hash << 5) - hash) + key.charCodeAt(i);
+      hash |= 0;
+    }
+    return PRESET_COLORS[Math.abs(hash) % PRESET_COLORS.length];
+  }
+
   function showToast(message, type = 'success') {
     const toast = document.getElementById('toast-notify');
     const msgEl = document.getElementById('toast-message');

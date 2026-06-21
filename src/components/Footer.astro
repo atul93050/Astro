@@ -1,5 +1,15 @@
 ---
 // Footer Component
+import { getMenuAtLocation } from "../utils/menus";
+import FooterMenuCol from "./navigation/FooterMenuCol.astro";
+
+const previewMenuId = Astro.url.searchParams.get("menu_preview");
+
+const footerMenu1 = getMenuAtLocation("footer-col-1", previewMenuId);
+const footerMenu2 = getMenuAtLocation("footer-col-2", previewMenuId);
+const footerMenu3 = getMenuAtLocation("footer-col-3", previewMenuId);
+const footerMenu4 = getMenuAtLocation("footer-col-4", previewMenuId);
+const footerBottomMenu = getMenuAtLocation("footer-bottom", previewMenuId);
 ---
 
 <footer class="ewac-footer">
@@ -26,50 +36,66 @@
     <!-- Links Row -->
     <div class="footer-links">
 
-      <!-- Products -->
-      <div class="footer-col">
-        <h6 class="footer-heading">Products</h6>
-        <ul class="footer-list">
-          <li><a href="#">By Category</a></li>
-          <li><a href="#">By Process</a></li>
-          <li><a href="#">By Technology</a></li>
-          <li><a href="#">By Metal Type</a></li>
-          <li><a href="#">By Brand</a></li>
-        </ul>
-      </div>
+      <!-- Products / Col 1 -->
+      {footerMenu1 ? (
+        <FooterMenuCol menu={footerMenu1} heading="Products" />
+      ) : (
+        <div class="footer-col">
+          <h6 class="footer-heading">Products</h6>
+          <ul class="footer-list">
+            <li><a href="#">By Category</a></li>
+            <li><a href="#">By Process</a></li>
+            <li><a href="#">By Technology</a></li>
+            <li><a href="#">By Metal Type</a></li>
+            <li><a href="#">By Brand</a></li>
+          </ul>
+        </div>
+      )}
 
-      <!-- Services -->
-      <div class="footer-col">
-        <h6 class="footer-heading">Services</h6>
-        <ul class="footer-list">
-          <li><a href="#">Turnkey Solutions</a></li>
-          <li><a href="#">Railways</a></li>
-          <li><a href="#">ERF</a></li>
-        </ul>
-      </div>
+      <!-- Services / Col 2 -->
+      {footerMenu2 ? (
+        <FooterMenuCol menu={footerMenu2} heading="Services" />
+      ) : (
+        <div class="footer-col">
+          <h6 class="footer-heading">Services</h6>
+          <ul class="footer-list">
+            <li><a href="#">Turnkey Solutions</a></li>
+            <li><a href="#">Railways</a></li>
+            <li><a href="#">ERF</a></li>
+          </ul>
+        </div>
+      )}
 
-      <!-- Company -->
-      <div class="footer-col">
-        <h6 class="footer-heading">Company</h6>
-        <ul class="footer-list">
-          <li><a href="#">About Us</a></li>
-          <li><a href="#">R&D Centre</a></li>
-          <li><a href="#">EWAC Institute</a></li>
-          <li><a href="#">Careers</a></li>
-          <li><a href="#">Our Clients</a></li>
-        </ul>
-      </div>
+      <!-- Company / Col 3 -->
+      {footerMenu3 ? (
+        <FooterMenuCol menu={footerMenu3} heading="Company" />
+      ) : (
+        <div class="footer-col">
+          <h6 class="footer-heading">Company</h6>
+          <ul class="footer-list">
+            <li><a href="#">About Us</a></li>
+            <li><a href="#">R&D Centre</a></li>
+            <li><a href="#">EWAC Institute</a></li>
+            <li><a href="#">Careers</a></li>
+            <li><a href="#">Our Clients</a></li>
+          </ul>
+        </div>
+      )}
 
-      <!-- Legal -->
-      <div class="footer-col">
-        <h6 class="footer-heading">Legal</h6>
-        <ul class="footer-list">
-          <li><a href="#">Contact Us</a></li>
-          <li><a href="#">Privacy Policy</a></li>
-          <li><a href="#">Terms &amp; Conditions</a></li>
-          <li><a href="#">Testimonials</a></li>
-        </ul>
-      </div>
+      <!-- Legal / Col 4 -->
+      {footerMenu4 ? (
+        <FooterMenuCol menu={footerMenu4} heading="Legal" />
+      ) : (
+        <div class="footer-col">
+          <h6 class="footer-heading">Legal</h6>
+          <ul class="footer-list">
+            <li><a href="#">Contact Us</a></li>
+            <li><a href="#">Privacy Policy</a></li>
+            <li><a href="#">Terms &amp; Conditions</a></li>
+            <li><a href="#">Testimonials</a></li>
+          </ul>
+        </div>
+      )}
 
       <!-- About Blurb -->
       <div class="footer-col footer-col--wide">
@@ -84,5 +110,12 @@
   <!-- Bottom Bar -->
   <div class="footer-bottom text-center py-3">
     <p class="mb-0">&copy; 2026 EWAC Alloy. All rights reserved.</p>
+    {footerBottomMenu && (
+      <div class="footer-bottom-links" style="display:flex; justify-content:center; gap:1.25rem; margin-top:0.5rem; font-size:0.78rem;">
+        {footerBottomMenu.items.map(item => (
+          <a href={item.url} target={item.target} rel={item.rel || undefined} style="color:#9CA3AF; text-decoration:none;">{item.label}</a>
+        ))}
+      </div>
+    )}
   </div>
 </footer>

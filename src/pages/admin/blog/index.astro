@@ -41,6 +41,10 @@ export const prerender = false;
       Archived
       <span class="tab-count archived" id="count-archived">0</span>
     </button>
+    <button class="status-tab trash" data-status="trash">
+      Trash
+      <span class="tab-count trash" id="count-trash">0</span>
+    </button>
   </div>
 
   <!-- Filters Row: WordPress style controls -->
@@ -50,7 +54,7 @@ export const prerender = false;
         <option value="">Bulk actions</option>
         <option value="publish">Publish</option>
         <option value="draft">Set Draft</option>
-        <option value="delete">Delete</option>
+        <option value="trash">Move to Trash</option>
       </select>
       <button type="button" id="bulk-action-apply-btn" class="btn btn-outline btn-sm">Apply</button>
 
@@ -62,6 +66,14 @@ export const prerender = false;
 
       <select id="category-filter" class="admin-select-input" style="max-width: 160px;" aria-label="Filter by category">
         <option value="">All Categories</option>
+      </select>
+
+      <select id="author-filter" class="admin-select-input" style="max-width: 160px;" aria-label="Filter by author">
+        <option value="">All Authors</option>
+      </select>
+
+      <select id="tag-filter" class="admin-select-input" style="max-width: 160px;" aria-label="Filter by tag">
+        <option value="">All Tags</option>
       </select>
 
       <button type="button" id="btn-filter-submit" class="btn btn-outline btn-sm">Filter</button>
@@ -89,6 +101,10 @@ export const prerender = false;
       <button class="btn btn-outline btn-sm" id="bulk-draft-btn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
         Set Draft
+      </button>
+      <button class="btn btn-outline btn-sm" id="bulk-restore-btn" style="display: none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; margin-right: 4px;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
+        Restore
       </button>
       <button class="btn btn-danger btn-sm" id="bulk-delete-btn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
@@ -318,10 +334,28 @@ export const prerender = false;
     color: var(--primary);
     border-color: rgba(99, 102, 241, 0.25);
   }
+  .status-tab.trash.active {
+    color: var(--color-error, #EF4444) !important;
+    border-bottom-color: var(--color-error, #EF4444) !important;
+  }
+  .status-tab.trash.active::after {
+    background: var(--color-error, #EF4444) !important;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.7) !important;
+  }
+  .status-tab.trash:hover {
+    color: var(--color-error, #EF4444) !important;
+    border-bottom-color: rgba(239, 68, 68, 0.35) !important;
+  }
   .tab-count.published { background: rgba(16, 185, 129, 0.1); color: #10B981; border-color: rgba(16, 185, 129, 0.2); }
   .tab-count.draft     { background: rgba(156, 163, 175, 0.1); color: var(--text-muted); }
   .tab-count.scheduled { background: rgba(245, 158, 11, 0.1); color: #F59E0B; border-color: rgba(245, 158, 11, 0.2); }
   .tab-count.archived  { background: rgba(239, 68, 68, 0.1); color: #EF4444; border-color: rgba(239, 68, 68, 0.2); }
+  .tab-count.trash     { background: rgba(239, 68, 68, 0.1); color: #EF4444; border-color: rgba(239, 68, 68, 0.2); }
+  .status-tab.trash.active .tab-count {
+    background: rgba(239, 68, 68, 0.15);
+    color: #EF4444;
+    border-color: rgba(239, 68, 68, 0.25);
+  }
 
   /* ── Filters Row ─────────────────────────────────────────────────── */
   .filters-row {
@@ -815,11 +849,13 @@ let filteredPosts  = [];
 let allCategories  = [];
 let allComments    = [];
 let allAuthors     = [];
+let allTags        = [];
 let activeStatus   = 'all';
 let searchQuery    = '';
 let catFilter      = '';
 let dateFilter     = '';
 let authorFilter   = '';
+let tagFilter      = '';
 let currentPage    = 1;
 const PER_PAGE     = 12;
 let selectedSlugs  = new Set();
@@ -846,6 +882,7 @@ async function setup() {
     loadCategories(),
     loadComments(),
     loadAuthors(),
+    loadTags(),
   ]);
 }
 
@@ -903,6 +940,17 @@ async function loadAuthors() {
   } catch (_) {}
 }
 
+async function loadTags() {
+  try {
+    const res = await fetch('/api/blog-crud?action=tags', { credentials: 'include' });
+    const json = await res.json();
+    if (json.success) {
+      allTags = json.tags || json.data || [];
+      populateTagFilter();
+    }
+  } catch (_) {}
+}
+
 // ─── Populate Filters ────────────────────────────────────────────────────────
 function populateCategoryFilter() {
   const sel = document.getElementById('category-filter');
@@ -950,12 +998,26 @@ function populateAuthorFilter() {
   sel.value = currentVal;
 }
 
+function populateTagFilter() {
+  const sel = document.getElementById('tag-filter');
+  if (!sel) return;
+  const currentVal = sel.value;
+  sel.innerHTML = '<option value="">All Tags</option>' +
+    allTags.map(t => `<option value="${t.name || t.slug}">${t.name} (${t.postCount || t.post_count || 0})</option>`).join('');
+  sel.value = currentVal;
+}
+
 // ─── Filter & Render ─────────────────────────────────────────────────────────
 function applyFilters() {
   filteredPosts = allPosts.filter(post => {
+    if (activeStatus === 'all' && post.status === 'trash') return false;
     if (activeStatus !== 'all' && post.status !== activeStatus) return false;
     if (catFilter && post.category !== catFilter) return false;
     if (authorFilter && post.author !== authorFilter) return false;
+    if (tagFilter) {
+      const tags = Array.isArray(post.tags) ? post.tags : [];
+      if (!tags.some(tag => String(tag).toLowerCase() === tagFilter.toLowerCase())) return false;
+    }
     
     // Dates filter check
     if (dateFilter) {
@@ -984,11 +1046,12 @@ function applyFilters() {
 
 function updateCounts() {
   const counts = {
-    all: allPosts.length,
+    all: allPosts.filter(p => p.status !== 'trash').length,
     published: allPosts.filter(p => p.status === 'published').length,
     draft: allPosts.filter(p => p.status === 'draft').length,
     scheduled: allPosts.filter(p => p.status === 'scheduled').length,
     archived: allPosts.filter(p => p.status === 'archived').length,
+    trash: allPosts.filter(p => p.status === 'trash').length,
   };
   Object.entries(counts).forEach(([key, val]) => {
     const el = document.getElementById('count-' + key);
@@ -1010,7 +1073,7 @@ function renderTable() {
       emptyEl.style.display = 'flex';
       const titleEl = document.getElementById('empty-state-title');
       const msgEl   = document.getElementById('empty-state-msg');
-      if (activeStatus !== 'all' || searchQuery || catFilter || authorFilter || dateFilter) {
+      if (activeStatus !== 'all' || searchQuery || catFilter || authorFilter || tagFilter || dateFilter) {
         if (titleEl) titleEl.textContent = 'No posts match your filters';
         if (msgEl)   msgEl.textContent = 'Try adjusting your search or filter criteria.';
       } else {
@@ -1062,13 +1125,19 @@ function renderTable() {
             <span class="post-title-text" title="${escHtml(post.title || 'Untitled')}">${escHtml(post.title || 'Untitled')}</span>
             <span class="post-slug-text">/${escHtml(post.slug)}</span>
             <div class="row-actions-inline">
-              <a href="/admin/blog/edit?slug=${encodeURIComponent(post.slug)}" class="action-link edit-link">Edit</a>
-              <span class="sep">|</span>
-              <a href="${viewUrl}" target="_blank" class="action-link view-link">View</a>
-              <span class="sep">|</span>
-              <button type="button" class="action-link duplicate-link duplicate-btn" data-slug="${escHtml(post.slug)}" data-title="${escHtml(post.title || 'Untitled')}">Duplicate</button>
-              <span class="sep">|</span>
-              <button type="button" class="action-link delete-link delete-btn" data-slug="${escHtml(post.slug)}" data-title="${escHtml(post.title || 'Untitled')}">Delete</button>
+              ${post.status === 'trash' ? `
+                <button type="button" class="action-link restore-link restore-btn text-success" data-slug="${escHtml(post.slug)}" data-title="${escHtml(post.title || 'Untitled')}">Restore</button>
+                <span class="sep">|</span>
+                <button type="button" class="action-link delete-link delete-btn text-danger" data-slug="${escHtml(post.slug)}" data-title="${escHtml(post.title || 'Untitled')}">Delete Permanently</button>
+              ` : `
+                <a href="/admin/blog/edit?slug=${encodeURIComponent(post.slug)}" class="action-link edit-link">Edit</a>
+                <span class="sep">|</span>
+                <a href="${viewUrl}" target="_blank" class="action-link view-link">View</a>
+                <span class="sep">|</span>
+                <button type="button" class="action-link duplicate-link duplicate-btn" data-slug="${escHtml(post.slug)}" data-title="${escHtml(post.title || 'Untitled')}">Duplicate</button>
+                <span class="sep">|</span>
+                <button type="button" class="action-link delete-link delete-btn text-danger" data-slug="${escHtml(post.slug)}" data-title="${escHtml(post.title || 'Untitled')}">Trash</button>
+              `}
             </div>
           </div>
         </td>
@@ -1081,18 +1150,27 @@ function renderTable() {
         <td class="views-num">${views}</td>
         <td>
           <div class="row-actions">
-            <a href="${viewUrl}" target="_blank" class="btn-action view-btn" title="View live post">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-            </a>
-            <a href="/admin/blog/edit?slug=${encodeURIComponent(post.slug)}" class="btn-action edit-btn" title="Edit post">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            </a>
-            <button type="button" class="btn-action duplicate-btn" data-slug="${escHtml(post.slug)}" data-title="${escHtml(post.title || 'Untitled')}" title="Duplicate post">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-            </button>
-            <button type="button" class="btn-action delete-btn" data-slug="${escHtml(post.slug)}" data-title="${escHtml(post.title || 'Untitled')}" title="Delete post">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-            </button>
+            ${post.status === 'trash' ? `
+              <button type="button" class="btn-action restore-btn text-success" data-slug="${escHtml(post.slug)}" data-title="${escHtml(post.title || 'Untitled')}" title="Restore post" style="color:#10B981 !important;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
+              </button>
+              <button type="button" class="btn-action delete-btn text-danger" data-slug="${escHtml(post.slug)}" data-title="${escHtml(post.title || 'Untitled')}" title="Delete Permanently" style="color:#EF4444 !important;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              </button>
+            ` : `
+              <a href="${viewUrl}" target="_blank" class="btn-action view-btn" title="View live post">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              </a>
+              <a href="/admin/blog/edit?slug=${encodeURIComponent(post.slug)}" class="btn-action edit-btn" title="Edit post">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </a>
+              <button type="button" class="btn-action duplicate-btn" data-slug="${escHtml(post.slug)}" data-title="${escHtml(post.title || 'Untitled')}" title="Duplicate post">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+              <button type="button" class="btn-action delete-btn" data-slug="${escHtml(post.slug)}" data-title="${escHtml(post.title || 'Untitled')}" title="Move to Trash">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              </button>
+            `}
           </div>
         </td>
       </tr>
@@ -1108,6 +1186,9 @@ function renderTable() {
   });
   tbody.querySelectorAll('.delete-btn').forEach(btn => {
     btn.addEventListener('click', onDeleteClick);
+  });
+  tbody.querySelectorAll('.restore-btn').forEach(btn => {
+    btn.addEventListener('click', onRestoreClick);
   });
 
   syncSelectAll();
@@ -1239,9 +1320,30 @@ function bindTabEvents() {
     tabsBar.querySelectorAll('.status-tab').forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
     activeStatus = tab.dataset.status;
+    updateBulkOptions(activeStatus);
     selectedSlugs.clear();
     applyFilters();
   });
+}
+
+function updateBulkOptions(tabStatus) {
+  const select = document.getElementById("bulk-action-select");
+  if (!select) return;
+  select.innerHTML = "";
+  if (tabStatus === "trash") {
+    select.innerHTML = `
+      <option value="">Bulk actions</option>
+      <option value="restore">Restore Selected</option>
+      <option value="delete">Delete Permanently</option>
+    `;
+  } else {
+    select.innerHTML = `
+      <option value="">Bulk actions</option>
+      <option value="publish">Publish</option>
+      <option value="draft">Set Draft</option>
+      <option value="trash">Move to Trash</option>
+    `;
+  }
 }
 
 function bindFilterEvents() {
@@ -1250,24 +1352,26 @@ function bindFilterEvents() {
   const searchInput = document.getElementById('search-input');
   const bulkApplyBtn = document.getElementById('bulk-action-apply-btn');
 
+  const syncAllFiltersAndApply = () => {
+    catFilter = document.getElementById('category-filter')?.value || '';
+    authorFilter = document.getElementById('author-filter')?.value || '';
+    tagFilter = document.getElementById('tag-filter')?.value || '';
+    dateFilter = document.getElementById('date-filter')?.value || '';
+    if (searchInput) {
+      searchQuery = searchInput.value.trim();
+    }
+    applyFilters();
+  };
+
   if (filterBtn) {
-    filterBtn.addEventListener('click', () => {
-      catFilter = document.getElementById('category-filter')?.value || '';
-      authorFilter = document.getElementById('author-filter')?.value || '';
-      dateFilter = document.getElementById('date-filter')?.value || '';
-      applyFilters();
-    });
+    filterBtn.addEventListener('click', syncAllFiltersAndApply);
   }
 
   if (searchBtn && searchInput) {
-    const performSearch = () => {
-      searchQuery = searchInput.value.trim();
-      applyFilters();
-    };
-    searchBtn.addEventListener('click', performSearch);
+    searchBtn.addEventListener('click', syncAllFiltersAndApply);
     searchInput.addEventListener('keydown', e => {
       if (e.key === 'Enter') {
-        performSearch();
+        syncAllFiltersAndApply();
       }
     });
   }
@@ -1286,6 +1390,10 @@ function bindFilterEvents() {
       if (action === 'publish') {
         bulkSetStatus('published');
       } else if (action === 'draft') {
+        bulkSetStatus('draft');
+      } else if (action === 'trash') {
+        bulkSetStatus('trash');
+      } else if (action === 'restore') {
         bulkSetStatus('draft');
       } else if (action === 'delete') {
         openBulkDeleteModal();
@@ -1350,6 +1458,34 @@ function updateBulkBar() {
   if (selectedSlugs.size > 0) {
     bar.classList.add('visible');
     if (lbl) lbl.textContent = `${selectedSlugs.size} post${selectedSlugs.size !== 1 ? 's' : ''} selected`;
+    
+    // Update button text and visibility based on active tab
+    const pubBtn = document.getElementById('bulk-publish-btn');
+    const draftBtn = document.getElementById('bulk-draft-btn');
+    const deleteBtn = document.getElementById('bulk-delete-btn');
+    const restoreBtn = document.getElementById('bulk-restore-btn');
+    
+    if (activeStatus === 'trash') {
+      if (pubBtn) pubBtn.style.display = 'none';
+      if (draftBtn) draftBtn.style.display = 'none';
+      if (restoreBtn) restoreBtn.style.display = 'inline-flex';
+      if (deleteBtn) {
+        deleteBtn.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          Delete Permanently
+        `;
+      }
+    } else {
+      if (pubBtn) pubBtn.style.display = 'inline-flex';
+      if (draftBtn) draftBtn.style.display = 'inline-flex';
+      if (restoreBtn) restoreBtn.style.display = 'none';
+      if (deleteBtn) {
+        deleteBtn.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          Move to Trash
+        `;
+      }
+    }
   } else {
     bar.classList.remove('visible');
   }
@@ -1383,17 +1519,82 @@ async function onDuplicateClick(e) {
 
 function onDeleteClick(e) {
   const btn   = e.currentTarget;
-  pendingDeleteSlug = btn.dataset.slug;
+  const slug  = btn.dataset.slug;
   const title = btn.dataset.title;
-  document.getElementById('delete-post-title').textContent = '"' + title + '"';
-  openModal('delete-modal');
+  
+  const post = allPosts.find(p => p.slug === slug);
+  if (post && post.status === 'trash') {
+    pendingDeleteSlug = slug;
+    document.getElementById('delete-post-title').textContent = '"' + title + '"';
+    openModal('delete-modal');
+  } else {
+    moveToTrash(slug, title);
+  }
+}
+
+async function onRestoreClick(e) {
+  const btn = e.currentTarget;
+  const slug = btn.dataset.slug;
+  const title = btn.dataset.title;
+  btn.disabled = true;
+  await restorePost(slug, title);
+  btn.disabled = false;
+}
+
+async function moveToTrash(slug, title) {
+  showToast(`Moving "${title}" to Trash...`, 'info');
+  try {
+    const res = await fetch('/api/blog-crud', {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update', originalSlug: slug, slug, status: 'trash' }),
+    });
+    const json = await res.json();
+    if (json.success) {
+      showToast(`"${title}" moved to Trash successfully!`, 'success');
+      await loadPosts();
+    } else {
+      showToast('Failed to move to Trash: ' + (json.error || 'Unknown error'), 'error');
+    }
+  } catch (_) {
+    showToast('Network error moving to Trash.', 'error');
+  }
+}
+
+async function restorePost(slug, title) {
+  showToast(`Restoring "${title}"...`, 'info');
+  try {
+    const res = await fetch('/api/blog-crud', {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update', originalSlug: slug, slug, status: 'draft' }),
+    });
+    const json = await res.json();
+    if (json.success) {
+      showToast(`"${title}" restored successfully as draft!`, 'success');
+      await loadPosts();
+    } else {
+      showToast('Failed to restore: ' + (json.error || 'Unknown error'), 'error');
+    }
+  } catch (_) {
+    showToast('Network error restoring post.', 'error');
+  }
 }
 
 // ─── Bulk Actions ─────────────────────────────────────────────────────────────
 function bindBulkBarEvents() {
   document.getElementById('bulk-publish-btn')?.addEventListener('click', () => bulkSetStatus('published'));
   document.getElementById('bulk-draft-btn')?.addEventListener('click',   () => bulkSetStatus('draft'));
-  document.getElementById('bulk-delete-btn')?.addEventListener('click',  openBulkDeleteModal);
+  document.getElementById('bulk-restore-btn')?.addEventListener('click', () => bulkSetStatus('draft'));
+  document.getElementById('bulk-delete-btn')?.addEventListener('click',  () => {
+    if (activeStatus === 'trash') {
+      openBulkDeleteModal();
+    } else {
+      bulkSetStatus('trash');
+    }
+  });
 }
 
 async function bulkSetStatus(newStatus) {

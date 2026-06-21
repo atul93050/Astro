@@ -62,19 +62,11 @@ export const prerender = false;
               <textarea id="blog-description" class="bs-textarea" rows="3" placeholder="A short description of your blog for SEO and RSS feeds…"></textarea>
             </div>
 
-            <div class="bs-field-row">
-              <div class="bs-field-group">
-                <label class="bs-label" for="default-author">Default Author</label>
-                <select id="default-author" class="bs-select">
-                  <option value="">— Select Author —</option>
-                </select>
-              </div>
-              <div class="bs-field-group">
-                <label class="bs-label" for="default-category">Default Category</label>
-                <select id="default-category" class="bs-select">
-                  <option value="">— Select Category —</option>
-                </select>
-              </div>
+            <div class="bs-field-group">
+              <label class="bs-label" for="default-author">Default Author</label>
+              <select id="default-author" class="bs-select">
+                <option value="">— Select Author —</option>
+              </select>
             </div>
 
             <div class="bs-field-group bs-field-narrow">
@@ -84,6 +76,7 @@ export const prerender = false;
                 <span class="bs-number-unit">posts</span>
               </div>
               <span class="bs-hint">Between 1 and 50 posts per listing page.</span>
+              <span class="field-error" id="posts-per-page-error" style="color:var(--color-error); font-size:0.75rem; display:block; margin-top:0.25rem; font-weight:500;"></span>
             </div>
 
           </div>
@@ -122,6 +115,7 @@ export const prerender = false;
                 <span class="bs-number-unit">posts</span>
               </div>
               <span class="bs-hint">Between 1 and 10 related posts to show.</span>
+              <span class="field-error" id="related-posts-count-error" style="color:var(--color-error); font-size:0.75rem; display:block; margin-top:0.25rem; font-weight:500;"></span>
             </div>
 
           </div>
@@ -145,12 +139,17 @@ export const prerender = false;
                 <span class="bs-toggle-label">Enable RSS Feed</span>
                 <span class="bs-toggle-desc">Generate a public RSS feed at <code>/rss.xml</code> for your blog.</span>
               </div>
-              <label class="bs-toggle-switch">
-                <input type="checkbox" id="enable-rss" />
-                <span class="bs-toggle-track">
-                  <span class="bs-toggle-thumb"></span>
-                </span>
-              </label>
+              <div style="display:flex; align-items:center; gap:0.75rem;">
+                <a href="/rss.xml" target="_blank" class="btn btn-outline btn-sm" id="btn-view-feed" style="font-size:0.75rem; padding:0.25rem 0.5rem; height:auto; min-height:unset; transition: opacity 0.2s;">
+                  View Feed
+                </a>
+                <label class="bs-toggle-switch">
+                  <input type="checkbox" id="enable-rss" />
+                  <span class="bs-toggle-track">
+                    <span class="bs-toggle-thumb"></span>
+                  </span>
+                </label>
+              </div>
             </div>
 
             <div class="bs-field-group" style="margin-top:1.25rem;">
@@ -811,6 +810,19 @@ export const prerender = false;
   function setLoading(on) {
     qs('#bs-loading-state').style.display = on ? 'flex' : 'none';
   }
+  function updateFeedBtn() {
+    var enableRss = qs('#enable-rss');
+    var viewFeedBtn = document.getElementById('btn-view-feed');
+    if (enableRss && viewFeedBtn) {
+      if (enableRss.checked) {
+        viewFeedBtn.style.opacity = '1';
+        viewFeedBtn.style.pointerEvents = 'auto';
+      } else {
+        viewFeedBtn.style.opacity = '0.5';
+        viewFeedBtn.style.pointerEvents = 'none';
+      }
+    }
+  }
   function showError(msg) {
     qs('#bs-error-state').style.display = 'flex';
     qs('#bs-error-msg').textContent = msg || 'Failed to load blog settings.';
@@ -859,6 +871,9 @@ export const prerender = false;
     /* RSS title */
     var rssTitle = qs('#rss-title');
     if (rssTitle) rssTitle.value = s.rssFeedTitle || '';
+
+    // Update view feed button state
+    updateFeedBtn();
   }
 
   function collectSettings() {
@@ -866,7 +881,7 @@ export const prerender = false;
       blogTitle:        (qs('#blog-title').value || '').trim(),
       blogDescription:  (qs('#blog-description').value || '').trim(),
       defaultAuthor:    qs('#default-author').value,
-      defaultCategory:  qs('#default-category').value,
+      defaultCategory:  'uncategorized',
       postsPerPage:     parseInt(qs('#posts-per-page').value, 10) || 10,
       showExcerpt:      qs('#show-excerpt').checked,
       showAuthor:       qs('#show-author').checked,
@@ -892,16 +907,14 @@ export const prerender = false;
     qs('#bs-error-state').style.display = 'none';
 
     try {
-      /* Fetch all three resources in parallel */
-      var [settingsRes, authorsRes, catsRes] = await Promise.all([
+      /* Fetch resources in parallel */
+      var [settingsRes, authorsRes] = await Promise.all([
         fetch('/api/blog-crud?action=settings', { credentials: 'include' }),
-        fetch('/api/blog-crud?action=authors',  { credentials: 'include' }),
-        fetch('/api/blog-crud?action=categories', { credentials: 'include' })
+        fetch('/api/blog-crud?action=authors',  { credentials: 'include' })
       ]);
 
       var settingsData = settingsRes.ok ? await settingsRes.json() : null;
       var authorsData  = authorsRes.ok  ? await authorsRes.json()  : null;
-      var catsData     = catsRes.ok     ? await catsRes.json()     : null;
 
       /* Populate authors select */
       if (authorsData && (authorsData.authors || authorsData.data)) {
@@ -910,18 +923,9 @@ export const prerender = false;
         populateSelect(qs('#default-author'), authors, 'id', 'name', currentAuthor);
       }
 
-      /* Populate categories select */
-      if (catsData && (catsData.categories || catsData.data)) {
-        var cats = catsData.categories || catsData.data || [];
-        var currentCat = settingsData && settingsData.settings && settingsData.settings.defaultCategory;
-        populateSelect(qs('#default-category'), cats, 'slug', 'name', currentCat);
-      }
-
       /* Apply settings */
       if (settingsData && settingsData.settings) {
         applySettings(settingsData.settings);
-      } else if (settingsData && !settingsData.success) {
-        /* API responded but no settings object — use defaults silently */
       }
 
       setLoading(false);
@@ -932,12 +936,57 @@ export const prerender = false;
       showError('Could not connect to the API. Check your network and try again.');
     }
 
+    // Wire up RSS button updater on change
+    var enableRss = qs('#enable-rss');
+    if (enableRss) {
+      enableRss.addEventListener('change', updateFeedBtn);
+    }
+
+    // Wire up validation listeners
+    var postsInput = qs('#posts-per-page');
+    var postsErr = qs('#posts-per-page-error');
+    if (postsInput && postsErr) {
+      postsInput.addEventListener('blur', function () {
+        var val = parseInt(postsInput.value, 10);
+        if (isNaN(val) || val < 1 || val > 50) {
+          postsErr.textContent = 'Please enter a number between 1 and 50.';
+          postsInput.style.borderColor = 'var(--color-error)';
+        } else {
+          postsErr.textContent = '';
+          postsInput.style.borderColor = '';
+        }
+      });
+    }
+
+    var relatedInput = qs('#related-posts-count');
+    var relatedErr = qs('#related-posts-count-error');
+    if (relatedInput && relatedErr) {
+      relatedInput.addEventListener('blur', function () {
+        var val = parseInt(relatedInput.value, 10);
+        if (isNaN(val) || val < 1 || val > 10) {
+          relatedErr.textContent = 'Please enter a number between 1 and 10.';
+          relatedInput.style.borderColor = 'var(--color-error)';
+        } else {
+          relatedErr.textContent = '';
+          relatedInput.style.borderColor = '';
+        }
+      });
+    }
+
     /* Wire save button */
     var saveBtn = qs('#bs-save-btn');
     var saveLabel = qs('#bs-save-label');
     var saveStatus = qs('#bs-save-status');
 
     saveBtn.addEventListener('click', async function () {
+      // Validate inputs
+      var pppVal = parseInt(postsInput.value, 10);
+      var rpcVal = parseInt(relatedInput.value, 10);
+      if (isNaN(pppVal) || pppVal < 1 || pppVal > 50 || isNaN(rpcVal) || rpcVal < 1 || rpcVal > 10) {
+        showToast('Please fix the validation errors before saving.', true);
+        return;
+      }
+
       saveBtn.disabled = true;
       saveLabel.textContent = 'Saving…';
       saveStatus.textContent = '';

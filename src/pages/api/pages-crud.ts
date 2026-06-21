@@ -72,8 +72,8 @@ function validatePageData(data: any): Record<string, string> {
     errors.slug = "Page Slug must contain only lowercase letters, numbers, dashes, and underscores";
   }
 
-  if (!data.status || !["draft", "published"].includes(data.status)) {
-    errors.status = "Status must be either 'draft' or 'published'";
+  if (!data.status || !["draft", "published", "trash"].includes(data.status)) {
+    errors.status = "Status must be either 'draft', 'published', or 'trash'";
   }
 
   // SEO validations - auto fill if empty and remove required validation blocks

@@ -686,20 +686,20 @@ const slug = Astro.url.searchParams.get('slug') || '';
 
     async function deletePost() {
       const title = document.getElementById('post-title').value || 'this post';
-      if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+      if (!confirm(`Are you sure you want to move "${title}" to Trash?`)) return;
       try {
         const res = await fetch('/api/blog-crud', {
-          method: 'DELETE',
+          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ action: 'post', slug: originalSlug }),
+          body: JSON.stringify({ action: 'update', originalSlug: originalSlug, slug: originalSlug, status: 'trash' }),
         });
         const data = await res.json();
         if (data.success) {
-          showToast('Post deleted! Redirecting…', 'success');
+          showToast('Post moved to Trash! Redirecting…', 'success');
           setTimeout(() => { window.location.href = '/admin/blog'; }, 1200);
         } else {
-          showToast(data.error || 'Delete failed', 'error');
+          showToast(data.error || 'Failed to move to Trash', 'error');
         }
       } catch { showToast('Network error', 'error'); }
     }

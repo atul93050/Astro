@@ -45,6 +45,7 @@ export const prerender = false;
                 placeholder="e.g. Web Development"
                 autocomplete="off"
               />
+              <span class="field-error" id="cat-name-error"></span>
             </div>
 
             <!-- Slug -->
@@ -61,6 +62,7 @@ export const prerender = false;
                 />
               </div>
               <span class="field-help">Auto-generated from name. You can edit manually.</span>
+              <span class="field-error" id="cat-slug-error"></span>
             </div>
 
             <!-- Description -->
@@ -72,29 +74,6 @@ export const prerender = false;
                 placeholder="Brief description of this category…"
                 style="resize: vertical; min-height: 80px;"
               ></textarea>
-            </div>
-
-            <!-- Color -->
-            <div class="field-group">
-              <label for="cat-color">Accent Color</label>
-              <div class="color-field-wrap">
-                <input
-                  type="color"
-                  id="cat-color"
-                  value="#6366F1"
-                />
-                <span id="cat-color-hex" class="color-hex-label">#6366F1</span>
-                <div class="color-presets">
-                  <button type="button" class="color-preset-dot" data-color="#6366F1" style="background:#6366F1;" title="Indigo"></button>
-                  <button type="button" class="color-preset-dot" data-color="#10B981" style="background:#10B981;" title="Emerald"></button>
-                  <button type="button" class="color-preset-dot" data-color="#3B82F6" style="background:#3B82F6;" title="Blue"></button>
-                  <button type="button" class="color-preset-dot" data-color="#F59E0B" style="background:#F59E0B;" title="Amber"></button>
-                  <button type="button" class="color-preset-dot" data-color="#EF4444" style="background:#EF4444;" title="Red"></button>
-                  <button type="button" class="color-preset-dot" data-color="#8B5CF6" style="background:#8B5CF6;" title="Violet"></button>
-                  <button type="button" class="color-preset-dot" data-color="#EC4899" style="background:#EC4899;" title="Pink"></button>
-                  <button type="button" class="color-preset-dot" data-color="#14B8A6" style="background:#14B8A6;" title="Teal"></button>
-                </div>
-              </div>
             </div>
 
             <!-- Form Actions -->
@@ -121,10 +100,13 @@ export const prerender = false;
             <h3 class="table-title">All Categories</h3>
             <span class="cat-count-badge" id="cat-count-badge">0</span>
           </div>
-          <button class="btn btn-outline btn-sm" id="btn-refresh" title="Refresh list">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-            Refresh
-          </button>
+          <div class="table-top-actions">
+            <input type="search" id="cat-search" class="cat-search-input" placeholder="Search categories..." autocomplete="off" />
+            <button class="btn btn-outline btn-sm" id="btn-refresh" title="Refresh list">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              Refresh
+            </button>
+          </div>
         </div>
 
         <div id="table-loading" class="table-loading-state">
@@ -285,66 +267,12 @@ export const prerender = false;
     flex: 1;
     min-width: 0;
   }
+  .field-error {
+    color: var(--color-error);
+    font-size: 0.75rem;
+    min-height: 0.95rem;
+  }
 
-  /* Color field */
-  .color-field-wrap {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-  }
-  input[type="color"] {
-    width: 42px !important;
-    height: 38px !important;
-    padding: 3px !important;
-    border-radius: var(--radius-sm) !important;
-    border: 1px solid var(--input-border) !important;
-    background: var(--input-bg) !important;
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-  input[type="color"]::-webkit-color-swatch-wrapper {
-    padding: 2px;
-  }
-  input[type="color"]::-webkit-color-swatch {
-    border: none;
-    border-radius: 4px;
-  }
-  .color-hex-label {
-    font-family: 'Courier New', monospace;
-    font-size: 0.82rem;
-    color: var(--text-muted);
-    background: rgba(156,163,175,0.06);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    padding: 0.2rem 0.55rem;
-    letter-spacing: 0.04em;
-    min-width: 72px;
-    text-align: center;
-  }
-  .color-presets {
-    display: flex;
-    gap: 0.35rem;
-    flex-wrap: wrap;
-  }
-  .color-preset-dot {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.12);
-    cursor: pointer;
-    transition: var(--transition);
-    padding: 0;
-    flex-shrink: 0;
-  }
-  .color-preset-dot:hover {
-    transform: scale(1.2);
-    border-color: rgba(255,255,255,0.5);
-  }
-  .color-preset-dot.active {
-    border-color: white;
-    box-shadow: 0 0 0 2px rgba(255,255,255,0.3);
-  }
 
   /* Form actions row */
   .form-actions {
@@ -364,6 +292,29 @@ export const prerender = false;
     padding: 1.15rem 1.5rem;
     border-bottom: 1px solid var(--bg-surface-border);
     gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .table-top-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+  .cat-search-input {
+    width: 220px;
+    max-width: 100%;
+    height: 34px;
+    padding: 0.45rem 0.75rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--bg-surface-border);
+    background: rgba(13, 19, 33, 0.45);
+    color: var(--text-main);
+    font: inherit;
+    font-size: 0.84rem;
+    outline: none;
+  }
+  .cat-search-input:focus {
+    border-color: var(--primary);
   }
   .table-top-left {
     display: flex;
@@ -515,6 +466,8 @@ export const prerender = false;
   // ─────────────────────────────────────────────────────────────────────────────
   let allCategories = [];
   let editingId = null;
+  let categorySearch = '';
+  const CATEGORY_COLORS = ['#6366F1', '#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6'];
 
   // ─────────────────────────────────────────────────────────────────────────────
   // INIT
@@ -526,9 +479,9 @@ export const prerender = false;
     form.dataset.init = 'true';
 
     bindForm();
-    bindColorPicker();
     bindSlugAuto();
     bindRefresh();
+    bindSearch();
     loadCategories();
   }
 
@@ -549,10 +502,12 @@ export const prerender = false;
     const name        = document.getElementById('cat-name').value.trim();
     const slug        = document.getElementById('cat-slug').value.trim();
     const description = document.getElementById('cat-description').value.trim();
-    const color       = document.getElementById('cat-color').value;
+    const color       = colorForName(name);
 
+    clearInlineErrors();
     if (!name) { showToast('Please enter a category name.', 'warning'); return; }
     if (!slug) { showToast('Please enter a slug.', 'warning'); return; }
+    if (hasCategoryDuplicate(name, slug)) return;
 
     const saveBtn   = document.getElementById('btn-save-cat');
     const saveLabel = document.getElementById('btn-save-label');
@@ -599,35 +554,6 @@ export const prerender = false;
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // BIND: Color Picker
-  // ─────────────────────────────────────────────────────────────────────────────
-  function bindColorPicker() {
-    const colorInput  = document.getElementById('cat-color');
-    const colorHexEl  = document.getElementById('cat-color-hex');
-    const presetDots  = document.querySelectorAll('.color-preset-dot');
-
-    colorInput.addEventListener('input', () => {
-      colorHexEl.textContent = colorInput.value.toUpperCase();
-      syncPresetActive(colorInput.value);
-    });
-
-    presetDots.forEach(dot => {
-      dot.addEventListener('click', () => {
-        const c = dot.dataset.color;
-        colorInput.value = c;
-        colorHexEl.textContent = c.toUpperCase();
-        syncPresetActive(c);
-      });
-    });
-  }
-
-  function syncPresetActive(color) {
-    document.querySelectorAll('.color-preset-dot').forEach(dot => {
-      dot.classList.toggle('active', dot.dataset.color.toLowerCase() === color.toLowerCase());
-    });
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────────
   // BIND: Auto Slug
   // ─────────────────────────────────────────────────────────────────────────────
   function bindSlugAuto() {
@@ -670,6 +596,15 @@ export const prerender = false;
     if (btn) btn.addEventListener('click', loadCategories);
   }
 
+  function bindSearch() {
+    const input = document.getElementById('cat-search');
+    if (!input) return;
+    input.addEventListener('input', () => {
+      categorySearch = input.value.trim().toLowerCase();
+      renderTable(getFilteredCategories());
+    });
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
   // LOAD CATEGORIES
   // ─────────────────────────────────────────────────────────────────────────────
@@ -684,7 +619,7 @@ export const prerender = false;
 
       if (data.success && Array.isArray(data.categories)) {
         allCategories = data.categories;
-        renderTable(allCategories);
+        renderTable(getFilteredCategories());
       } else {
         showTableState('empty');
         showToast('Failed to load categories.', 'error');
@@ -704,7 +639,7 @@ export const prerender = false;
     const badge = document.getElementById('cat-count-badge');
     if (!tbody) return;
 
-    badge.textContent = cats.length;
+    badge.textContent = categorySearch ? `${cats.length}/${allCategories.length}` : cats.length;
 
     if (cats.length === 0) {
       showTableState('empty');
@@ -719,7 +654,7 @@ export const prerender = false;
       const desc = cat.description ? cat.description : '';
       const truncDesc = desc.length > 60 ? desc.slice(0, 60) + '…' : desc;
       const postCount = cat.postCount ?? cat.post_count ?? 0;
-      const color = cat.color || '#6366F1';
+      const color = colorForName(cat.name || cat.slug || '');
       const isEditing = editingId && editingId === (cat.id || cat._id);
 
       return `
@@ -746,7 +681,7 @@ export const prerender = false;
             <div class="actions-cell">
               <button
                 class="btn-action edit-btn"
-                onclick="window.startEdit('${escAttr(String(cat.id || cat._id || ''))}', '${escAttr(cat.name)}', '${escAttr(cat.slug || '')}', '${escAttr(cat.description || '')}', '${escAttr(cat.color || '#6366F1')}')"
+                onclick="window.startEdit('${escAttr(String(cat.id || cat._id || ''))}', '${escAttr(cat.name)}', '${escAttr(cat.slug || '')}', '${escAttr(cat.description || '')}')"
                 title="Edit category"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -754,7 +689,7 @@ export const prerender = false;
               ${!isUncategorized ? `
               <button
                 class="btn-action delete-btn"
-                onclick="window.confirmDelete('${escAttr(String(cat.id || cat._id || ''))}', '${escAttr(cat.name)}')"
+                onclick="window.confirmDelete('${escAttr(String(cat.id || cat._id || ''))}', '${escAttr(cat.name)}', ${Number(postCount) || 0})"
                 title="Delete category"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
@@ -786,16 +721,14 @@ export const prerender = false;
   // ─────────────────────────────────────────────────────────────────────────────
   // EDIT
   // ─────────────────────────────────────────────────────────────────────────────
-  window.startEdit = function(id, name, slug, description, color) {
+  window.startEdit = function(id, name, slug, description) {
     editingId = id;
 
     document.getElementById('edit-id').value         = id;
     document.getElementById('cat-name').value        = name;
     document.getElementById('cat-slug').value        = slug;
     document.getElementById('cat-description').value = description;
-    document.getElementById('cat-color').value       = color;
-    document.getElementById('cat-color-hex').textContent = color.toUpperCase();
-    syncPresetActive(color);
+    clearInlineErrors();
 
     document.getElementById('form-title').textContent     = 'Edit Category';
     document.getElementById('btn-save-label').textContent = 'Update Category';
@@ -819,14 +752,20 @@ export const prerender = false;
   // ─────────────────────────────────────────────────────────────────────────────
   // DELETE
   // ─────────────────────────────────────────────────────────────────────────────
-  window.confirmDelete = function(id, name) {
+  window.confirmDelete = function(id, name, postCount = 0) {
+    const htmlMessage = postCount > 0
+      ? `This category has ${postCount} post(s). They will move to Uncategorized. Continue?`
+      : `Delete the category "<strong>${escHtml(name)}</strong>"?`;
     if (window.customConfirm) {
       window.customConfirm(
-        `Delete the category "<strong>${name}</strong>"? Posts in this category will be moved to <em>Uncategorized</em>.`,
+        htmlMessage,
         () => deleteCategory(id)
       );
     } else {
-      if (confirm(`Delete category "${name}"? Posts in this category will be moved to Uncategorized.`)) {
+      const plainMessage = postCount > 0
+        ? `This category has ${postCount} post(s). They will move to Uncategorized. Continue?`
+        : `Delete category "${name}"?`;
+      if (confirm(plainMessage)) {
         deleteCategory(id);
       }
     }
@@ -865,9 +804,7 @@ export const prerender = false;
     document.getElementById('cat-name').value        = '';
     document.getElementById('cat-slug').value        = '';
     document.getElementById('cat-description').value = '';
-    document.getElementById('cat-color').value       = '#6366F1';
-    document.getElementById('cat-color-hex').textContent = '#6366F1';
-    syncPresetActive('#6366F1');
+    clearInlineErrors();
 
     document.getElementById('form-title').textContent     = 'New Category';
     document.getElementById('btn-save-label').textContent = 'Save Category';
@@ -886,6 +823,57 @@ export const prerender = false;
 
     // Dispatch event so slug auto can reset manual flag
     document.getElementById('cat-form').dispatchEvent(new Event('reset-slug-flag'));
+  }
+
+  function hasCategoryDuplicate(name, slug) {
+    const normalizedName = name.toLowerCase();
+    const normalizedSlug = slug.toLowerCase();
+    const currentId = String(editingId || '');
+
+    const duplicateName = allCategories.find(cat =>
+      String(cat.id || cat._id || '') !== currentId &&
+      (cat.name || '').toLowerCase() === normalizedName
+    );
+    const duplicateSlug = allCategories.find(cat =>
+      String(cat.id || cat._id || '') !== currentId &&
+      (cat.slug || '').toLowerCase() === normalizedSlug
+    );
+
+    if (duplicateName) {
+      setInlineError('cat-name-error', 'A category with this name already exists.');
+    }
+    if (duplicateSlug) {
+      setInlineError('cat-slug-error', 'A category with this slug already exists.');
+    }
+    return !!(duplicateName || duplicateSlug);
+  }
+
+  function setInlineError(id, message) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = message;
+  }
+
+  function clearInlineErrors() {
+    setInlineError('cat-name-error', '');
+    setInlineError('cat-slug-error', '');
+  }
+
+  function colorForName(name) {
+    const key = String(name || '').toLowerCase();
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) {
+      hash = ((hash << 5) - hash) + key.charCodeAt(i);
+      hash |= 0;
+    }
+    return CATEGORY_COLORS[Math.abs(hash) % CATEGORY_COLORS.length];
+  }
+
+  function getFilteredCategories() {
+    if (!categorySearch) return allCategories;
+    return allCategories.filter(cat =>
+      (cat.name || '').toLowerCase().includes(categorySearch) ||
+      (cat.slug || '').toLowerCase().includes(categorySearch)
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────────

@@ -28,6 +28,7 @@ const items = menu?.items ?? [];
               <a
                 href={href}
                 target={item.target}
+                rel={item.rel || undefined}
                 class="footer-nav-link"
                 aria-label={item.description || undefined}
               >

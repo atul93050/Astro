@@ -62,11 +62,11 @@ const items = menu?.items ?? [];
               </button>
             </div>
           ) : isButton ? (
-            <a href={href} target={item.target} class="mobile-nav-link mobile-nav-link--button">
+            <a href={href} target={item.target} rel={item.rel || undefined} class="mobile-nav-link mobile-nav-link--button">
               {item.label}
             </a>
           ) : (
-            <a href={href} target={item.target} class="mobile-nav-link">
+            <a href={href} target={item.target} rel={item.rel || undefined} class="mobile-nav-link">
               {item.label}
               {item.badge && <span class={`nav-badge badge-${item.badge.style}`}>{item.badge.text}</span>}
             </a>
@@ -87,13 +87,13 @@ const items = menu?.items ?? [];
                         </button>
                       </div>
                     ) : (
-                      <a href={childHref} target={child.target} class="mobile-nav-link">{child.label}</a>
+                      <a href={childHref} target={child.target} rel={child.rel || undefined} class="mobile-nav-link">{child.label}</a>
                     )}
                     {childHasChildren && (
                       <ul class="mobile-nav-sub mobile-nav-sub--level3" role="list" hidden>
                         {child.children.map(grand => (
                           <li>
-                            <a href={resolveItemUrl(grand)} target={grand.target} class="mobile-nav-link">{grand.label}</a>
+                            <a href={resolveItemUrl(grand)} target={grand.target} rel={grand.rel || undefined} class="mobile-nav-link">{grand.label}</a>
                           </li>
                         ))}
                       </ul>

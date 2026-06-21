@@ -23,6 +23,10 @@ if (!post) {
   return Astro.redirect('/404');
 }
 
+if (post.data.status === 'trash') {
+  return Astro.redirect('/404');
+}
+
 // Security Check: Hide non-published posts unless viewing with Admin Preview
 if (post.data.status !== 'published' && (!isPreview || !isAdmin)) {
   return Astro.redirect('/404');

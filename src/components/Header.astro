@@ -1,5 +1,14 @@
 ---
 // Header Component
+import { getMenuAtLocation } from "../utils/menus";
+import PrimaryNav from "./navigation/PrimaryNav.astro";
+import MobileNav from "./navigation/MobileNav.astro";
+
+// Get active preview ID from URL
+const previewMenuId = Astro.url.searchParams.get("menu_preview");
+
+const primaryMenu = getMenuAtLocation("primary-header", previewMenuId);
+const mobileMenu = getMenuAtLocation("mobile-menu", previewMenuId) || primaryMenu;
 ---
 
 <!-- TOP BAR -->
@@ -19,8 +28,20 @@
     <a href="/"><img src="/assets/images/ewac.png" alt="EWAC Logo" /></a>
   </div>
 
-  <nav class="nav">
-    <!-- Products Mega Dropdown -->
+  {primaryMenu ? (
+    <nav class="nav">
+      <PrimaryNav menu={primaryMenu} currentPath={Astro.url.pathname} />
+      <button class="search-btn">
+        <svg viewBox="0 0 24 24">
+          <circle cx="10" cy="10" r="6.5" stroke="#d32f2f" stroke-width="1.8"></circle>
+          <line x1="15" y1="15" x2="20" y2="20" stroke="#d32f2f" stroke-width="1.8" stroke-linecap="round"></line>
+        </svg>
+      </button>
+      <button class="contact-btn">Contact</button>
+    </nav>
+  ) : (
+    <nav class="nav">
+      <!-- Products Mega Dropdown -->
     <div class="nav-item has-dropdown">
       <a href="#"
         >Products <span class="nav-arrow"
@@ -253,132 +274,139 @@
     </button>
     <button class="contact-btn">Contact</button>
   </nav>
+  )}
 
-  <button class="menu-btn" id="openMenu">☰</button>
+  {!mobileMenu && <button class="menu-btn" id="openMenu">☰</button>}
 </header>
 
-<!-- MOBILE MENU & OVERLAY -->
-<div class="overlay" id="overlay"></div>
-<div class="mobile-menu" id="mobileMenu">
-  <div class="menu-header">
-    <h2>
-      <img
-        src="/assets/images/logo-m.svg"
-        alt="EWAC Logo"
-        class="why-logo-inline"
-      />
-    </h2>
-    <button class="close-menu" id="closeMenu">×</button>
-  </div>
+{mobileMenu ? (
+  <MobileNav menu={mobileMenu} />
+) : (
+  <>
+    <!-- MOBILE MENU & OVERLAY -->
+    <div class="overlay" id="overlay"></div>
+    <div class="mobile-menu" id="mobileMenu">
+      <div class="menu-header">
+        <h2>
+          <img
+            src="/assets/images/logo-m.svg"
+            alt="EWAC Logo"
+            class="why-logo-inline"
+          />
+        </h2>
+        <button class="close-menu" id="closeMenu">×</button>
+      </div>
 
-  <ul class="menu">
-    <li><a href="/">Home</a></li>
-    <li class="has-submenu">
-      <a href="#"
-        >Products <span class="arrow"
-          ><img src="/assets/images/expand-arrow.webp" alt="Arrow" /></span
-        ></a
-      >
-      <ul class="submenu">
+      <ul class="menu">
+        <li><a href="/">Home</a></li>
         <li class="has-submenu">
           <a href="#"
-            >Maintenance & Repair Products <span class="arrow"
+            >Products <span class="arrow"
               ><img src="/assets/images/expand-arrow.webp" alt="Arrow" /></span
             ></a
           >
           <ul class="submenu">
-            <li><a href="#">Manual Metal Arc Welding</a></li>
-            <li><a href="#">Flux Cored Wires & Wire Feeder</a></li>
-            <li><a href="#">Brazing Alloys & Fluxes</a></li>
+            <li class="has-submenu">
+              <a href="#"
+                >Maintenance & Repair Products <span class="arrow"
+                  ><img src="/assets/images/expand-arrow.webp" alt="Arrow" /></span
+                ></a
+              >
+              <ul class="submenu">
+                <li><a href="#">Manual Metal Arc Welding</a></li>
+                <li><a href="#">Flux Cored Wires & Wire Feeder</a></li>
+                <li><a href="#">Brazing Alloys & Fluxes</a></li>
+              </ul>
+            </li>
+            <li class="has-submenu">
+              <a href="#"
+                >Fabrication Products <span class="arrow"
+                  ><img src="/assets/images/expand-arrow.webp" alt="Arrow" /></span
+                ></a
+              >
+              <ul class="submenu">
+                <li><a href="#">Stainless Steel Electrodes</a></li>
+                <li><a href="#">Mild Steel MIG Wires</a></li>
+                <li><a href="#">TIG Filler Rods</a></li>
+              </ul>
+            </li>
+            <li class="has-submenu">
+              <a href="#"
+                >Wear Liners & Components <span class="arrow"
+                  ><img src="/assets/images/expand-arrow.webp" alt="Arrow" /></span
+                ></a
+              >
+              <ul class="submenu">
+                <li><a href="#">Chromium Carbide Plates</a></li>
+                <li><a href="#">Wear Buttons & Tiles</a></li>
+                <li><a href="#">Pipe Elbows & Spools</a></li>
+              </ul>
+            </li>
+            <li class="has-submenu">
+              <a href="#"
+                >Ceramic Liners & Components <span class="arrow"
+                  ><img src="/assets/images/expand-arrow.webp" alt="Arrow" /></span
+                ></a
+              >
+              <ul class="submenu">
+                <li><a href="#">Alumina Ceramic Tiles</a></li>
+                <li><a href="#">Rubber-Ceramic Composites</a></li>
+                <li><a href="#">Ceramic Cyclones</a></li>
+              </ul>
+            </li>
+            <li class="has-submenu">
+              <a href="#"
+                >Equipment <span class="arrow"
+                  ><img src="/assets/images/expand-arrow.webp" alt="Arrow" /></span
+                ></a
+              >
+              <ul class="submenu">
+                <li><a href="#">MIG Welding Machines</a></li>
+                <li><a href="#">Plasma Spray Systems</a></li>
+                <li><a href="#">PTA Systems</a></li>
+              </ul>
+            </li>
           </ul>
         </li>
+
         <li class="has-submenu">
           <a href="#"
-            >Fabrication Products <span class="arrow"
+            >Services <span class="arrow"
               ><img src="/assets/images/expand-arrow.webp" alt="Arrow" /></span
             ></a
           >
           <ul class="submenu">
-            <li><a href="#">Stainless Steel Electrodes</a></li>
-            <li><a href="#">Mild Steel MIG Wires</a></li>
-            <li><a href="#">TIG Filler Rods</a></li>
+            <li><a href="#">Turnkey Solutions</a></li>
+            <li><a href="#">EWAC Reclamation Facility</a></li>
+            <li><a href="#">Railways</a></li>
           </ul>
         </li>
+
         <li class="has-submenu">
           <a href="#"
-            >Wear Liners & Components <span class="arrow"
+            >Industries <span class="arrow"
               ><img src="/assets/images/expand-arrow.webp" alt="Arrow" /></span
             ></a
           >
           <ul class="submenu">
-            <li><a href="#">Chromium Carbide Plates</a></li>
-            <li><a href="#">Wear Buttons & Tiles</a></li>
-            <li><a href="#">Pipe Elbows & Spools</a></li>
+            <li><a href="#">Steel</a></li>
+            <li><a href="#">Cement</a></li>
+            <li><a href="#">Power</a></li>
+            <li><a href="#">Sugar</a></li>
+            <li><a href="#">Mining</a></li>
+            <li><a href="#">Oil & Gas</a></li>
+            <li><a href="#">Tyre</a></li>
+            <li><a href="#">Port</a></li>
+            <li><a href="#">Road Transport</a></li>
+            <li><a href="#">Railways</a></li>
           </ul>
         </li>
-        <li class="has-submenu">
-          <a href="#"
-            >Ceramic Liners & Components <span class="arrow"
-              ><img src="/assets/images/expand-arrow.webp" alt="Arrow" /></span
-            ></a
-          >
-          <ul class="submenu">
-            <li><a href="#">Alumina Ceramic Tiles</a></li>
-            <li><a href="#">Rubber-Ceramic Composites</a></li>
-            <li><a href="#">Ceramic Cyclones</a></li>
-          </ul>
-        </li>
-        <li class="has-submenu">
-          <a href="#"
-            >Equipment <span class="arrow"
-              ><img src="/assets/images/expand-arrow.webp" alt="Arrow" /></span
-            ></a
-          >
-          <ul class="submenu">
-            <li><a href="#">MIG Welding Machines</a></li>
-            <li><a href="#">Plasma Spray Systems</a></li>
-            <li><a href="#">PTA Systems</a></li>
-          </ul>
-        </li>
+
+        <li><a href="#">About</a></li>
+        <li><a href="#">Insights</a></li>
+        <li><a href="#">Careers</a></li>
+        <li><a href="#">Contact</a></li>
       </ul>
-    </li>
-
-    <li class="has-submenu">
-      <a href="#"
-        >Services <span class="arrow"
-          ><img src="/assets/images/expand-arrow.webp" alt="Arrow" /></span
-        ></a
-      >
-      <ul class="submenu">
-        <li><a href="#">Turnkey Solutions</a></li>
-        <li><a href="#">EWAC Reclamation Facility</a></li>
-        <li><a href="#">Railways</a></li>
-      </ul>
-    </li>
-
-    <li class="has-submenu">
-      <a href="#"
-        >Industries <span class="arrow"
-          ><img src="/assets/images/expand-arrow.webp" alt="Arrow" /></span
-        ></a
-      >
-      <ul class="submenu">
-        <li><a href="#">Steel</a></li>
-        <li><a href="#">Cement</a></li>
-        <li><a href="#">Power</a></li>
-        <li><a href="#">Sugar</a></li>
-        <li><a href="#">Mining</a></li>
-        <li><a href="#">Oil & Gas</a></li>
-        <li><a href="#">Tyre</a></li>
-        <li><a href="#">Port</a></li>
-        <li><a href="#">Road Transport</a></li>
-        <li><a href="#">Railways</a></li>
-      </ul>
-    </li>
-
-    <li><a href="#">About</a></li>
-    <li><a href="#">Insights</a></li>
-    <li><a href="#">Careers</a></li>
-    <li><a href="#">Contact</a></li>
-  </ul>
-</div>
+    </div>
+  </>
+)}

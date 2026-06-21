@@ -53,8 +53,12 @@ export const prerender = false;
       </svg>
       <input type="search" id="comments-search" placeholder="Search by author, email, or content…" autocomplete="off" />
     </div>
-  </div>
 
+    <!-- Filter by Post -->
+    <select id="comments-post-filter" class="admin-select-input comments-post-filter" style="max-width: 240px; height: 36px; padding: 0.35rem 0.75rem; font-size: 0.85rem; border: 1px solid var(--input-border); border-radius: var(--radius-sm); background: var(--input-bg); color: var(--text-main); font-weight: 500;" aria-label="Filter by post">
+      <option value="">All Posts</option>
+    </select>
+  </div>
   <!-- Loading State -->
   <div class="loading-state" id="loading-state">
     <div class="spinner"></div>
@@ -552,6 +556,7 @@ export const prerender = false;
   let allComments = [];
   let currentFilter = 'all';
   let currentSearch = '';
+  let currentPostFilter = '';
 
   /* ── Init ─────────────────────────────────────────────────────── */
   function initComments() {
@@ -560,8 +565,19 @@ export const prerender = false;
 
     setupFilterTabs();
     setupSearch();
+    setupPostFilter();
     setupBulkActions();
     fetchComments();
+  }
+
+  function setupPostFilter() {
+    const postFilter = document.getElementById('comments-post-filter');
+    if (postFilter) {
+      postFilter.addEventListener('change', () => {
+        currentPostFilter = postFilter.value;
+        renderComments();
+      });
+    }
   }
 
   /* ── Fetch ────────────────────────────────────────────────────── */
@@ -586,8 +602,38 @@ export const prerender = false;
       allComments = [];
     } finally {
       showLoading(false);
+      populatePostFilter();
       renderCounts();
       renderComments();
+    }
+  }
+
+  function populatePostFilter() {
+    const sel = document.getElementById('comments-post-filter');
+    if (!sel) return;
+    const currentVal = sel.value;
+    
+    // Get unique posts from comments
+    const postsMap = new Map();
+    allComments.forEach(c => {
+      const slug = c.postSlug || '';
+      const title = c.postTitle || c.postSlug || 'Untitled Post';
+      if (slug) {
+        postsMap.set(slug, title);
+      }
+    });
+
+    const posts = Array.from(postsMap.entries()).map(([slug, title]) => ({ slug, title }));
+    
+    sel.innerHTML = '<option value="">All Posts</option>' +
+      posts.map(p => `<option value="${p.slug}">${p.title}</option>`).join('');
+    
+    // Fallback if the selected value is not in the options
+    if (currentVal && posts.some(p => p.slug === currentVal)) {
+      sel.value = currentVal;
+    } else {
+      sel.value = '';
+      currentPostFilter = '';
     }
   }
 
@@ -614,6 +660,8 @@ export const prerender = false;
     const filtered = allComments.filter(c => {
       // Status filter
       if (currentFilter !== 'all' && c.status !== currentFilter) return false;
+      // Post filter
+      if (currentPostFilter && c.postSlug !== currentPostFilter) return false;
       // Search filter
       if (q) {
         const inName  = (c.authorName  || '').toLowerCase().includes(q);
@@ -814,63 +862,74 @@ export const prerender = false;
     const deleteSpamBtn = document.getElementById('btn-delete-all-spam');
 
     if (approveAllBtn) {
-      approveAllBtn.addEventListener('click', async () => {
+      approveAllBtn.addEventListener('click', () => {
         const pending = allComments.filter(c => c.status === 'pending');
         if (pending.length === 0) { showToast('No pending comments to approve.', 'warning'); return; }
-        approveAllBtn.disabled = true;
-        approveAllBtn.textContent = `Approving ${pending.length}…`;
-        let successCount = 0;
-        for (const c of pending) {
-          try {
-            const res = await fetch('/api/blog-crud', {
-              method: 'PUT',
-              credentials: 'include',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'comment', id: c.id || c._id, status: 'approved' })
-            });
-            const data = await res.json();
-            if (data.success) {
-              updateLocalComment(c.id || c._id, 'approved');
-              successCount++;
-            }
-          } catch {}
-        }
-        approveAllBtn.disabled = false;
-        approveAllBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Approve All Pending`;
-        showToast(`${successCount} comment${successCount !== 1 ? 's' : ''} approved! ✓`, 'success');
-        renderCounts();
-        renderComments();
+
+        const message = `Are you sure you want to approve all ${pending.length} pending comment${pending.length !== 1 ? 's' : ''}?`;
+        const action = async () => {
+          approveAllBtn.disabled = true;
+          approveAllBtn.textContent = `Approving ${pending.length}…`;
+          let successCount = 0;
+          for (const c of pending) {
+            try {
+              const res = await fetch('/api/blog-crud', {
+                method: 'PUT',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'comment', id: c.id || c._id, status: 'approved' })
+              });
+              const data = await res.json();
+              if (data.success) {
+                updateLocalComment(c.id || c._id, 'approved');
+                successCount++;
+              }
+            } catch {}
+          }
+          approveAllBtn.disabled = false;
+          approveAllBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Approve All Pending`;
+          showToast(`${successCount} comment${successCount !== 1 ? 's' : ''} approved! ✓`, 'success');
+          renderCounts();
+          renderComments();
+        };
+
+        window.customConfirm ? window.customConfirm(message, action) : (confirm(message) && action());
       });
     }
 
     if (deleteSpamBtn) {
-      deleteSpamBtn.addEventListener('click', async () => {
+      deleteSpamBtn.addEventListener('click', () => {
         const spamList = allComments.filter(c => c.status === 'spam');
         if (spamList.length === 0) { showToast('No spam comments to delete.', 'warning'); return; }
-        if (!confirm(`Permanently delete all ${spamList.length} spam comment${spamList.length !== 1 ? 's' : ''}? This cannot be undone.`)) return;
-        deleteSpamBtn.disabled = true;
-        deleteSpamBtn.textContent = `Deleting ${spamList.length}…`;
-        let successCount = 0;
-        for (const c of spamList) {
-          try {
-            const res = await fetch('/api/blog-crud', {
-              method: 'DELETE',
-              credentials: 'include',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'comment', id: c.id || c._id })
-            });
-            const data = await res.json();
-            if (data.success) {
-              removeLocalComment(c.id || c._id);
-              successCount++;
-            }
-          } catch {}
-        }
-        deleteSpamBtn.disabled = false;
-        deleteSpamBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Delete All Spam`;
-        showToast(`${successCount} spam comment${successCount !== 1 ? 's' : ''} permanently removed.`, 'error');
-        renderCounts();
-        renderComments();
+
+        const message = `Permanently delete all ${spamList.length} spam comment${spamList.length !== 1 ? 's' : ''}? This cannot be undone.`;
+        const action = async () => {
+          deleteSpamBtn.disabled = true;
+          deleteSpamBtn.textContent = `Deleting ${spamList.length}…`;
+          let successCount = 0;
+          for (const c of spamList) {
+            try {
+              const res = await fetch('/api/blog-crud', {
+                method: 'DELETE',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'comment', id: c.id || c._id })
+              });
+              const data = await res.json();
+              if (data.success) {
+                removeLocalComment(c.id || c._id);
+                successCount++;
+              }
+            } catch {}
+          }
+          deleteSpamBtn.disabled = false;
+          deleteSpamBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Delete All Spam`;
+          showToast(`${successCount} spam comment${successCount !== 1 ? 's' : ''} permanently removed.`, 'error');
+          renderCounts();
+          renderComments();
+        };
+
+        window.customConfirm ? window.customConfirm(message, action) : (confirm(message) && action());
       });
     }
   }

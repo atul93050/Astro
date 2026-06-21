@@ -130,8 +130,12 @@ function listPosts(filters: { status?: string; category?: string; tag?: string; 
     };
   });
 
-  if (filters.status && filters.status !== "all") {
+  if (filters.status === "all-inclusive") {
+    // Return all posts, including trash
+  } else if (filters.status && filters.status !== "all") {
     posts = posts.filter(p => p.status === filters.status);
+  } else {
+    posts = posts.filter(p => p.status !== "trash");
   }
   if (filters.category) {
     posts = posts.filter(p => p.category === filters.category);
@@ -187,7 +191,7 @@ export const GET: APIRoute = async ({ url, cookies }) => {
     // ── List posts ──────────────────────────────────────────────────────────
     if (action === "list") {
       const posts = listPosts({
-        status: url.searchParams.get("status") || "all",
+        status: url.searchParams.get("status") || "all-inclusive",
         category: url.searchParams.get("category") || "",
         tag: url.searchParams.get("tag") || "",
         author: url.searchParams.get("author") || "",
@@ -284,17 +288,18 @@ export const GET: APIRoute = async ({ url, cookies }) => {
 
     // ── Stats ───────────────────────────────────────────────────────────────
     if (action === "stats") {
-      const allPosts = listPosts({});
+      const allPosts = listPosts({ status: "all-inclusive" });
       const comments = getComments();
       const meta = getMeta();
       return jsonResponse({
         success: true,
         stats: {
-          total: allPosts.length,
+          total: allPosts.filter(p => p.status !== "trash").length,
           published: allPosts.filter(p => p.status === "published").length,
           draft: allPosts.filter(p => p.status === "draft").length,
           scheduled: allPosts.filter(p => p.status === "scheduled").length,
           archived: allPosts.filter(p => p.status === "archived").length,
+          trash: allPosts.filter(p => p.status === "trash").length,
           totalComments: comments.length,
           pendingComments: comments.filter((c: any) => c.status === "pending").length,
           categories: (meta.categories || []).length,

@@ -2,7 +2,7 @@
   "primary-header": {
     "label": "Primary Header",
     "description": "Main navigation bar in the site header",
-    "menuId": null
+    "menuId": "header"
   },
   "secondary-header": {
     "label": "Secondary Header",
@@ -27,6 +27,11 @@
   "footer-col-3": {
     "label": "Footer Column 3",
     "description": "Third column of footer navigation links",
+    "menuId": null
+  },
+  "footer-col-4": {
+    "label": "Footer Column 4",
+    "description": "Fourth column of footer navigation links",
     "menuId": null
   },
   "footer-bottom": {

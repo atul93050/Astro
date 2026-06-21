@@ -122,6 +122,10 @@ const cssSlug = cleanSlug === "index" ? "home" : cleanSlug;
 const pageStyleUrl = pageStyleSheets[`/src/styles/pages/${cssSlug}.css`] || "";
 
 // 4. Draft/Publish Workflow checks
+if (page.status === "trash") {
+  return new Response("Page Not Found", { status: 404 });
+}
+
 const isPreview = Astro.url.searchParams.get("preview") === "true";
 if (page.status === "draft" && !isPreview) {
   return new Response("This page is a draft. Please use preview mode to view it.", { status: 403 });
