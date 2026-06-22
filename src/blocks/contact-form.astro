@@ -229,141 +229,143 @@ const displayDesc = description || "Fill out the form below and our technical ex
 </style>
 
 <script is:inline>
-  document.addEventListener("DOMContentLoaded", () => {
-    const bindBlockContactForm = () => {
-      const form = document.getElementById("cmsBlockContactForm");
-      if (!form || form.dataset.bound) return;
-      form.dataset.bound = "true";
+  const bindBlockContactForm = () => {
+    const form = document.getElementById("cmsBlockContactForm");
+    if (!form || form.dataset.bound) return;
+    form.dataset.bound = "true";
 
-      const submitBtn = document.getElementById("block-submitBtn");
-      const btnText = submitBtn.querySelector(".btn-text");
-      const btnSpinner = submitBtn.querySelector(".btn-spinner");
-      const feedbackBanner = document.getElementById("block-formFeedback");
-      const feedbackTitle = document.getElementById("block-feedbackTitle");
-      const feedbackText = document.getElementById("block-feedbackText");
+    const submitBtn = document.getElementById("block-submitBtn");
+    const btnText = submitBtn.querySelector(".btn-text");
+    const btnSpinner = submitBtn.querySelector(".btn-spinner");
+    const feedbackBanner = document.getElementById("block-formFeedback");
+    const feedbackTitle = document.getElementById("block-feedbackTitle");
+    const feedbackText = document.getElementById("block-feedbackText");
 
-      const fields = ["block-name", "block-email", "block-subject", "block-message"];
+    const fields = ["block-name", "block-email", "block-subject", "block-message"];
 
-      function validateField(id) {
-        const input = document.getElementById(id);
-        const errorSpan = document.getElementById(id + "Error");
-        const group = input.closest(".cms-form-group");
-        
-        let isValid = true;
-        let errorMsg = "";
+    function validateField(id) {
+      const input = document.getElementById(id);
+      const errorSpan = document.getElementById(id + "Error");
+      const group = input.closest(".cms-form-group");
+      
+      let isValid = true;
+      let errorMsg = "";
 
-        const value = input.value.trim();
+      const value = input.value.trim();
 
-        if (!value) {
+      if (!value) {
+        isValid = false;
+        errorMsg = `${input.previousElementSibling.textContent.replace(" *", "")} is required.`;
+      } else if (id === "block-email") {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(value)) {
           isValid = false;
-          errorMsg = `${input.previousElementSibling.textContent.replace(" *", "")} is required.`;
-        } else if (id === "block-email") {
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          if (!emailRegex.test(value)) {
-            isValid = false;
-            errorMsg = "Please enter a valid email address.";
-          }
+          errorMsg = "Please enter a valid email address.";
         }
-
-        if (!isValid) {
-          group.classList.add("has-error");
-          errorSpan.textContent = errorMsg;
-        } else {
-          group.classList.remove("has-error");
-          errorSpan.textContent = "";
-        }
-
-        return isValid;
       }
 
+      if (!isValid) {
+        group.classList.add("has-error");
+        errorSpan.textContent = errorMsg;
+      } else {
+        group.classList.remove("has-error");
+        errorSpan.textContent = "";
+      }
+
+      return isValid;
+    }
+
+    fields.forEach(id => {
+      const input = document.getElementById(id);
+      if (input) {
+        input.addEventListener("input", () => {
+          const group = input.closest(".cms-form-group");
+          const errorSpan = document.getElementById(id + "Error");
+          if (input.value.trim()) {
+            group.classList.remove("has-error");
+            errorSpan.textContent = "";
+          }
+        });
+      }
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      let isFormValid = true;
       fields.forEach(id => {
-        const input = document.getElementById(id);
-        if (input) {
-          input.addEventListener("input", () => {
-            const group = input.closest(".cms-form-group");
-            const errorSpan = document.getElementById(id + "Error");
-            if (input.value.trim()) {
-              group.classList.remove("has-error");
-              errorSpan.textContent = "";
-            }
-          });
-        }
+        const isFieldValid = validateField(id);
+        if (!isFieldValid) isFormValid = false;
       });
 
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
+      if (!isFormValid) return;
 
-        let isFormValid = true;
-        fields.forEach(id => {
-          const isFieldValid = validateField(id);
-          if (!isFieldValid) isFormValid = false;
+      submitBtn.disabled = true;
+      btnText.style.display = "none";
+      btnSpinner.style.display = "inline-block";
+      feedbackBanner.style.display = "none";
+
+      const formData = {
+        name: document.getElementById("block-name").value.trim(),
+        email: document.getElementById("block-email").value.trim(),
+        subject: document.getElementById("block-subject").value.trim(),
+        message: document.getElementById("block-message").value.trim()
+      };
+
+      try {
+        const response = await fetch("/api/contact-submit", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(formData)
         });
 
-        if (!isFormValid) return;
+        const data = await response.json();
 
-        submitBtn.disabled = true;
-        btnText.style.display = "none";
-        btnSpinner.style.display = "inline-block";
-        feedbackBanner.style.display = "none";
-
-        const formData = {
-          name: document.getElementById("block-name").value.trim(),
-          email: document.getElementById("block-email").value.trim(),
-          subject: document.getElementById("block-subject").value.trim(),
-          message: document.getElementById("block-message").value.trim()
-        };
-
-        try {
-          const response = await fetch("/api/contact-submit", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(formData)
-          });
-
-          const data = await response.json();
-
-          if (response.ok && data.success) {
-            feedbackBanner.className = "cms-feedback-banner success";
-            feedbackBanner.style.display = "flex";
-            feedbackTitle.textContent = "Submission Successful!";
-            feedbackText.textContent = "Your enquiry has been successfully logged in our lead box. We will contact you shortly.";
-            form.reset();
-          } else {
-            feedbackBanner.className = "cms-feedback-banner error";
-            feedbackBanner.style.display = "flex";
-            feedbackTitle.textContent = "Submission Failed";
-            
-            if (data.errors) {
-              feedbackText.textContent = "Please correct the errors in the form.";
-              Object.keys(data.errors).forEach(key => {
-                const input = document.getElementById("block-" + key);
-                if (input) {
-                  const group = input.closest(".cms-form-group");
-                  const errorSpan = document.getElementById("block-" + key + "Error");
-                  group.classList.add("has-error");
-                  errorSpan.textContent = data.errors[key];
-                }
-              });
-            } else {
-              feedbackText.textContent = data.error || "An error occurred while submitting your enquiry.";
-            }
-          }
-        } catch (error) {
+        if (response.ok && data.success) {
+          feedbackBanner.className = "cms-feedback-banner success";
+          feedbackBanner.style.display = "flex";
+          feedbackTitle.textContent = "Submission Successful!";
+          feedbackText.textContent = "Your enquiry has been successfully logged in our lead box. We will contact you shortly.";
+          form.reset();
+        } else {
           feedbackBanner.className = "cms-feedback-banner error";
           feedbackBanner.style.display = "flex";
-          feedbackTitle.textContent = "Network Error";
-          feedbackText.textContent = "Could not connect to the server. Please check your connection.";
-        } finally {
-          submitBtn.disabled = false;
-          btnText.style.display = "inline-block";
-          btnSpinner.style.display = "none";
+          feedbackTitle.textContent = "Submission Failed";
+          
+          if (data.errors) {
+            feedbackText.textContent = "Please correct the errors in the form.";
+            Object.keys(data.errors).forEach(key => {
+              const input = document.getElementById("block-" + key);
+              if (input) {
+                const group = input.closest(".cms-form-group");
+                const errorSpan = document.getElementById("block-" + key + "Error");
+                group.classList.add("has-error");
+                errorSpan.textContent = data.errors[key];
+              }
+            });
+          } else {
+            feedbackText.textContent = data.error || "An error occurred while submitting your enquiry.";
+          }
         }
-      });
-    };
+      } catch (error) {
+        feedbackBanner.className = "cms-feedback-banner error";
+        feedbackBanner.style.display = "flex";
+        feedbackTitle.textContent = "Network Error";
+        feedbackText.textContent = "Could not connect to the server. Please check your connection.";
+      } finally {
+        submitBtn.disabled = false;
+        btnText.style.display = "inline-block";
+        btnSpinner.style.display = "none";
+      }
+    });
+  };
 
+  if (document.readyState !== 'loading') {
     bindBlockContactForm();
-    document.addEventListener("astro:page-load", bindBlockContactForm);
-  });
+  } else {
+    document.addEventListener("DOMContentLoaded", bindBlockContactForm);
+  }
+  document.addEventListener("astro:page-load", bindBlockContactForm);
 </script>

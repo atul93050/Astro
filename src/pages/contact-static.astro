@@ -423,8 +423,11 @@ export const prerender = false;
 </style>
 
 <script is:inline>
-  document.addEventListener("DOMContentLoaded", () => {
+  const initContact = () => {
     const form = document.getElementById("contactForm");
+    if (!form || form.dataset.bound) return;
+    form.dataset.bound = "true";
+
     const submitBtn = document.getElementById("submitBtn");
     const btnText = submitBtn.querySelector(".btn-text");
     const btnSpinner = submitBtn.querySelector(".btn-spinner");
@@ -559,5 +562,12 @@ export const prerender = false;
         btnSpinner.style.display = "none";
       }
     });
-  });
+  };
+
+  if (document.readyState !== 'loading') {
+    initContact();
+  } else {
+    document.addEventListener("DOMContentLoaded", initContact);
+  }
+  document.addEventListener("astro:page-load", initContact);
 </script>

@@ -37,7 +37,15 @@ const mobileMenu = getMenuAtLocation("mobile-menu", previewMenuId) || primaryMen
           <line x1="15" y1="15" x2="20" y2="20" stroke="#d32f2f" stroke-width="1.8" stroke-linecap="round"></line>
         </svg>
       </button>
-      <button class="contact-btn">Contact</button>
+      <a href="/contact" style="text-decoration: none;"><button class="contact-btn">Contact</button></a>
+      <button class="cart-header-btn" aria-label="Open Shopping Cart">
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6z" stroke="#d32f2f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+          <path d="M3 6h18" stroke="#d32f2f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+          <path d="M16 10a4 4 0 01-8 0" stroke="#d32f2f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+        <span class="cart-badge" style="display: none;">0</span>
+      </button>
     </nav>
   ) : (
     <nav class="nav">
@@ -57,7 +65,7 @@ const mobileMenu = getMenuAtLocation("mobile-menu", previewMenuId) || primaryMen
               High-performance welding consumables and wear protection solutions
               for demanding environments.
             </p>
-            <a href="#" class="mega-explore-btn"
+            <a href="/products" class="mega-explore-btn"
               >Explore All <i class="fa fa-arrow-right"></i></a
             >
           </div>
@@ -272,9 +280,28 @@ const mobileMenu = getMenuAtLocation("mobile-menu", previewMenuId) || primaryMen
           stroke-linecap="round"></line>
       </svg>
     </button>
-    <button class="contact-btn">Contact</button>
+    <a href="/contact" style="text-decoration: none;"><button class="contact-btn">Contact</button></a>
+    <button class="cart-header-btn" aria-label="Open Shopping Cart">
+      <svg viewBox="0 0 24 24" width="24" height="24">
+        <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6z" stroke="#d32f2f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+        <path d="M3 6h18" stroke="#d32f2f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+        <path d="M16 10a4 4 0 01-8 0" stroke="#d32f2f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+      <span class="cart-badge" style="display: none;">0</span>
+    </button>
   </nav>
   )}
+
+  <div class="mobile-actions-wrap" style="display: none; align-items: center; gap: 10px; margin-left: auto; margin-right: 15px;">
+    <button class="cart-header-btn" aria-label="Open Shopping Cart">
+      <svg viewBox="0 0 24 24" width="24" height="24">
+        <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6z" stroke="#d32f2f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+        <path d="M3 6h18" stroke="#d32f2f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+        <path d="M16 10a4 4 0 01-8 0" stroke="#d32f2f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+      <span class="cart-badge" style="display: none;">0</span>
+    </button>
+  </div>
 
   {!mobileMenu && <button class="menu-btn" id="openMenu">☰</button>}
 </header>
@@ -306,6 +333,7 @@ const mobileMenu = getMenuAtLocation("mobile-menu", previewMenuId) || primaryMen
             ></a
           >
           <ul class="submenu">
+            <li><a href="/products" style="font-weight: 700;">Explore All Products &rarr;</a></li>
             <li class="has-submenu">
               <a href="#"
                 >Maintenance & Repair Products <span class="arrow"
@@ -405,7 +433,7 @@ const mobileMenu = getMenuAtLocation("mobile-menu", previewMenuId) || primaryMen
         <li><a href="#">About</a></li>
         <li><a href="#">Insights</a></li>
         <li><a href="#">Careers</a></li>
-        <li><a href="#">Contact</a></li>
+        <li><a href="/contact">Contact</a></li>
       </ul>
     </div>
   </>

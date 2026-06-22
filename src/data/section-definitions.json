@@ -512,5 +512,32 @@
         "repeaterFields": []
       }
     ]
+  },
+  {
+    "key": "product_listing",
+    "name": "Product Listing Grid",
+    "category": "other",
+    "description": "Dynamic grid rendering all e-commerce published products",
+    "componentPath": "src/blocks/product_listing.astro",
+    "fields": [
+      {
+        "name": "title",
+        "label": "Listing Title",
+        "type": "text",
+        "required": false,
+        "default": "Our Products",
+        "options": [],
+        "repeaterFields": []
+      },
+      {
+        "name": "subtitle",
+        "label": "Listing Subtitle",
+        "type": "text",
+        "required": false,
+        "default": "Explore our full range of welding consumables and wear protection solutions.",
+        "options": [],
+        "repeaterFields": []
+      }
+    ]
   }
 ]

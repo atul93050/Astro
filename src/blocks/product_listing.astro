@@ -1,0 +1,134 @@
+---
+import fs from "node:fs";
+import path from "node:path";
+import { parse } from "yaml";
+
+interface Props {
+  title?: string;
+  subtitle?: string;
+}
+
+const { title, subtitle } = Astro.props;
+
+const PRODUCTS_DIR = path.resolve("src/content/products");
+const CATEGORIES_PATH = path.resolve("src/data/product-categories.json");
+
+// Load categories to map slugs to friendly names
+let categories: any[] = [];
+try {
+  if (fs.existsSync(CATEGORIES_PATH)) {
+    categories = JSON.parse(fs.readFileSync(CATEGORIES_PATH, "utf-8"));
+  }
+} catch (e) {
+  console.error("Failed to load categories in products listing block:", e);
+}
+const categoryNameMap = new Map(categories.map(c => [c.slug, c.name]));
+
+// Load all published products directly from markdown files
+let products: any[] = [];
+try {
+  if (fs.existsSync(PRODUCTS_DIR)) {
+    const files = fs.readdirSync(PRODUCTS_DIR).filter(f => f.endsWith(".md"));
+    for (const file of files) {
+      const content = fs.readFileSync(path.join(PRODUCTS_DIR, file), "utf-8");
+      const parts = content.split(/^---$/m);
+      if (parts.length >= 3) {
+        const data = parse(parts[1]) || {};
+        if (data.status === "published") {
+          products.push(data);
+        }
+      }
+    }
+  }
+} catch (e) {
+  console.error("Failed to load products in products listing block:", e);
+}
+
+// Helper to determine starting price
+function getStartingPrice(prod: any): number {
+  if (prod.variants && Array.isArray(prod.variants) && prod.variants.length > 0) {
+    const prices = prod.variants.map((v: any) => v.price).filter((p: any) => typeof p === "number");
+    if (prices.length > 0) {
+      return Math.min(...prices);
+    }
+  }
+  return prod.basePrice || 0;
+}
+
+// Helper to check if it has variants
+function hasVariants(prod: any): boolean {
+  return !!(prod.variants && Array.isArray(prod.variants) && prod.variants.length > 0);
+}
+
+// Helper for stock badge state
+function getStockStatus(prod: any): { type: "out" | "low" | "in"; label: string } {
+  const threshold = prod.lowStockThreshold ?? 5;
+  if (prod.variants && Array.isArray(prod.variants) && prod.variants.length > 0) {
+    const totalStock = prod.variants.reduce((sum: number, v: any) => sum + (v.stock ?? 0), 0);
+    if (totalStock === 0) return { type: "out", label: "Out of Stock" };
+    if (totalStock <= threshold) return { type: "low", label: "Low Stock" };
+    return { type: "in", label: "In Stock" };
+  }
+  const stock = prod.stock ?? 0;
+  if (stock === 0) return { type: "out", label: "Out of Stock" };
+  if (stock <= threshold) return { type: "low", label: "Low Stock" };
+  return { type: "in", label: "In Stock" };
+}
+---
+
+<section class="products-catalog-section">
+  <div class="container">
+    <div class="products-header-container">
+      <h1>{title || "Our Products"}</h1>
+      {subtitle && <p>{subtitle}</p>}
+    </div>
+
+    {products.length === 0 ? (
+      <div style="text-align: center; padding: 4rem 2rem; background: #fff; border-radius: 12px; border: 1px dashed #ddd;">
+        <i class="fa-solid fa-boxes-stacked" style="font-size: 3rem; color: #ccc; margin-bottom: 1rem;"></i>
+        <h3 style="font-size: 1.25rem; font-weight: 700; color: #333;">No Products Found</h3>
+        <p style="color: #666; margin-top: 0.25rem;">Check back later as we update our inventory.</p>
+      </div>
+    ) : (
+      <div class="products-grid">
+        {products.map((product) => {
+          const startingPrice = getStartingPrice(product);
+          const isVar = hasVariants(product);
+          const stock = getStockStatus(product);
+          const categoryName = categoryNameMap.get(product.category) || product.category || "General";
+          
+          return (
+            <a href={`/products/${product.slug}`} class="product-card">
+              {stock.type === "out" && (
+                <span class="product-badge out-of-stock">{stock.label}</span>
+              )}
+              {stock.type === "low" && (
+                <span class="product-badge low-stock">{stock.label}</span>
+              )}
+              
+              <div class="product-card-image-wrap">
+                <img 
+                  src={product.featuredImage || "/assets/images/products1.png"} 
+                  alt={product.name} 
+                  class="product-card-image"
+                />
+              </div>
+              
+              <div class="product-card-content">
+                <span class="product-card-category">{categoryName}</span>
+                <h3 class="product-card-title">{product.name}</h3>
+                
+                <div class="product-card-price-row">
+                  <span class="product-card-price">
+                    {isVar ? "From " : ""}₹{startingPrice.toLocaleString("en-IN")}
+                  </span>
+                  <span class="product-card-btn">Details &rarr;</span>
+                </div>
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    )}
+  </div>
+</section>

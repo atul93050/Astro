@@ -1,0 +1,474 @@
+---
+import MainLayout from "../../layouts/MainLayout.astro";
+import Header from "../../components/Header.astro";
+import Footer from "../../components/Footer.astro";
+import fs from "node:fs";
+import path from "node:path";
+import { parse } from "yaml";
+
+export const prerender = false;
+
+const { slug } = Astro.params;
+const PRODUCTS_DIR = path.resolve("src/content/products");
+const CATEGORIES_PATH = path.resolve("src/data/product-categories.json");
+
+// Fetch product details directly from markdown file
+const filePath = path.join(PRODUCTS_DIR, `${slug}.md`);
+if (!fs.existsSync(filePath)) {
+  return new Response("Product Not Found", { status: 404 });
+}
+
+let product: any = null;
+let bodyHtml = "";
+
+try {
+  const content = fs.readFileSync(filePath, "utf-8");
+  const parts = content.split(/^---$/m);
+  if (parts.length >= 3) {
+    product = parse(parts[1]) || {};
+    // Extract remaining parts as body markdown/HTML description
+    bodyHtml = parts.slice(2).join("---");
+  }
+} catch (e) {
+  console.error(`Failed to load product detail: ${slug}`, e);
+  return new Response("Internal Server Error", { status: 500 });
+}
+
+if (!product || product.status !== "published") {
+  return new Response("Product Unavailable", { status: 403 });
+}
+
+// Fetch categories
+let categories: any[] = [];
+try {
+  if (fs.existsSync(CATEGORIES_PATH)) {
+    categories = JSON.parse(fs.readFileSync(CATEGORIES_PATH, "utf-8"));
+  }
+} catch (e) {
+  // Graceful fallback
+}
+const categoryNameMap = new Map(categories.map(c => [c.slug, c.name]));
+const categoryFriendlyName = categoryNameMap.get(product.category) || product.category || "General";
+
+// Load default product detail template config from CMS if available
+const TEMPLATE_CONFIG_PATH = path.resolve("src/content/pages/product-detail.md");
+let templateData: any = {};
+try {
+  if (fs.existsSync(TEMPLATE_CONFIG_PATH)) {
+    const templateContent = fs.readFileSync(TEMPLATE_CONFIG_PATH, "utf-8");
+    const parts = templateContent.split(/^---$/m);
+    if (parts.length >= 3) {
+      templateData = parse(parts[1]) || {};
+    }
+  }
+} catch (e) {
+  console.error("Failed to load product detail template settings from product-detail.md:", e);
+}
+
+// Fallback logic combining product-specific values and default template settings
+const metaTitle = product.seo?.metaTitle || templateData.seo?.metaTitle || `${product.name} | EWAC Alloys`;
+const metaDescription = product.seo?.metaDescription || templateData.seo?.metaDescription || `View specifications, variants, pricing, and availability details for ${product.name}.`;
+const robots = product.seo?.robots || templateData.seo?.robots || "index, follow";
+const canonicalUrl = product.seo?.canonicalUrl || templateData.seo?.canonicalUrl || "";
+const ogTitle = product.seo?.ogTitle || templateData.seo?.ogTitle || "";
+const ogDescription = product.seo?.ogDescription || templateData.seo?.ogDescription || "";
+const ogImage = product.featuredImage || templateData.seo?.ogImage || "";
+const twitterCard = product.seo?.twitterCard || templateData.seo?.twitterCard || "summary_large_image";
+const customCss = product.customCss || templateData.customCss || "";
+const customJs = product.customJs || templateData.customJs || "";
+const headerScripts = product.headerScripts || templateData.headerScripts || "";
+const footerScripts = product.footerScripts || templateData.footerScripts || "";
+
+// Prepare gallery images (avoiding duplicates)
+const galleryList = [
+  ...(product.featuredImage ? [product.featuredImage] : []),
+  ...(product.images && Array.isArray(product.images) ? product.images : [])
+];
+const uniqueGalleryImages = Array.from(new Set(galleryList)).filter(Boolean);
+
+// Compile unique attributes and values from product variants
+const allAttributes: Record<string, Set<string>> = {};
+if (product.variants && Array.isArray(product.variants)) {
+  product.variants.forEach((v: any) => {
+    if (v.attributes && typeof v.attributes === "object") {
+      Object.entries(v.attributes).forEach(([key, val]) => {
+        if (!allAttributes[key]) {
+          allAttributes[key] = new Set();
+        }
+        allAttributes[key].add(val as string);
+      });
+    }
+  });
+}
+const attributesList = Object.entries(allAttributes).map(([name, valuesSet]) => ({
+  name,
+  values: Array.from(valuesSet)
+}));
+
+// Initialize starting price to display before hydration
+function getStartingPrice(prod: any): number {
+  if (prod.variants && Array.isArray(prod.variants) && prod.variants.length > 0) {
+    const prices = prod.variants.map((v: any) => v.price).filter((p: any) => typeof p === "number");
+    if (prices.length > 0) {
+      return Math.min(...prices);
+    }
+  }
+  return prod.basePrice || 0;
+}
+const initialPrice = getStartingPrice(product);
+---
+
+<MainLayout
+  title={metaTitle}
+  description={metaDescription}
+  canonicalUrl={canonicalUrl}
+  robots={robots}
+  ogTitle={ogTitle}
+  ogDescription={ogDescription}
+  ogImage={ogImage}
+  twitterCard={twitterCard}
+  customCss={customCss}
+  customJs={customJs}
+  headerScripts={headerScripts}
+  footerScripts={footerScripts}
+>
+  <Header />
+
+  <main class="product-details-section">
+    <div class="container">
+      <!-- Breadcrumb -->
+      <div style="font-size: 0.85rem; color: #888; margin-bottom: 2rem;">
+        <a href="/" style="color: #666; text-decoration: none;">Home</a> &nbsp;/&nbsp; 
+        <a href="/products" style="color: #666; text-decoration: none;">Products</a> &nbsp;/&nbsp; 
+        <span style="color: #111;">{product.name}</span>
+      </div>
+
+      <div class="product-details-grid">
+        <!-- Left: Gallery -->
+        <div class="gallery-container">
+          <div class="gallery-main-wrap">
+            <img 
+              id="mainGalleryImage"
+              src={product.featuredImage || "/assets/images/products1.png"} 
+              alt={product.name} 
+              class="gallery-main-image"
+            />
+          </div>
+          
+          {uniqueGalleryImages.length > 1 && (
+            <div class="gallery-thumbnails">
+              {uniqueGalleryImages.map((img, index) => (
+                <div 
+                  class={`gallery-thumb ${index === 0 ? "active" : ""}`}
+                  data-src={img}
+                >
+                  <img src={img} alt={`Gallery view ${index + 1}`} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <!-- Right: Info Panel -->
+        <div class="product-info-panel">
+          <span class="product-info-category">{categoryFriendlyName}</span>
+          <h1>{product.name}</h1>
+          
+          <div class="product-info-meta">
+            <!-- Dynamic Stock badge positioned in script -->
+            <span id="detailStockBadge" class="product-badge" style="position: static; display: inline-block;">Checking...</span>
+          </div>
+
+          <div class="product-info-price-box">
+            <span id="detailPrice" class="product-info-price">₹{initialPrice.toLocaleString("en-IN")}</span>
+            <span id="detailComparePrice" class="product-info-compare-price" style="display: none;"></span>
+          </div>
+
+          <!-- Dynamic Swatches -->
+          {attributesList.length > 0 && (
+            <div class="variant-attributes-section">
+              {attributesList.map((attr) => (
+                <div>
+                  <h4 class="attribute-group-title">Select {attr.name}:</h4>
+                  <div class="swatch-container" data-attribute-group={attr.name}>
+                    {attr.values.map((val, idx) => (
+                      <button 
+                        type="button" 
+                        class={`swatch-button ${idx === 0 ? "active" : ""}`}
+                        data-attribute={attr.name}
+                        data-value={val}
+                      >
+                        {val}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <!-- Purchase actions -->
+          <div class="purchase-actions-box">
+            <div class="qty-controller">
+              <button type="button" class="qty-btn" id="qtyDecBtn">&minus;</button>
+              <input type="number" id="detailQtyInput" class="qty-input" value="1" min="1" max="99" readonly />
+              <button type="button" class="qty-btn" id="qtyIncBtn">&plus;</button>
+            </div>
+
+            <button type="button" class="add-to-cart-btn" id="detailAddToCartBtn" disabled>
+              <i class="fa-solid fa-cart-plus"></i> Add to Cart
+            </button>
+          </div>
+
+          <div class="sku-stock-meta">
+            <span>SKU: <strong id="detailSku">Standard</strong></span>
+            <span>Availability: <strong>Secure local filesystem delivery</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Description Block -->
+      {bodyHtml && (
+        <div class="product-description-wrap">
+          <h2>Product Overview</h2>
+          <div class="product-rich-body" set:html={bodyHtml} />
+        </div>
+      )}
+    </div>
+  </main>
+
+  <Footer />
+</MainLayout>
+
+<script is:inline define:vars={{ 
+  productVariants: product.variants || [], 
+  productBasePrice: product.basePrice || 0,
+  productStock: product.stock || 0,
+  productLowStockThreshold: product.lowStockThreshold || 5,
+  productSlug: product.slug,
+  productName: product.name,
+  productFeaturedImage: product.featuredImage || "/assets/images/products1.png"
+}}>
+  function initDetailPage() {
+    const mainImg = document.getElementById('mainGalleryImage');
+    const thumbnails = document.querySelectorAll('.gallery-thumb');
+
+    // 1. Gallery switcher
+    thumbnails.forEach(thumb => {
+      thumb.addEventListener('click', (e) => {
+        thumbnails.forEach(t => t.classList.remove('active'));
+        const currentTarget = e.currentTarget;
+        currentTarget.classList.add('active');
+        const newSrc = currentTarget.getAttribute('data-src');
+        if (mainImg && newSrc) {
+          mainImg.src = newSrc;
+        }
+      });
+    });
+
+    // 2. Variants mappings
+    const hasVariants = productVariants && productVariants.length > 0;
+    let selectedAttrs = {};
+
+    // Initialize attributes state with active swatches on page load
+    function captureActiveSwatches() {
+      selectedAttrs = {};
+      document.querySelectorAll('.swatch-button.active').forEach(btn => {
+        const attr = btn.getAttribute('data-attribute');
+        const val = btn.getAttribute('data-value');
+        if (attr && val) {
+          selectedAttrs[attr] = val;
+        }
+      });
+    }
+
+    // Click handler for swatch buttons
+    document.querySelectorAll('.swatch-button').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const currentTarget = e.currentTarget;
+        const attrName = currentTarget.getAttribute('data-attribute');
+        const attrVal = currentTarget.getAttribute('data-value');
+
+        // Toggle active states among siblings
+        const parentContainer = currentTarget.closest('.swatch-container');
+        if (parentContainer) {
+          parentContainer.querySelectorAll('.swatch-button').forEach(s => s.classList.remove('active'));
+        }
+        currentTarget.classList.add('active');
+
+        // Save selected state
+        selectedAttrs[attrName] = attrVal;
+
+        matchVariantAndUpdateUI();
+      });
+    });
+
+    function matchVariantAndUpdateUI() {
+      if (!hasVariants) {
+        updateProductUI(null, productBasePrice, productStock);
+        return;
+      }
+
+      // Lookup matching variant
+      const matched = productVariants.find(v => {
+        if (!v.attributes) return false;
+        return Object.entries(selectedAttrs).every(([key, val]) => v.attributes[key] === val);
+      });
+
+      if (matched) {
+        updateProductUI(matched, matched.price, matched.stock);
+      } else {
+        // Variant combo does not exist
+        updateProductUI(null, null, 0);
+      }
+    }
+
+    function updateProductUI(variant, price, stock) {
+      const priceText = document.getElementById('detailPrice');
+      const comparePriceText = document.getElementById('detailComparePrice');
+      const skuText = document.getElementById('detailSku');
+      const stockBadge = document.getElementById('detailStockBadge');
+      const addToCartBtn = document.getElementById('detailAddToCartBtn');
+      const qtyInput = document.getElementById('detailQtyInput');
+
+      if (price === null) {
+        if (priceText) priceText.textContent = 'Unavailable';
+        if (comparePriceText) comparePriceText.style.display = 'none';
+        if (skuText) skuText.textContent = '—';
+        if (stockBadge) {
+          stockBadge.textContent = 'Combo Unavailable';
+          stockBadge.className = 'product-badge out-of-stock';
+          stockBadge.style.backgroundColor = '#ef4444';
+        }
+        if (addToCartBtn) {
+          addToCartBtn.disabled = true;
+          addToCartBtn.textContent = 'Unavailable';
+        }
+        return;
+      }
+
+      // Price Formatting
+      if (priceText) priceText.textContent = `₹${price.toLocaleString('en-IN')}`;
+      if (comparePriceText) {
+        if (variant && variant.compareAtPrice && variant.compareAtPrice > price) {
+          comparePriceText.textContent = `₹${variant.compareAtPrice.toLocaleString('en-IN')}`;
+          comparePriceText.style.display = 'inline';
+        } else {
+          comparePriceText.style.display = 'none';
+        }
+      }
+
+      // SKU Label
+      if (skuText) {
+        skuText.textContent = variant ? variant.sku : 'Standard';
+      }
+
+      // Stock indicator
+      if (stockBadge && addToCartBtn) {
+        if (stock === 0) {
+          stockBadge.textContent = 'Out of Stock';
+          stockBadge.className = 'product-badge out-of-stock';
+          stockBadge.style.backgroundColor = '#ef4444';
+          addToCartBtn.disabled = true;
+          addToCartBtn.textContent = 'Out of Stock';
+        } else if (stock <= productLowStockThreshold) {
+          stockBadge.textContent = `Only ${stock} left - Low Stock`;
+          stockBadge.className = 'product-badge low-stock';
+          stockBadge.style.backgroundColor = '#f59e0b';
+          addToCartBtn.disabled = false;
+          addToCartBtn.innerHTML = `<i class="fa-solid fa-cart-plus"></i> Add to Cart`;
+        } else {
+          stockBadge.textContent = 'In Stock';
+          stockBadge.className = 'product-badge';
+          stockBadge.style.backgroundColor = '#10B981';
+          addToCartBtn.disabled = false;
+          addToCartBtn.innerHTML = `<i class="fa-solid fa-cart-plus"></i> Add to Cart`;
+        }
+      }
+
+      // Qty boundaries
+      if (qtyInput) {
+        const currentQty = parseInt(qtyInput.value) || 1;
+        if (currentQty > stock) {
+          qtyInput.value = stock > 0 ? stock.toString() : '1';
+        }
+        qtyInput.max = stock > 0 ? stock.toString() : '1';
+      }
+    }
+
+    // Quantity selectors
+    const decBtn = document.getElementById('qtyDecBtn');
+    const incBtn = document.getElementById('qtyIncBtn');
+    const qtyInput = document.getElementById('detailQtyInput');
+
+    if (decBtn && incBtn && qtyInput) {
+      decBtn.onclick = () => {
+        const val = parseInt(qtyInput.value) || 1;
+        if (val > 1) {
+          qtyInput.value = (val - 1).toString();
+        }
+      };
+
+      incBtn.onclick = () => {
+        const val = parseInt(qtyInput.value) || 1;
+        const max = parseInt(qtyInput.getAttribute('max') || '999');
+        if (val < max) {
+          qtyInput.value = (val + 1).toString();
+        }
+      };
+    }
+
+    // Add to cart click
+    const addToCartBtn = document.getElementById('detailAddToCartBtn');
+    if (addToCartBtn) {
+      addToCartBtn.onclick = () => {
+        const qty = parseInt(qtyInput ? qtyInput.value : '1') || 1;
+        
+        let selectedVariant = null;
+        let variantLabelStr = '';
+        let finalPrice = productBasePrice;
+        let finalSku = null;
+
+        if (hasVariants) {
+          selectedVariant = productVariants.find(v => {
+            if (!v.attributes) return false;
+            return Object.entries(selectedAttrs).every(([key, val]) => v.attributes[key] === val);
+          });
+          if (!selectedVariant) return;
+          
+          finalPrice = selectedVariant.price;
+          finalSku = selectedVariant.sku;
+          
+          variantLabelStr = Object.entries(selectedAttrs)
+            .map(([k, v]) => `${k.charAt(0).toUpperCase() + k.slice(1)}: ${v}`)
+            .join(', ');
+        }
+
+        // Dispatch Event to global Cart Drawer
+        window.dispatchEvent(new CustomEvent('add-item-to-cart', {
+          detail: {
+            productSlug: productSlug,
+            variantSku: finalSku,
+            name: productName,
+            price: finalPrice,
+            quantity: qty,
+            image: productFeaturedImage,
+            variantLabel: variantLabelStr
+          }
+        }));
+      };
+    }
+
+    // Run first UI synchronization
+    captureActiveSwatches();
+    matchVariantAndUpdateUI();
+  }
+
+  // Setup listeners
+  if (document.readyState !== 'loading') {
+    initDetailPage();
+  } else {
+    document.addEventListener('DOMContentLoaded', initDetailPage);
+  }
+  document.addEventListener('astro:page-load', initDetailPage);
+</script>

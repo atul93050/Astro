@@ -30,4 +30,17 @@ const orderId = Astro.url.searchParams.get("order_id") || "";
     </div>
   </div>
 
+  <script is:inline>
+    function clearCartOnSuccess() {
+      localStorage.removeItem('ewac-cart');
+      window.dispatchEvent(new CustomEvent('cart-updated', { detail: [] }));
+    }
+    if (document.readyState !== 'loading') {
+      clearCartOnSuccess();
+    } else {
+      document.addEventListener('DOMContentLoaded', clearCartOnSuccess);
+    }
+    document.addEventListener('astro:page-load', clearCartOnSuccess);
+  </script>
+
 </MainLayout>

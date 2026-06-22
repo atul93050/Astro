@@ -1,0 +1,371 @@
+---
+// src/components/CartDrawer.astro
+---
+
+<div class="cart-overlay" id="cartOverlay"></div>
+<div class="cart-drawer" id="cartDrawer">
+  <div class="cart-drawer-header">
+    <h2>Shopping Bag</h2>
+    <button class="cart-close-btn" id="cartCloseBtn">&times;</button>
+  </div>
+
+  <div class="cart-drawer-body">
+    <!-- Step 1: Cart Items -->
+    <div id="cartStepItems" style="display: flex; flex-direction: column; gap: 1rem; flex-grow: 1;">
+      <div class="cart-items-container" id="cartItemsList">
+        <!-- Rendered by client JS -->
+      </div>
+
+      <div class="cart-empty-message" id="cartEmptyMsg">
+        <div class="cart-empty-icon">
+          <i class="fa-solid fa-bag-shopping"></i>
+        </div>
+        <p>Your shopping bag is empty.</p>
+        <a href="/products" class="product-card-btn" style="text-align: center; text-decoration: none;" id="cartExploreBtn">Explore Products</a>
+      </div>
+    </div>
+
+    <!-- Step 2: Checkout Form -->
+    <div class="checkout-form-container" id="cartStepCheckout">
+      <h3 class="checkout-form-title">Checkout Details</h3>
+      
+      <div class="checkout-form-group">
+        <label for="checkoutName">Full Name</label>
+        <input type="text" id="checkoutName" placeholder="John Doe" required />
+      </div>
+      
+      <div class="checkout-form-group">
+        <label for="checkoutEmail">Email Address</label>
+        <input type="email" id="checkoutEmail" placeholder="john@example.com" required />
+      </div>
+      
+      <div class="checkout-form-group">
+        <label for="checkoutPhone">Phone Number</label>
+        <input type="tel" id="checkoutPhone" placeholder="9876543210" required />
+      </div>
+
+      <div id="checkoutErrorMsg" style="color: #ef4444; font-size: 0.85rem; font-weight: 600; display: none; line-height: 1.4; margin-top: 0.5rem; background: rgba(239, 68, 68, 0.05); padding: 0.5rem; border-radius: 4px; border: 1px solid rgba(239, 68, 68, 0.15);"></div>
+
+      <div class="checkout-actions-row">
+        <button class="checkout-back-btn" id="checkoutBackBtn">Back</button>
+        <button class="pay-now-btn" id="payNowBtn">
+          <span>Pay Now</span>
+          <i class="fa-solid fa-credit-card"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="cart-drawer-footer" id="cartDrawerFooter">
+    <div class="cart-summary-row">
+      <span class="cart-summary-label">Subtotal</span>
+      <span class="cart-summary-value" id="cartSubtotal">₹0.00</span>
+    </div>
+    
+    <button class="checkout-step-btn" id="checkoutStepBtn">Proceed to Checkout</button>
+  </div>
+</div>
+
+<script>
+  // Helper to read cart from localStorage safely
+  function getCart() {
+    try {
+      const data = localStorage.getItem('ewac-cart');
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  // Helper to save cart to localStorage
+  function saveCart(cart: any[]) {
+    try {
+      localStorage.setItem('ewac-cart', JSON.stringify(cart));
+      window.dispatchEvent(new CustomEvent('cart-updated', { detail: cart }));
+    } catch (e) {
+      console.error("Failed to save cart to localStorage", e);
+    }
+  }
+
+  let isInitialized = false;
+
+  function initCart() {
+    const overlay = document.getElementById('cartOverlay');
+    const drawer = document.getElementById('cartDrawer');
+    const closeBtn = document.getElementById('cartCloseBtn');
+    
+    const stepItems = document.getElementById('cartStepItems');
+    const stepCheckout = document.getElementById('cartStepCheckout');
+    
+    const itemsList = document.getElementById('cartItemsList');
+    const emptyMsg = document.getElementById('cartEmptyMsg');
+    const subtotalText = document.getElementById('cartSubtotal');
+    const footer = document.getElementById('cartDrawerFooter');
+    
+    const checkoutStepBtn = document.getElementById('checkoutStepBtn') as HTMLButtonElement;
+    const checkoutBackBtn = document.getElementById('checkoutBackBtn');
+    const payNowBtn = document.getElementById('payNowBtn') as HTMLButtonElement;
+    
+    const errBox = document.getElementById('checkoutErrorMsg');
+
+    if (!overlay || !drawer || !closeBtn || !stepItems || !stepCheckout || !itemsList || !emptyMsg || !subtotalText || !footer || !checkoutStepBtn || !checkoutBackBtn || !payNowBtn) {
+      return;
+    }
+
+    // Toggle drawer functions
+    function openCart() {
+      overlay!.classList.add('active');
+      drawer!.classList.add('active');
+      resetCheckoutStep();
+    }
+
+    function closeCart() {
+      overlay!.classList.remove('active');
+      drawer!.classList.remove('active');
+    }
+
+    function showCheckoutStep() {
+      stepCheckout!.classList.add('active');
+      checkoutStepBtn!.style.display = 'none';
+      footer!.style.borderTop = 'none';
+      footer!.style.background = 'transparent';
+      // Scroll body to bottom to see form
+      setTimeout(() => {
+        const body = document.querySelector('.cart-drawer-body');
+        if (body) body.scrollTop = body.scrollHeight;
+      }, 50);
+    }
+
+    function resetCheckoutStep() {
+      stepCheckout!.classList.remove('active');
+      checkoutStepBtn!.style.display = 'block';
+      footer!.style.borderTop = '';
+      footer!.style.background = '';
+      if (errBox) errBox.style.display = 'none';
+    }
+
+    // Update the UI representation of the cart
+    function updateCartUI() {
+      const cart = getCart();
+      
+      // Update badge counts globally
+      const badges = document.querySelectorAll('.cart-badge');
+      const totalItemsCount = cart.reduce((sum: number, item: any) => sum + item.quantity, 0);
+      badges.forEach(badge => {
+        badge.textContent = totalItemsCount.toString();
+        (badge as HTMLElement).style.display = totalItemsCount > 0 ? 'flex' : 'none';
+      });
+
+      if (cart.length === 0) {
+        itemsList!.innerHTML = '';
+        emptyMsg!.style.display = 'flex';
+        footer!.style.display = 'none';
+        resetCheckoutStep();
+        return;
+      }
+
+      emptyMsg!.style.display = 'none';
+      footer!.style.display = 'block';
+
+      // Render items
+      itemsList!.innerHTML = cart.map((item: any, idx: number) => `
+        <div class="cart-item" data-idx="${idx}">
+          <div class="cart-item-image">
+            <img src="${item.image || '/assets/images/products1.png'}" alt="${item.name}" />
+          </div>
+          <div class="cart-item-info">
+            <div class="cart-item-name">${item.name}</div>
+            <div class="cart-item-variant">${item.variantLabel || 'Standard'}</div>
+            <div class="cart-item-controls">
+              <div class="cart-item-qty">
+                <button class="cart-item-qty-btn qty-dec-btn" data-idx="${idx}">&minus;</button>
+                <input class="cart-item-qty-input" type="number" readonly value="${item.quantity}" />
+                <button class="cart-item-qty-btn qty-inc-btn" data-idx="${idx}">&plus;</button>
+              </div>
+              <div class="cart-item-price">₹${(item.price * item.quantity).toLocaleString('en-IN')}</div>
+            </div>
+            <button class="cart-item-remove" data-idx="${idx}"><i class="fa-solid fa-trash-can"></i> Remove</button>
+          </div>
+        </div>
+      `).join('');
+
+      // Calculate subtotal
+      const subtotal = cart.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
+      subtotalText!.textContent = `₹${subtotal.toLocaleString('en-IN')}`;
+
+      // Re-bind listeners for quantity and delete
+      itemsList!.querySelectorAll('.qty-inc-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const idx = parseInt((e.currentTarget as HTMLElement).getAttribute('data-idx')!);
+          const c = getCart();
+          c[idx].quantity += 1;
+          saveCart(c);
+          updateCartUI();
+        });
+      });
+
+      itemsList!.querySelectorAll('.qty-dec-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const idx = parseInt((e.currentTarget as HTMLElement).getAttribute('data-idx')!);
+          const c = getCart();
+          if (c[idx].quantity > 1) {
+            c[idx].quantity -= 1;
+            saveCart(c);
+            updateCartUI();
+          }
+        });
+      });
+
+      itemsList!.querySelectorAll('.cart-item-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const idx = parseInt((e.currentTarget as HTMLElement).getAttribute('data-idx')!);
+          const c = getCart();
+          c.splice(idx, 1);
+          saveCart(c);
+          updateCartUI();
+        });
+      });
+    }
+
+    // Checkout handler
+    async function handleCheckout() {
+      const nameInput = document.getElementById('checkoutName') as HTMLInputElement;
+      const emailInput = document.getElementById('checkoutEmail') as HTMLInputElement;
+      const phoneInput = document.getElementById('checkoutPhone') as HTMLInputElement;
+
+      const name = nameInput ? nameInput.value.trim() : '';
+      const email = emailInput ? emailInput.value.trim() : '';
+      const phone = phoneInput ? phoneInput.value.trim() : '';
+
+      if (!name || !email || !phone) {
+        if (errBox) {
+          errBox.textContent = "Please fill in all details.";
+          errBox.style.display = "block";
+        }
+        return;
+      }
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        if (errBox) {
+          errBox.textContent = "Please enter a valid email address.";
+          errBox.style.display = "block";
+        }
+        return;
+      }
+
+      if (errBox) errBox.style.display = "none";
+      payNowBtn!.disabled = true;
+      const originalHtml = payNowBtn!.innerHTML;
+      payNowBtn!.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Processing...`;
+
+      try {
+        const cart = getCart();
+        
+        // 1. Soft stock validation
+        const cartValRes = await fetch('/api/cart', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: cart.map(x => ({
+              productSlug: x.productSlug,
+              variantSku: x.variantSku,
+              quantity: x.quantity
+            }))
+          })
+        });
+        
+        const cartValData = await cartValRes.json();
+        if (!cartValRes.ok || !cartValData.success) {
+          const failed = cartValData.validations?.find((v: any) => !v.available);
+          const errMsg = failed ? failed.error : (cartValData.error || "Stock validation failed.");
+          throw new Error(errMsg);
+        }
+
+        // 2. Create session
+        const sessionRes = await fetch('/api/checkout/create-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customer: { name, email, phone },
+            items: cart.map(x => ({
+              productSlug: x.productSlug,
+              variantSku: x.variantSku,
+              label: `${x.name} ${x.variantLabel ? '(' + x.variantLabel + ')' : ''}`,
+              quantity: x.quantity,
+              price: x.price
+            }))
+          })
+        });
+
+        const sessionData = await sessionRes.json();
+        if (!sessionRes.ok || !sessionData.success) {
+          throw new Error(sessionData.error || "Failed to create checkout session.");
+        }
+
+        // Redirect to checkoutUrl
+        window.location.href = sessionData.checkoutUrl;
+
+      } catch (err: any) {
+        if (errBox) {
+          errBox.textContent = err.message || "An error occurred during checkout.";
+          errBox.style.display = "block";
+        }
+        payNowBtn!.disabled = false;
+        payNowBtn!.innerHTML = originalHtml;
+      }
+    }
+
+    // Bind event listeners (remove old ones if page loads again in transitions)
+    overlay.onclick = closeCart;
+    closeBtn.onclick = closeCart;
+    checkoutStepBtn.onclick = showCheckoutStep;
+    checkoutBackBtn.onclick = resetCheckoutStep;
+    payNowBtn.onclick = handleCheckout;
+
+    // Bind all header cart buttons to open the cart drawer
+    document.querySelectorAll('.cart-header-btn').forEach(btn => {
+      btn.addEventListener('click', openCart);
+    });
+
+    // Listen to global open drawer requests
+    window.addEventListener('open-cart-drawer', openCart);
+    
+    // Listen to global add items requests
+    window.addEventListener('add-item-to-cart', (e: any) => {
+      const item = e.detail;
+      const c = getCart();
+      const existing = c.find(x => x.productSlug === item.productSlug && x.variantSku === item.variantSku);
+      if (existing) {
+        existing.quantity += item.quantity;
+      } else {
+        c.push(item);
+      }
+      saveCart(c);
+      updateCartUI();
+      openCart();
+    });
+
+    // Listen to cart-updated event (from other scripts/pages)
+    window.addEventListener('cart-updated', updateCartUI);
+
+    // Initial render
+    updateCartUI();
+
+    // Check if open_cart search parameter is present (used for cancellations)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('open_cart') === 'true') {
+      // Clear the query parameter from URL without page reload
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+      openCart();
+    }
+  }
+
+  // Setup lifecycle binders
+  if (document.readyState !== 'loading') {
+    initCart();
+  } else {
+    document.addEventListener('DOMContentLoaded', initCart);
+  }
+  document.addEventListener('astro:page-load', initCart);
+</script>

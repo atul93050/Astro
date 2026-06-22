@@ -43,6 +43,7 @@ const {
 import { ClientRouter } from "astro:transitions";
 import fs from "node:fs";
 import path from "node:path";
+import CartDrawer from "../components/CartDrawer.astro";
 
 // Load global settings
 let globalSettings = {
@@ -167,6 +168,7 @@ const organizationSchema = {
     <link href="/assets/fonts/fonts.css" rel="stylesheet" />
     <link href="/assets/css/main.css" rel="stylesheet" />
     <link href="/css/nav.css" rel="stylesheet" />
+    <link href="/css/products.css" rel="stylesheet" />
 
     <!-- Centralized per-page stylesheet (src/styles/pages/<slug>.css) -->
     {pageStyleUrl && <link rel="stylesheet" href={pageStyleUrl} />}
@@ -215,6 +217,8 @@ const organizationSchema = {
     }
 
     <slot />
+
+    <CartDrawer />
 
     <script is:inline defer src="/js/new-lp-page.js"></script>
 

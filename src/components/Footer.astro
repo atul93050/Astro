@@ -41,13 +41,13 @@ const footerBottomMenu = getMenuAtLocation("footer-bottom", previewMenuId);
         <FooterMenuCol menu={footerMenu1} heading="Products" />
       ) : (
         <div class="footer-col">
-          <h6 class="footer-heading">Products</h6>
+          <h6 class="footer-heading"><a href="/products" style="color:inherit; text-decoration:none;">Products</a></h6>
           <ul class="footer-list">
+            <li><a href="/products" style="font-weight:700;">All Products &rarr;</a></li>
             <li><a href="#">By Category</a></li>
             <li><a href="#">By Process</a></li>
             <li><a href="#">By Technology</a></li>
             <li><a href="#">By Metal Type</a></li>
-            <li><a href="#">By Brand</a></li>
           </ul>
         </div>
       )}
@@ -89,7 +89,7 @@ const footerBottomMenu = getMenuAtLocation("footer-bottom", previewMenuId);
         <div class="footer-col">
           <h6 class="footer-heading">Legal</h6>
           <ul class="footer-list">
-            <li><a href="#">Contact Us</a></li>
+            <li><a href="/contact">Contact Us</a></li>
             <li><a href="#">Privacy Policy</a></li>
             <li><a href="#">Terms &amp; Conditions</a></li>
             <li><a href="#">Testimonials</a></li>

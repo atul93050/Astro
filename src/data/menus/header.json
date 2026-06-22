@@ -2,7 +2,7 @@
   "id": "header",
   "name": "header",
   "slug": "header",
-  "description": "",
+  "description": "Primary header site menu",
   "settings": {
     "alignment": "left",
     "dropdownWidth": "240px",
@@ -13,9 +13,9 @@
   },
   "items": [
     {
-      "id": "item-zp060brq4",
-      "label": "home",
-      "url": "/index",
+      "id": "item-home",
+      "label": "Home",
+      "url": "/",
       "type": "page",
       "target": "_self",
       "icon": null,
@@ -34,10 +34,10 @@
       "parentId": null
     },
     {
-      "id": "item-lbj56udfv",
-      "label": "Why Choose HVOF Coating? Key Advantages for Industrial Efficiency and Durability",
-      "url": "/blog/choosing-hvof-coating",
-      "type": "blog-post",
+      "id": "item-products",
+      "label": "Products",
+      "url": "/products",
+      "type": "page",
       "target": "_self",
       "icon": null,
       "image": null,
@@ -50,56 +50,33 @@
         "auth": "all"
       },
       "megaMenuId": null,
-      "children": [
-        {
-          "id": "item-b93qnrgsx",
-          "label": "New Item",
-          "type": "phone",
-          "url": "/",
-          "target": "_self",
-          "icon": null,
-          "image": null,
-          "badge": null,
-          "description": "",
-          "cssClass": "",
-          "customId": "",
-          "visibility": {
-            "device": "all",
-            "auth": "all"
-          },
-          "megaMenuId": null,
-          "children": [
-            {
-              "id": "item-x55zdken2",
-              "label": "New Item",
-              "type": "custom-url",
-              "url": "/",
-              "target": "_self",
-              "icon": null,
-              "image": null,
-              "badge": null,
-              "description": "",
-              "cssClass": "",
-              "customId": "",
-              "visibility": {
-                "device": "all",
-                "auth": "all"
-              },
-              "megaMenuId": null,
-              "children": [],
-              "order": 0,
-              "parentId": "item-b93qnrgsx"
-            }
-          ],
-          "order": 0,
-          "parentId": "item-lbj56udfv"
-        }
-      ],
+      "children": [],
       "order": 1,
+      "parentId": null
+    },
+    {
+      "id": "item-contact",
+      "label": "Contact Us",
+      "url": "/contact",
+      "type": "page",
+      "target": "_self",
+      "icon": null,
+      "image": null,
+      "badge": null,
+      "description": "",
+      "cssClass": "",
+      "customId": "",
+      "visibility": {
+        "device": "all",
+        "auth": "all"
+      },
+      "megaMenuId": null,
+      "children": [],
+      "order": 2,
       "parentId": null
     }
   ],
   "status": "published",
   "createdAt": "2026-06-21T17:10:37.682Z",
-  "updatedAt": "2026-06-21T17:11:29.751Z"
+  "updatedAt": "2026-06-21T17:55:00.000Z"
 }
